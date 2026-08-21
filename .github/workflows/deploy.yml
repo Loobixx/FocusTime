@@ -1,0 +1,40 @@
+name: Deploy Flutter Web
+
+on:
+  push:
+    branches: [ main ] # Se déclenche à chaque push sur la branche main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Récupérer le code source
+        uses: actions/checkout@v4
+
+      - name: 2. Installer Java (nécessaire pour certains outils Android/Flutter)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 3. Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x' # Utilise la dernière version stable de Flutter
+          channel: 'stable'
+
+      - name: 4. Installer les dépendances du projet
+        run: flutter pub get
+
+      - name: 5. Compiler l'application pour le Web
+        run: flutter build web --release
+
+      - name: 6. Télécharger l'artefact pour GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'build/web'
+
+  - name: Déployer sur GitHub Pages
+    id: deployment
+    uses: actions/deploy-pages@v4
