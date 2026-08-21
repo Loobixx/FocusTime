@@ -28,7 +28,7 @@ jobs:
         run: flutter pub get
 
       - name: 5. Compiler l'application pour le Web
-        run: flutter build web --release
+        run: flutter build web --release --base-href "FocusTime/"
 
       - name: 6. Télécharger l'artefact pour GitHub Pages
         uses: actions/upload-pages-artifact@v3
