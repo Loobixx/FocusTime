@@ -20,7 +20,7 @@ class HomeScreen extends StatelessWidget {
               decoration: const BoxDecoration(
                 image: DecorationImage(
                   // Indique le chemin vers ton image
-                  image: AssetImage('fond2.png'), 
+                  image: AssetImage('assets/fond2.png'), 
                   fit: BoxFit.cover,
                 ),
               ),
@@ -67,7 +67,7 @@ class HomeScreen extends StatelessWidget {
                   'FocusTime',
                   style: TextStyle(
                     fontSize: 56,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.bold,
                     color: darkBlue,
                   ),
                 ),
