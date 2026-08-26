@@ -61,6 +61,13 @@ flutter:
   assets:
     - assets/fond1.png
     - assets/fond2.png
+    - assets/map_global.png
+    - assets/nuit.png
+    - assets/montagnes.png
+    - assets/nuages.png
+    - assets/lac.png
+    - assets/desert.png
+
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

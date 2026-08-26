@@ -20,7 +20,7 @@ class ProfileScreen extends StatelessWidget {
               decoration: const BoxDecoration(
                 image: DecorationImage(
                   // Indique le chemin vers ton image
-                  image: AssetImage('fond1.png'), 
+                  image: AssetImage('assets/fond1.png'), 
                   fit: BoxFit.cover,
                 ),
               ),

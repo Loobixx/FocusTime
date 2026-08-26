@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_time/screens/focus_screen.dart';
+import 'package:flutter_time/screens/map_screen.dart';
 import 'profile_screen.dart'; // Vérifie que le nom du fichier est correct
 
 class HomeScreen extends StatelessWidget {
@@ -89,7 +91,11 @@ class HomeScreen extends StatelessWidget {
                         elevation: 0,
                       ),
                       onPressed: () {
-                        // Action pour lancer le focus
+                        // Navigation vers l'écran du timer
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const FocusScreen()),
+                        );
                       },
                       child: const Text(
                         'START FOCUS',
@@ -97,7 +103,6 @@ class HomeScreen extends StatelessWidget {
                           fontSize: 20,
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.lineThrough
                         ),
                       ),
                     ),
@@ -114,7 +119,10 @@ class HomeScreen extends StatelessWidget {
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: InkWell(
                         onTap: () {
-                          // Action pour ouvrir la map
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const MapScreen()),
+                          );
                         },
                         child: Container(
                           width: double.infinity,
