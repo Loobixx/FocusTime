@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class RegionDetailScreen extends StatelessWidget {
   final String regionName;
 
-  const RegionDetailScreen({Key? key, required this.regionName}) : super(key: key);
+  const RegionDetailScreen({super.key, required this.regionName});
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +65,9 @@ class RegionDetailScreen extends StatelessWidget {
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.4),
+                        color: Colors.white.withValues(alpha: 0.4),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.6)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back_ios_new, color: darkBlue),

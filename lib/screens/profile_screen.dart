@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart'; // Vérifie bien que c'est le bon nom de fichier
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -41,9 +41,9 @@ class ProfileScreen extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.25), // Transparence ajustée
+                        color: Colors.white.withValues(alpha: 0.25), // Transparence ajustée
                         borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -88,7 +88,7 @@ class ProfileScreen extends StatelessWidget {
                                     'yoann.dev@exemple.com',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: darkBlue.withOpacity(0.7),
+                                      color: darkBlue.withValues(alpha: 0.7),
                                     ),
                                   ),
                                 ],
@@ -140,7 +140,7 @@ class ProfileScreen extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
-                                side: BorderSide(color: Colors.redAccent.withOpacity(0.5)), // Petit contour rouge discret
+                                side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)), // Petit contour rouge discret
                               ),
                             ),
                             child: const Text(
@@ -177,18 +177,18 @@ class ProfileScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: ListTile(
         // L'icône devient un peu transparente si indisponible
-        leading: Icon(icon, color: isAvailable ? darkBlue : darkBlue.withOpacity(0.4), size: 26),
+        leading: Icon(icon, color: isAvailable ? darkBlue : darkBlue.withValues(alpha: 0.4), size: 26),
         title: Text(
           title,
           style: TextStyle(
-            color: isAvailable ? darkBlue : darkBlue.withOpacity(0.4), // Texte grisé
+            color: isAvailable ? darkBlue : darkBlue.withValues(alpha: 0.4), // Texte grisé
             fontSize: 16,
             fontWeight: FontWeight.w500,
             // C'EST ICI QUE ÇA SE PASSE : Si pas dispo, on barre le texte
             decoration: isAvailable ? TextDecoration.none : TextDecoration.lineThrough,
           ),
         ),
-        trailing: Icon(Icons.chevron_right, color: isAvailable ? darkBlue.withOpacity(0.5) : darkBlue.withOpacity(0.2)),
+        trailing: Icon(Icons.chevron_right, color: isAvailable ? darkBlue.withValues(alpha: 0.5) : darkBlue.withValues(alpha: 0.2)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         // On désactive le clic (null) si la fonctionnalité n'est pas prête
         onTap: isAvailable ? () {

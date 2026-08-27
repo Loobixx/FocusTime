@@ -1,39 +1,23 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-/// -----------------------------------------------------------------------
-/// MODELE DE ZONE
-/// -----------------------------------------------------------------------
-class RegionShape {
-  final String id;
-  final String name;
-  final Color color;
-  final Path path;
-
-  RegionShape({
-    required this.id,
-    required this.name,
-    required this.color,
-    required this.path,
-  });
-}
+import 'package:flutter_time/map_region_data.dart';
+// Importation du fichier des coordonnées
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({Key? key}) : super(key: key);
+  const MapScreen({super.key});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
 
 class _MapScreenState extends State<MapScreen> {
-  String? _selectedRegionId; // tap (mobile) -> 2e tap ouvre le détail
-  String? _hoveredRegionId; // hover souris (desktop/web)
-  bool _debugShowZones = false; // affiche tous les contours pour calibrer
+  String? _selectedRegionId; 
+  String? _hoveredRegionId; 
+  bool _debugShowZones = false; 
 
   late final TransformationController _transformationController;
 
-  // Dimensions RÉELLES de assets/map_global.png
   static const Size _baseMapSize = Size(1023, 1537);
 
   @override
@@ -48,125 +32,8 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------
-  // ZONES — coordonnées ESTIMÉES sur la base de 1023x1537.
-  // Utilise le bouton 🐞 (mode debug) pour visualiser ces contours
-  // par-dessus la vraie carte et ajuster les points si besoin.
-  // ---------------------------------------------------------------------
-  final List<RegionShape> _regions = [
-    RegionShape(
-      id: 'desert',
-      name: 'Terres du Désert',
-      color: const Color(0xFFE8C468),
-      path: Path()
-        ..moveTo(300, 330)
-        ..lineTo(350, 360)
-        ..lineTo(385, 420)
-        ..lineTo(392, 500)
-        ..lineTo(382, 580)
-        ..lineTo(392, 650)
-        ..lineTo(372, 700)
-        ..lineTo(330, 725)
-        ..lineTo(275, 735)
-        ..lineTo(220, 685)
-        ..lineTo(190, 605)
-        ..lineTo(178, 520)
-        ..lineTo(183, 440)
-        ..lineTo(202, 380)
-        ..lineTo(242, 340)
-        ..close(),
-    ),
-    RegionShape(
-      id: 'lac',
-      name: 'Monde de l\'Eau',
-      color: const Color(0xFF3FA9C9),
-      path: Path()
-        ..moveTo(195, 705)
-        ..lineTo(285, 720)
-        ..lineTo(350, 745)
-        ..lineTo(400, 800)
-        ..lineTo(422, 900)
-        ..lineTo(400, 1005)
-        ..lineTo(365, 1085)
-        ..lineTo(315, 1155)
-        ..lineTo(265, 1180)
-        ..lineTo(218, 1150)
-        ..lineTo(193, 1080)
-        ..lineTo(183, 1000)
-        ..lineTo(188, 900)
-        ..close(),
-    ),
-    RegionShape(
-      id: 'nuit',
-      name: 'Royaume de la Nuit',
-      color: const Color(0xFF16215C),
-      path: Path()
-        ..moveTo(430, 560)
-        ..lineTo(500, 520)
-        ..lineTo(600, 500)
-        ..lineTo(700, 512)
-        ..lineTo(800, 542)
-        ..lineTo(880, 565)
-        ..lineTo(910, 605)
-        ..lineTo(895, 655)
-        ..lineTo(850, 755)
-        ..lineTo(820, 855)
-        ..lineTo(795, 955)
-        ..lineTo(700, 1005)
-        ..lineTo(600, 985)
-        ..lineTo(520, 905)
-        ..lineTo(480, 805)
-        ..lineTo(450, 700)
-        ..close(),
-    ),
-    RegionShape(
-      id: 'nuages',
-      name: 'Les Nuages Féeriques',
-      color: const Color(0xFFE79ACB),
-      path: Path()
-        ..moveTo(585, 340)
-        ..lineTo(620, 290)
-        ..lineTo(700, 270)
-        ..lineTo(780, 300)
-        ..lineTo(860, 330)
-        ..lineTo(895, 380)
-        ..lineTo(860, 430)
-        ..lineTo(770, 470)
-        ..lineTo(700, 480)
-        ..lineTo(650, 460)
-        ..lineTo(600, 420)
-        ..close(),
-    ),
-    RegionShape(
-      id: 'montagnes',
-      name: 'Sommets des Montagnes',
-      color: const Color(0xFF4F9A5B),
-      path: Path()
-        ..moveTo(430, 730)
-        ..lineTo(480, 700)
-        ..lineTo(550, 690)
-        ..lineTo(620, 700)
-        ..lineTo(680, 720)
-        ..lineTo(720, 760)
-        ..lineTo(760, 820)
-        ..lineTo(780, 900)
-        ..lineTo(770, 980)
-        ..lineTo(750, 1050)
-        ..lineTo(700, 1120)
-        ..lineTo(650, 1180)
-        ..lineTo(580, 1220)
-        ..lineTo(520, 1240)
-        ..lineTo(450, 1230)
-        ..lineTo(400, 1200)
-        ..lineTo(370, 1150)
-        ..lineTo(345, 1080)
-        ..lineTo(335, 1000)
-        ..lineTo(340, 900)
-        ..lineTo(360, 820)
-        ..lineTo(390, 760)
-        ..close(),
-    ),
-  ];
+  // On récupère directement les régions depuis le fichier externe
+  final List<RegionShape> _regions = MapRegionsData.regions;
 
   List<RegionShape> _scaledRegions(double scale) {
     final matrix = Matrix4.diagonal3Values(scale, scale, 1);
@@ -180,17 +47,23 @@ class _MapScreenState extends State<MapScreen> {
         .toList();
   }
 
-  RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
+RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
     final Matrix4 inverseMatrix =
         Matrix4.copy(_transformationController.value)..invert();
     final Offset pos =
         MatrixUtils.transformPoint(inverseMatrix, localPosition);
+    
     for (var region in scaled) {
-      if (region.path.contains(pos)) return region;
+      // On vérifie si le point est dans le path ET on s'assure qu'il est 
+      // strictement à l'intérieur du contour (pour éviter les approximations de pixels)
+      if (region.path.contains(pos)) {
+        // Optionnel : on peut ajouter une vérification supplémentaire si besoin,
+        // mais le fait de parcourir la liste dans l'ordre permet de cibler la bonne zone.
+        return region;
+      }
     }
     return null;
   }
-
   void _handleHover(PointerHoverEvent event, List<RegionShape> scaled) {
     final region = _regionAt(event.localPosition, scaled);
     if (region?.id != _hoveredRegionId) {
@@ -247,7 +120,7 @@ class _MapScreenState extends State<MapScreen> {
 
                 return InteractiveViewer(
                   transformationController: _transformationController,
-                  constrained: false, // permet le défilement horizontal
+                  constrained: false, 
                   boundaryMargin: EdgeInsets.zero,
                   minScale: 1.0,
                   maxScale: 3.5,
@@ -264,7 +137,6 @@ class _MapScreenState extends State<MapScreen> {
                         onTapUp: (details) =>
                             _handleTapUp(details, scaledRegions),
                         child: CustomPaint(
-                          // foregroundPainter -> dessiné AU-DESSUS de l'image
                           foregroundPainter: MapPainter(
                             regions: scaledRegions,
                             selectedRegionId: _selectedRegionId,
@@ -298,9 +170,9 @@ class _MapScreenState extends State<MapScreen> {
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.4),
+                        color: Colors.white.withValues(alpha: 0.4),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.6)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back_ios_new, color: darkBlue),
@@ -313,7 +185,7 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          // Bouton debug (calibration des zones)
+          // Bouton debug
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -321,7 +193,7 @@ class _MapScreenState extends State<MapScreen> {
                 alignment: Alignment.topRight,
                 child: FloatingActionButton.small(
                   heroTag: 'debug',
-                  backgroundColor: Colors.white.withOpacity(0.7),
+                  backgroundColor: Colors.white.withValues(alpha: 0.7),
                   onPressed: () =>
                       setState(() => _debugShowZones = !_debugShowZones),
                   child: const Text('🐞'),
@@ -330,7 +202,7 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          // Label : nom de la zone survolée / sélectionnée
+          // Label
           if (_displayedName != null)
             Positioned(
               bottom: 40,
@@ -340,7 +212,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   decoration: BoxDecoration(
-                    color: darkBlue.withOpacity(0.85),
+                    color: darkBlue.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: const [
                       BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2)
@@ -385,7 +257,7 @@ class MapPainter extends CustomPainter {
 
       if (debugShowAll) {
         final debugFill = Paint()
-          ..color = region.color.withOpacity(0.35)
+          ..color = region.color.withValues(alpha: 0.35)
           ..style = PaintingStyle.fill;
         final debugStroke = Paint()
           ..color = Colors.red
@@ -397,10 +269,10 @@ class MapPainter extends CustomPainter {
 
       if (isHovered || isSelected) {
         final highlightFill = Paint()
-          ..color = Colors.white.withOpacity(isSelected ? 0.35 : 0.22)
+          ..color = Colors.white.withValues(alpha: isSelected ? 0.35 : 0.22)
           ..style = PaintingStyle.fill;
         final highlightStroke = Paint()
-          ..color = Colors.white.withOpacity(0.9)
+          ..color = Colors.white.withValues(alpha: 0.9)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3;
         canvas.drawPath(region.path, highlightFill);
@@ -423,7 +295,7 @@ class MapPainter extends CustomPainter {
 /// -----------------------------------------------------------------------
 class RegionDetailScreen extends StatelessWidget {
   final String regionName;
-  const RegionDetailScreen({Key? key, required this.regionName}) : super(key: key);
+  const RegionDetailScreen({super.key, required this.regionName});
 
   @override
   Widget build(BuildContext context) {
@@ -453,9 +325,9 @@ class RegionDetailScreen extends StatelessWidget {
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.4),
+                        color: Colors.white.withValues(alpha: 0.4),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.6)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back_ios_new, color: darkBlue),

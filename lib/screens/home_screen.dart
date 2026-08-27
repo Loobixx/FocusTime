@@ -5,7 +5,7 @@ import 'package:flutter_time/screens/map_screen.dart';
 import 'profile_screen.dart'; // Vérifie que le nom du fichier est correct
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -128,9 +128,9 @@ class HomeScreen extends StatelessWidget {
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.4),
+                            color: Colors.white.withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(30),
-                            border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
                           ),
                           child: const Center(
                             child: Text(
@@ -139,7 +139,6 @@ class HomeScreen extends StatelessWidget {
                                 fontSize: 18,
                                 color: darkBlue,
                                 fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.lineThrough
                               ),
                             ),
                           ),
@@ -162,9 +161,9 @@ class HomeScreen extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3), // Légèrement blanc transparent
+                          color: Colors.white.withValues(alpha: 0.3), // Légèrement blanc transparent
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

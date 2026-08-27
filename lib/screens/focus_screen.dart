@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Nécessaire pour le retour haptique
 
 class FocusScreen extends StatefulWidget {
-  const FocusScreen({Key? key}) : super(key: key);
+  const FocusScreen({super.key});
 
   @override
   State<FocusScreen> createState() => _FocusScreenState();
@@ -103,11 +103,11 @@ class _FocusScreenState extends State<FocusScreen> {
                     height: 240,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.25),
-                      border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
+                      color: Colors.white.withValues(alpha: 0.25),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 20,
                           spreadRadius: 5,
                         ),
@@ -166,9 +166,9 @@ class _FocusScreenState extends State<FocusScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
                         ),
                         child: Column(
                           children: [
@@ -248,7 +248,7 @@ class _FocusScreenState extends State<FocusScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         alignment: Alignment.center, // Centre le texte parfaitement
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.75),
+          color: Colors.white.withValues(alpha: 0.75),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Text(

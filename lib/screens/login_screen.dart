@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart'; 
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -53,11 +53,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        Colors.white.withOpacity(0.4),
-                        Colors.white.withOpacity(0.1),
+                        Colors.white.withValues(alpha: 0.4),
+                        Colors.white.withValues(alpha: 0.1),
                       ],
                     ),
-                    border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
                   ),
                   child: AnimatedSize(
                     duration: const Duration(milliseconds: 300),
@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 70,
                           width: 70,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.6),
+                            color: Colors.white.withValues(alpha: 0.6),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.hourglass_empty, color: darkBlue, size: 36),
@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: Text(
                                 'Mot de passe oublié ?',
                                 style: TextStyle(
-                                  color: darkBlue.withOpacity(0.5), // Couleur estompée
+                                  color: darkBlue.withValues(alpha: 0.5), // Couleur estompée
                                   fontWeight: FontWeight.w600,
                                   decoration: TextDecoration.lineThrough, // Texte barré
                                 ),
@@ -155,15 +155,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         // --- SÉPARATEUR ---
                         Row(
                           children: [
-                            Expanded(child: Divider(color: darkBlue.withOpacity(0.3), thickness: 1)),
+                            Expanded(child: Divider(color: darkBlue.withValues(alpha: 0.3), thickness: 1)),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16.0),
                               child: Text(
                                 "Ou avec",
-                                style: TextStyle(color: darkBlue.withOpacity(0.8), fontWeight: FontWeight.bold),
+                                style: TextStyle(color: darkBlue.withValues(alpha: 0.8), fontWeight: FontWeight.bold),
                               ),
                             ),
-                            Expanded(child: Divider(color: darkBlue.withOpacity(0.3), thickness: 1)),
+                            Expanded(child: Divider(color: darkBlue.withValues(alpha: 0.3), thickness: 1)),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -185,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             Text(
                               _isLogin ? "Pas encore de compte ?" : "Déjà un compte ?", 
-                              style: TextStyle(color: darkBlue.withOpacity(0.8))
+                              style: TextStyle(color: darkBlue.withValues(alpha: 0.8))
                             ),
                             TextButton(
                               onPressed: _toggleMode,
@@ -216,9 +216,9 @@ class _LoginScreenState extends State<LoginScreen> {
       style: const TextStyle(fontSize: 16),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: TextStyle(color: Colors.black.withOpacity(0.4), fontSize: 16),
+        hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.4), fontSize: 16),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.85),
+        fillColor: Colors.white.withValues(alpha: 0.85),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide.none,
@@ -260,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         // Fond rendu un peu transparent si indisponible
-        backgroundColor: isAvailable ? bgColor : bgColor.withOpacity(0.4),
+        backgroundColor: isAvailable ? bgColor : bgColor.withValues(alpha: 0.4),
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),
@@ -273,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
         style: TextStyle(
           fontSize: 14,
           // Couleur estompée et texte barré si indisponible
-          color: isAvailable ? textColor : textColor.withOpacity(0.5),
+          color: isAvailable ? textColor : textColor.withValues(alpha: 0.5),
           fontWeight: FontWeight.bold,
           decoration: isAvailable ? TextDecoration.none : TextDecoration.lineThrough,
         ),

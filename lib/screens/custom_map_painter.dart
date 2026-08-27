@@ -19,7 +19,7 @@ class MapPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paintFill = Paint()
-      ..color = Colors.amber.withOpacity(0.3)
+      ..color = Colors.amber.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
 
     final paintBorder = Paint()
