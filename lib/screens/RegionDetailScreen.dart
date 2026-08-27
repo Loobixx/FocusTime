@@ -1,55 +1,104 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-class RegionDetailScreen extends StatelessWidget {
+class RegionDetailScreen extends StatefulWidget {
   final String regionName;
-
   const RegionDetailScreen({super.key, required this.regionName});
+
+  @override
+  State<RegionDetailScreen> createState() => _RegionDetailScreenState();
+}
+
+class _RegionDetailScreenState extends State<RegionDetailScreen> {
+  late final TransformationController _controller;
+  bool _initialized = false;
+
+  static const double zoomImageWidth = 2000.0;
+  static const double zoomImageHeight = 3000.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TransformationController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _getImageAsset(String regionName) {
+    switch (regionName) {
+      case 'desert':
+        return 'assets/desert.png';
+      case 'montagnes':
+        return 'assets/montagnes.png';
+      case 'nuit':
+        return 'assets/nuit.png';
+      case 'nuages':
+        return 'assets/nuages.png';
+      case 'lac':
+        return 'assets/lac.png';
+      default:
+        return 'assets/fond1.png';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
 
-    // Dictionnaire pour associer chaque région à son image zoomée spécifique
-    String getImageAsset() {
-      switch (regionName) {
-        case 'desert':
-          return 'assets/zoom_desert.png';
-        case 'montagnes':
-          return 'assets/zoom_montagne.png';
-        case 'nuit':
-          return 'assets/zoom_nuit.png';
-        case 'nuages':
-          return 'assets/zoom_nuages.png';
-        case 'lac':
-          return 'assets/zoom_lac.png';
-        default:
-          return 'assets/fond1.png';
-      }
-    }
-
     return Scaffold(
-      // 1. Fond général appliqué derrière l'image (tu peux changer la couleur ou mettre une texture)
-      backgroundColor: const Color(0xFF12121C), 
+      backgroundColor: const Color(0xFF12121C),
       body: Stack(
         children: [
-          // 2. Image détaillée interactive avec une marge de déplacement (boundaryMargin)
+          // 1. Fond général (fond_de_zoom.png) qui couvre tout l'écran en arrière-plan
           Positioned.fill(
-            child: InteractiveViewer(
-              // Permet de libérer l'espace de glissement pour pouvoir bouger la carte dans tous les sens
-              boundaryMargin: const EdgeInsets.all(double.infinity),
-              minScale: 1.0,  
-              maxScale: 4.0,  
-              child: Center(
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  height: MediaQuery.of(context).size.height,
-                  child: Image.asset(
-                    getImageAsset(),
-                    fit: BoxFit.cover,
+            child: Image.asset(
+              'assets/fond_de_zoom.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+
+          // 2. Image de zoom interactive par-dessus
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double minScaleToCover = math.max(
+                  constraints.maxWidth / zoomImageWidth,
+                  constraints.maxHeight / zoomImageHeight,
+                );
+                final double maxScale = math.max(minScaleToCover * 4, 5.0);
+
+                // On fixe l'échelle de départ pile au ratio "cover",
+                // une seule fois, pour éviter le décalage identity vs minScale
+                if (!_initialized) {
+                  _initialized = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _controller.value = Matrix4.identity()..scale(minScaleToCover);
+                  });
+                }
+
+                return InteractiveViewer(
+                  transformationController: _controller,
+                  constrained: false,
+                  boundaryMargin: EdgeInsets.zero,
+                  minScale: minScaleToCover,
+                  maxScale: maxScale,
+                  child: SizedBox(
+                    width: zoomImageWidth,
+                    height: zoomImageHeight,
+                    child: Image.asset(
+                      _getImageAsset(widget.regionName),
+                      width: zoomImageWidth,
+                      height: zoomImageHeight,
+                      fit: BoxFit.fill,
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
 

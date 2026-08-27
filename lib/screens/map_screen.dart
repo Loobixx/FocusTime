@@ -1,7 +1,9 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_time/map_region_data.dart';
+import 'package:flutter_time/screens/RegionDetailScreen.dart';
 // Importation du fichier des coordonnées
 
 class MapScreen extends StatefulWidget {
@@ -48,22 +50,13 @@ class _MapScreenState extends State<MapScreen> {
   }
 
 RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
-    final Matrix4 inverseMatrix =
-        Matrix4.copy(_transformationController.value)..invert();
-    final Offset pos =
-        MatrixUtils.transformPoint(inverseMatrix, localPosition);
-    
-    for (var region in scaled) {
-      // On vérifie si le point est dans le path ET on s'assure qu'il est 
-      // strictement à l'intérieur du contour (pour éviter les approximations de pixels)
-      if (region.path.contains(pos)) {
-        // Optionnel : on peut ajouter une vérification supplémentaire si besoin,
-        // mais le fait de parcourir la liste dans l'ordre permet de cibler la bonne zone.
-        return region;
-      }
+  for (var region in scaled) {
+    if (region.path.contains(localPosition)) {
+      return region;
     }
-    return null;
   }
+  return null;
+}
   void _handleHover(PointerHoverEvent event, List<RegionShape> scaled) {
     final region = _regionAt(event.localPosition, scaled);
     if (region?.id != _hoveredRegionId) {
@@ -113,20 +106,29 @@ RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final double screenHeight = constraints.maxHeight;
-                final double scale = screenHeight / _baseMapSize.height;
-                final double displayedWidth = _baseMapSize.width * scale;
-                final scaledRegions = _scaledRegions(scale);
+                // On utilise directement la taille de base de l'image comme référence fixe (1023x1537)
+                // L'InteractiveViewer permettra de zoomer et de se déplacer librement dessus.
+                const double baseWidth = 1023.0;
+                const double baseHeight = 1537.0;
+
+                // Le zoom minimum garantit que l'image couvre toujours tout l'écran
+                final double minScaleToCover = math.max(
+                  constraints.maxWidth / baseWidth,
+                  constraints.maxHeight / baseHeight,
+                );
+
+                // Pas besoin de recalculer un scale complexe, les chemins correspondent déjà à 1023x1537 !
+                final scaledRegions = _regions; // On utilise directement _regions sans multiplier par un scale externe
 
                 return InteractiveViewer(
                   transformationController: _transformationController,
                   constrained: false, 
                   boundaryMargin: EdgeInsets.zero,
-                  minScale: 1.0,
-                  maxScale: 3.5,
+                  minScale: minScaleToCover,
+                  maxScale: math.max(minScaleToCover * 3, 3.5),
                   child: SizedBox(
-                    width: displayedWidth,
-                    height: screenHeight,
+                    width: baseWidth,
+                    height: baseHeight,
                     child: MouseRegion(
                       cursor: _hoveredRegionId != null
                           ? SystemMouseCursors.click
@@ -145,8 +147,8 @@ RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
                           ),
                           child: Image.asset(
                             'assets/map_global.png',
-                            width: displayedWidth,
-                            height: screenHeight,
+                            width: baseWidth,
+                            height: baseHeight,
                             fit: BoxFit.fill,
                           ),
                         ),
@@ -287,60 +289,5 @@ class MapPainter extends CustomPainter {
         oldDelegate.hoveredRegionId != hoveredRegionId ||
         oldDelegate.debugShowAll != debugShowAll ||
         oldDelegate.regions != regions;
-  }
-}
-
-/// -----------------------------------------------------------------------
-/// ECRAN DE DETAIL
-/// -----------------------------------------------------------------------
-class RegionDetailScreen extends StatelessWidget {
-  final String regionName;
-  const RegionDetailScreen({super.key, required this.regionName});
-
-  @override
-  Widget build(BuildContext context) {
-    const darkBlue = Color(0xFF143063);
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/$regionName.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new, color: darkBlue),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
