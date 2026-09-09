@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'home_screen.dart'; 
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,10 +15,140 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isLogin = true;
 
+  // Contrôleurs pour récupérer les valeurs des champs de texte
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
   void _toggleMode() {
     setState(() {
       _isLogin = !_isLogin;
     });
+  }
+
+  Future<void> _signInWithGoogle() async {
+    try {
+      // Si tu es sur Android, on peut récupérer ton client ID web depuis ton fichier firebase_options.dart 
+      // ou initialiser GoogleSignIn avec l'clientId web généré lors du flutterfire configure :
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId: '866476346837-c1613bd360304873dc015c.apps.googleusercontent.com', // Ton appClientId web extrait de ton firebase_options.dart
+      );
+      
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        return; 
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).get();
+      
+      if (!userDoc.exists) {
+        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+          'email': userCredential.user!.email,
+          'createdAt': Timestamp.now(),
+          'characterColor': 'blue',
+          'hat': 'Aucun',
+        });
+      }
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur Google Sign-In : ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+
+
+  // Fonction de soumission connectée à Firebase
+  Future<void> _submitAuth() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showError("Veuillez remplir tous les champs.");
+      return;
+    }
+
+    if (!_isLogin && password != confirmPassword) {
+      _showError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    try {
+      if (_isLogin) {
+        // Connexion
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } else {
+        // Inscription
+        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+
+        // Enregistrement des données initiales dans Firestore
+        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+          'email': email,
+          'createdAt': Timestamp.now(),
+          'characterColor': 'blue', // Valeur par défaut
+          'hat': 'Aucun',          // Valeur par défaut
+        });
+      }
+
+      // Redirection vers l'accueil si tout s'est bien passé
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      print("CODE FIREBASE : ${e.code}");
+      print("MESSAGE FIREBASE : ${e.message}");
+      _showError(e.message ?? "Une erreur est survenue.");
+    } catch (e) {
+      print("ERREUR INATTENDUE : $e"); // <-- C'est ça qui va cracher la vérité dans la console
+      _showError("Une erreur inattendue s'est produite.");
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
   }
 
   @override
@@ -111,14 +244,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 32),
 
                         // --- CHAMPS DE TEXTE ---
-                        _buildTextField('Email'),
+                        _buildTextField('Email', controller: _emailController),
                         const SizedBox(height: 16),
-                        _buildTextField('Mot de passe', isPassword: true),
+                        _buildTextField('Mot de passe', isPassword: true, controller: _passwordController),
                         
                         // Champ de confirmation
                         if (!_isLogin) ...[
                           const SizedBox(height: 16),
-                          _buildTextField('Confirmer le mot de passe', isPassword: true),
+                          _buildTextField('Confirmer le mot de passe', isPassword: true, controller: _confirmPasswordController),
                         ],
 
                         // --- MOT DE PASSE OUBLIÉ ---
@@ -126,16 +259,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: null, // null désactive le clic car non développé
+                              onPressed: null, 
                               style: TextButton.styleFrom(
                                 padding: const EdgeInsets.only(top: 8, bottom: 8, right: 0),
                               ),
                               child: Text(
                                 'Mot de passe oublié ?',
                                 style: TextStyle(
-                                  color: darkBlue.withValues(alpha: 0.5), // Couleur estompée
+                                  color: darkBlue.withValues(alpha: 0.5),
                                   fontWeight: FontWeight.w600,
-                                  decoration: TextDecoration.lineThrough, // Texte barré
+                                  decoration: TextDecoration.lineThrough,
                                 ),
                               ),
                             ),
@@ -148,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           _isLogin ? 'SE CONNECTER' : 'S\'INSCRIRE', 
                           focusOrange, 
                           Colors.white,
-                          _navigateToHome,
+                          _submitAuth, // Appelle la fonction Firebase
                         ),
                         const SizedBox(height: 24),
 
@@ -172,9 +305,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Expanded(child: _buildSocialButton('Google', Colors.white, Colors.black, _navigateToHome, isAvailable: false)),
+                            Expanded(
+                              child: _buildSocialButton(
+                                'Google', 
+                                Colors.white, 
+                                Colors.black, 
+                                _signInWithGoogle, // <-- On branche la fonction ici
+                                isAvailable: true,  // <-- On le rend disponible
+                              ),
+                            ),                            
                             const SizedBox(width: 16),
-                            Expanded(child: _buildSocialButton('Apple', Colors.black, Colors.white, _navigateToHome, isAvailable: false)),
+                            Expanded(child: _buildSocialButton('Apple', Colors.black, Colors.white, () {}, isAvailable: false)),
                           ],
                         ),
                         const SizedBox(height: 32),
@@ -209,9 +350,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Méthode pour les champs de texte
-  Widget _buildTextField(String hintText, {bool isPassword = false}) {
+  // Méthode pour les champs de texte avec support du contrôleur
+  Widget _buildTextField(String hintText, {bool isPassword = false, required TextEditingController controller}) {
     return TextField(
+      controller: controller,
       obscureText: isPassword,
       style: const TextStyle(fontSize: 16),
       decoration: InputDecoration(
@@ -259,7 +401,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildSocialButton(String text, Color bgColor, Color textColor, VoidCallback onPressed, {bool isAvailable = true}) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        // Fond rendu un peu transparent si indisponible
         backgroundColor: isAvailable ? bgColor : bgColor.withValues(alpha: 0.4),
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(
@@ -267,24 +408,16 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         elevation: 0,
       ),
-      onPressed: isAvailable ? onPressed : null, // Clic désactivé si indisponible
+      onPressed: isAvailable ? onPressed : null, 
       child: Text(
         text,
         style: TextStyle(
           fontSize: 14,
-          // Couleur estompée et texte barré si indisponible
           color: isAvailable ? textColor : textColor.withValues(alpha: 0.5),
           fontWeight: FontWeight.bold,
           decoration: isAvailable ? TextDecoration.none : TextDecoration.lineThrough,
         ),
       ),
-    );
-  }
-
-  void _navigateToHome() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
     );
   }
 }

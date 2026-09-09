@@ -5,11 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Chrome",
+            "name": "FocusTime (Chrome)",
             "request": "launch",
-            "type": "chrome",
-            "url": "http://localhost:62300/",
-            "webRoot": "${workspaceFolder}"
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": ["-d", "chrome", "--web-port", "5000"]
         },
 
         {

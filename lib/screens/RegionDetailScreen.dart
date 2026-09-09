@@ -14,13 +14,16 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
   late final TransformationController _controller;
   bool _initialized = false;
 
-  static const double zoomImageWidth = 2000.0;
-  static const double zoomImageHeight = 3000.0;
+  // Dimensions par défaut en attendant le chargement de l'image
+  double _imageWidth = 2000.0;
+  double _imageHeight = 3000.0;
+  bool _isImageLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TransformationController();
+    _loadImageDimensions();
   }
 
   @override
@@ -46,6 +49,21 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     }
   }
 
+  // Récupère dynamiquement la taille réelle de l'image pour éviter les problèmes de dimensions
+  void _loadImageDimensions() {
+    final String assetPath = _getImageAsset(widget.regionName);
+    final ImageStream stream = AssetImage(assetPath).resolve(ImageConfiguration.empty);
+
+    stream.addListener(ImageStreamListener((ImageInfo info, bool synchronousCall) {
+      if (!mounted) return;
+      setState(() {
+        _imageWidth = info.image.width.toDouble();
+        _imageHeight = info.image.height.toDouble();
+        _isImageLoaded = true;
+      });
+    }));
+  }
+
   @override
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
@@ -62,19 +80,18 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
             ),
           ),
 
-          // 2. Image de zoom interactive par-dessus
+          // 2. Image de zoom interactive par-dessus avec dimensions dynamiques
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final double minScaleToCover = math.max(
-                  constraints.maxWidth / zoomImageWidth,
-                  constraints.maxHeight / zoomImageHeight,
+                  constraints.maxWidth / _imageWidth,
+                  constraints.maxHeight / _imageHeight,
                 );
                 final double maxScale = math.max(minScaleToCover * 4, 5.0);
 
-                // On fixe l'échelle de départ pile au ratio "cover",
-                // une seule fois, pour éviter le décalage identity vs minScale
-                if (!_initialized) {
+                // On fixe l'échelle de départ une seule fois dès que l'image est chargée
+                if (!_initialized && _isImageLoaded) {
                   _initialized = true;
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     _controller.value = Matrix4.identity()..scale(minScaleToCover);
@@ -88,12 +105,12 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                   minScale: minScaleToCover,
                   maxScale: maxScale,
                   child: SizedBox(
-                    width: zoomImageWidth,
-                    height: zoomImageHeight,
+                    width: _imageWidth,
+                    height: _imageHeight,
                     child: Image.asset(
                       _getImageAsset(widget.regionName),
-                      width: zoomImageWidth,
-                      height: zoomImageHeight,
+                      width: _imageWidth,
+                      height: _imageHeight,
                       fit: BoxFit.fill,
                     ),
                   ),

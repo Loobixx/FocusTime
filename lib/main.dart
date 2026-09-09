@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart'; 
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // Importe le fichier qui vient d'être généré
 
-void main() {
-  // On s'assure que les widgets sont bien initialisés
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // On rend la barre de statut transparente
+  // Initialisation de Firebase avec les options de ta plateforme
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent, // Rend la barre transparente
-      statusBarIconBrightness: Brightness.light, // Icônes blanches (heure/batterie)
+      statusBarColor: Colors.transparent, 
+      statusBarIconBrightness: Brightness.light, 
     ),
   );
 
