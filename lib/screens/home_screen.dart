@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_time/screens/focus_screen.dart';
-import 'package:flutter_time/screens/map_screen.dart';
-import 'profile_screen.dart'; // Vérifie que le nom du fichier est correct
+import 'package:flutter_time/screens/map/map_screen.dart';
+import 'profil/profile_screen.dart'; // Vérifie que le nom du fichier est correct
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

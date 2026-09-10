@@ -133,11 +133,11 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } on FirebaseAuthException catch (e) {
-      print("CODE FIREBASE : ${e.code}");
-      print("MESSAGE FIREBASE : ${e.message}");
+      debugPrint("CODE FIREBASE : ${e.code}");
+      debugPrint("MESSAGE FIREBASE : ${e.message}");
       _showError(e.message ?? "Une erreur est survenue.");
     } catch (e) {
-      print("ERREUR INATTENDUE : $e"); // <-- C'est ça qui va cracher la vérité dans la console
+      debugPrint("ERREUR INATTENDUE : $e"); // <-- C'est ça qui va cracher la vérité dans la console
       _showError("Une erreur inattendue s'est produite.");
     }
   }

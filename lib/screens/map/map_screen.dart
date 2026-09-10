@@ -2,8 +2,8 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_time/map_region_data.dart';
-import 'package:flutter_time/screens/RegionDetailScreen.dart';
+import 'package:flutter_time/screens/map/map_region_data.dart';
+import 'package:flutter_time/screens/map/region_detail_screen.dart';
 // Importation du fichier des coordonnées
 
 class MapScreen extends StatefulWidget {
@@ -20,8 +20,6 @@ class _MapScreenState extends State<MapScreen> {
 
   late final TransformationController _transformationController;
 
-  static const Size _baseMapSize = Size(1023, 1537);
-
   @override
   void initState() {
     super.initState();
@@ -37,17 +35,6 @@ class _MapScreenState extends State<MapScreen> {
   // On récupère directement les régions depuis le fichier externe
   final List<RegionShape> _regions = MapRegionsData.regions;
 
-  List<RegionShape> _scaledRegions(double scale) {
-    final matrix = Matrix4.diagonal3Values(scale, scale, 1);
-    return _regions
-        .map((r) => RegionShape(
-              id: r.id,
-              name: r.name,
-              color: r.color,
-              path: r.path.transform(matrix.storage),
-            ))
-        .toList();
-  }
 
 RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
   for (var region in scaled) {

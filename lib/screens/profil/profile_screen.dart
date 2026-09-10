@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'login_screen.dart'; // Vérifie bien que c'est le bon nom de fichier
+import 'package:flutter_time/screens/profil/about_screen.dart';
+import 'package:flutter_time/screens/profil/character_customize_screen.dart';
+import '../login_screen.dart'; // Vérifie bien que c'est le bon nom de fichier
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -114,7 +116,14 @@ class ProfileScreen extends StatelessWidget {
                           // --- LISTE DES PARAMÈTRES ---
                           
                           // Bloc 1 : Activité
-                          _buildMenuItem(Icons.edit, 'Modifier mon personnage', isAvailable: false), // BARRÉ
+                          _buildMenuItem(Icons.edit, 'Modifier mon personnage', 
+                          isAvailable: true, 
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const CharacterCustomizerScreen()),
+                            );
+                          },), // BARRÉ
                           _buildMenuItem(Icons.bar_chart, 'Voir mes statistiques', isAvailable: false), // BARRÉ
                           _buildMenuItem(Icons.calendar_month, 'Historique de concentration', isAvailable: false), // NORMAL (dispo par défaut)
 
@@ -129,8 +138,17 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(height: 16),
 
                           // Bloc 3 : Informations
-                          _buildMenuItem(Icons.info_outline, 'À propos de l\'application', isAvailable: false),
-
+                          _buildMenuItem(
+                            Icons.info_outline, 
+                            'À propos de l\'application', 
+                            isAvailable: true, // Devient disponible
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const AboutScreen()),
+                              );
+                            },
+                          ),
                           const SizedBox(height: 32),
 
                           // --- BOUTON SUPPRIMER ---
@@ -170,30 +188,26 @@ class ProfileScreen extends StatelessWidget {
   // Cette fonction utilise ListTile pour tout aligner parfaitement
  // --- FONCTION MAGIQUE POUR LES LIGNES DE MENU ---
   // Ajout du paramètre optionnel "isAvailable" (vrai par défaut)
-  Widget _buildMenuItem(IconData icon, String title, {bool isAvailable = true}) {
+  Widget _buildMenuItem(IconData icon, String title, {bool isAvailable = true, VoidCallback? onTap}) {
     const darkBlue = Color(0xFF143063);
     
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: ListTile(
-        // L'icône devient un peu transparente si indisponible
         leading: Icon(icon, color: isAvailable ? darkBlue : darkBlue.withValues(alpha: 0.4), size: 26),
         title: Text(
           title,
           style: TextStyle(
-            color: isAvailable ? darkBlue : darkBlue.withValues(alpha: 0.4), // Texte grisé
+            color: isAvailable ? darkBlue : darkBlue.withValues(alpha: 0.4),
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            // C'EST ICI QUE ÇA SE PASSE : Si pas dispo, on barre le texte
             decoration: isAvailable ? TextDecoration.none : TextDecoration.lineThrough,
           ),
         ),
         trailing: Icon(Icons.chevron_right, color: isAvailable ? darkBlue.withValues(alpha: 0.5) : darkBlue.withValues(alpha: 0.2)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        // On désactive le clic (null) si la fonctionnalité n'est pas prête
-        onTap: isAvailable ? () {
-          // Action quand on clique sur la ligne
-        } : null, 
+        // Utilise l'action personnalisée si elle est disponible et que le menu est actif
+        onTap: isAvailable ? onTap : null, 
       ),
     );
   }
