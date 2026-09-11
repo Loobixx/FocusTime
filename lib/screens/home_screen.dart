@@ -1,11 +1,92 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_time/screens/focus_screen.dart';
 import 'package:flutter_time/screens/map/map_screen.dart';
-import 'profil/profile_screen.dart'; // Vérifie que le nom du fichier est correct
+import 'profil/profile_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _loadCharacterColor();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPseudo());
+  }
+
+  Future<void> _loadCharacterColor() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final colorValue = doc.data()?['characterColor'];
+
+    if (colorValue is int && mounted) {
+      setState(() => _borderColor = Color(colorValue));
+    }
+  }
+
+  Color? _borderColor;
+
+  Future<void> _checkPseudo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final pseudo = doc.data()?['pseudo'] as String?;
+
+    if ((pseudo == null || pseudo.trim().isEmpty) && mounted) {
+      _showPseudoDialog();
+    }
+  }
+
+  void _showPseudoDialog() {
+    final TextEditingController pseudoController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Choisis ton pseudo'),
+          content: TextField(
+            controller: pseudoController,
+            autofocus: true,
+            decoration: const InputDecoration(hintText: 'Pseudo'),
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
+              onPressed: () async {
+                final value = pseudoController.text.trim();
+                if (value.isEmpty) return;
+
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .update({'pseudo': value});
+                }
+
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('Valider', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,43 +96,40 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-        // 1. Image de fond floutée
           ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0), // C'est ici que tu règles la puissance du flou
+            imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
             child: Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  // Indique le chemin vers ton image
-                  image: AssetImage('assets/fond2.png'), 
+                  image: AssetImage('assets/fond2.png'),
                   fit: BoxFit.cover,
                 ),
               ),
             ),
           ),
-          
-          // 2. Contenu de la page
           SafeArea(
             child: Column(
               children: [
-                // --- AVATAR (Haut Droit) ---
                 Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Align(
                     alignment: Alignment.topRight,
-                    // GestureDetector permet de rendre n'importe quel élément cliquable
                     child: GestureDetector(
-                      onTap: () {
-                        // Navigation vers la page de profil avec une animation de glissement classique
-                        Navigator.push(
+                      onTap: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const ProfileScreen()),
                         );
+                        _loadCharacterColor();
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: focusOrange, width: 3),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _borderColor ?? Colors.transparent,
+                          width: 3,
                         ),
+                      ),
                         child: const CircleAvatar(
                           backgroundColor: Colors.white70,
                           radius: 26,
@@ -61,10 +139,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                
                 const Spacer(flex: 2),
-
-                // --- TITRE ---
                 const Text(
                   'FocusTime',
                   style: TextStyle(
@@ -73,10 +148,7 @@ class HomeScreen extends StatelessWidget {
                     color: darkBlue,
                   ),
                 ),
-                
                 const Spacer(flex: 2),
-
-                // --- BOUTON START FOCUS ---
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 48),
                   child: SizedBox(
@@ -91,7 +163,6 @@ class HomeScreen extends StatelessWidget {
                         elevation: 0,
                       ),
                       onPressed: () {
-                        // Navigation vers l'écran du timer
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const FocusScreen()),
@@ -109,8 +180,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // --- BOUTON MAP (Effet Verre) ---
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 90),
                   child: ClipRRect(
@@ -147,10 +216,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const Spacer(flex: 3),
-
-                // --- CARTE D'INFORMATIONS DU BAS ---
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                   child: ClipRRect(
@@ -161,7 +227,7 @@ class HomeScreen extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.3), // Légèrement blanc transparent
+                          color: Colors.white.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
                         ),

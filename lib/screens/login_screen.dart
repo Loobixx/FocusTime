@@ -62,6 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
           'createdAt': Timestamp.now(),
           'characterColor': 'blue',
           'hat': 'Aucun',
+          'pseudo': '',
         });
       }
 
@@ -99,39 +100,29 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    if (mounted) {
-      TextInput.finishAutofillContext();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    }
-
     try {
       if (_isLogin) {
-        // Connexion
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
       } else {
-        // Inscription
         UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
 
-        // Enregistrement des données initiales dans Firestore
         await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
           'email': email,
           'createdAt': Timestamp.now(),
-          'characterColor': 'blue', // Valeur par défaut
-          'hat': 'Aucun',          // Valeur par défaut
+          'characterColor': 'blue',
+          'hat': 'Aucun',
+          'pseudo': '',
         });
       }
 
-      // Redirection vers l'accueil si tout s'est bien passé
       if (mounted) {
+        TextInput.finishAutofillContext();
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -142,12 +133,13 @@ class _LoginScreenState extends State<LoginScreen> {
       debugPrint("MESSAGE FIREBASE : ${e.message}");
       _showError(e.message ?? "Une erreur est survenue.");
     } catch (e) {
-      debugPrint("ERREUR INATTENDUE : $e"); // <-- C'est ça qui va cracher la vérité dans la console
+      debugPrint("ERREUR INATTENDUE : $e");
       _showError("Une erreur inattendue s'est produite.");
     }
   }
 
   void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
