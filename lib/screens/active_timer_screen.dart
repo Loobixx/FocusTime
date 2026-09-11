@@ -220,7 +220,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Text('📍 Arrivée à $cityName !', style: const TextStyle(fontWeight: FontWeight.bold, color: darkBlue, fontSize: 18)),
+              child: Text('🔥 Étape atteinte à $cityName !', style: const TextStyle(fontWeight: FontWeight.bold, color: darkBlue, fontSize: 18)),
             ),
             IconButton(
               icon: const Icon(Icons.close, color: Colors.grey),
@@ -236,7 +236,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Tu as atteint cette étape. Tu peux t\'accorder une pause ou continuer directement ton expédition :',
+              'Tu as planté ta tente pour souffler un peu au coin du feu. Veux-tu faire une pause pour recharger ton énergie avant de repartir à pied ?',
               style: TextStyle(fontSize: 13, color: Colors.black87),
             ),
             const SizedBox(height: 18),
@@ -244,7 +244,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildPauseOptionButton(dialogContext, '0 min', 0, focusOrange),
-                _buildPauseOptionButton(dialogContext, '5 min', 1, focusOrange),
+                _buildPauseOptionButton(dialogContext, '5 min', 5, focusOrange),
                 _buildPauseOptionButton(dialogContext, '10 min', 10, focusOrange),
                 _buildPauseOptionButton(dialogContext, '15 min', 15, focusOrange),
               ],
@@ -455,18 +455,19 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       bool isStillTravelling = false;
       for (int i = 0; i < _routeMilestones.length; i++) {
         if (elapsedSeconds < _routeMilestones[i].cumulativeSeconds) {
-          currentLegTitle = "Direction ${_routeMilestones[i].destination}";
+          currentLegTitle = "Marche vers ${_routeMilestones[i].destination}";
           currentLegIndex = i;
           isStillTravelling = true;
           break;
         }
       }
       if (!isStillTravelling) {
-        currentLegTitle = "En repos à ${_routeMilestones.last.destination}";
+        // Ambiance camping / bivouac installée
+        currentLegTitle = "⛺ Bivouac installé à ${_routeMilestones.last.destination}";
         currentLegIndex = _routeMilestones.length;
       }
     } else if (widget.plannedRoute.isNotEmpty) {
-      currentLegTitle = "Direction ${widget.plannedRoute.first}";
+      currentLegTitle = "Marche vers ${widget.plannedRoute.first}";
     }
 
     int travelMinutes = widget.plannedTravelMinutes;
@@ -708,8 +709,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                           padding: const EdgeInsets.only(bottom: 24.0),
                           child: Text(
                             _isPaused
-                                ? '☕ Pause en cours — Tu peux quitter l\'appli temporairement'
-                                : (_isCompleted ? 'Enregistrement du trajet...' : '⚠️ Ne quitte pas cette application !'),
+                                ? '🔥 En train de faire une pause au feu de camp...'
+                                : (_isCompleted ? 'Enregistrement de l\'étape...' : '🥾 Garde le rythme de marche, ne quitte pas l\'app !'),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,

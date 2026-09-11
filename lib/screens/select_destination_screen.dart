@@ -134,7 +134,7 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                             const Icon(Icons.my_location, color: focusOrange, size: 20),
                             const SizedBox(width: 8),
                             Text(
-                              'Départ : $_currentCity  •  Carburant : ${formatMinutesToHours(widget.selectedDurationMinutes)}',
+                              'Départ : $_currentCity  •  Énergie : ${formatMinutesToHours(widget.selectedDurationMinutes)}',
                               style: const TextStyle(fontWeight: FontWeight.bold, color: darkBlue, fontSize: 13),
                             ),
                           ],

@@ -173,7 +173,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'CARBURANT',
+                                    'Expédition',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,

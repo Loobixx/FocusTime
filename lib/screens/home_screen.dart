@@ -395,7 +395,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600),
                                             ),
                                             Text(
-                                              isFocusActive ? 'En plein voyage !' : 'Au repos sur le bas-côté',
+                                              isFocusActive ? 'En plein voyage !' : 'Prêt à randonner',
                                               style: TextStyle(
                                                 fontSize: 15,
                                                 color: isFocusActive ? Colors.green.shade700 : const Color(0xFF6A1B9A),
