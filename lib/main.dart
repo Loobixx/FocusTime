@@ -1,8 +1,12 @@
+import 'package:FocusTime/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'firebase_options.dart'; // Importe le fichier qui vient d'être généré
 import 'package:firebase_core/firebase_core.dart'; // Import Firebase
 import 'screens/login_screen.dart'; 
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 
 void main() async{
@@ -12,6 +16,9 @@ void main() async{
     await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Force Firebase Auth à stocker la session en local sur l'appareil
+  await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
   
   // On rend la barre de statut transparente
   SystemChrome.setSystemUIOverlayStyle(
@@ -31,9 +38,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: LoginScreen(),
+      title: 'FocusTime',
+      // On écoute l'état de l'utilisateur en direct
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          // Pendant que Firebase vérifie le stockage local
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator(color: Color(0xFFFF8C00))),
+            );
+          }
+          
+          // Si un utilisateur est déjà connecté en cache, on va direct sur l'accueil
+          if (snapshot.hasData) {
+            return const HomeScreen();
+          }
+          
+          // Sinon, on affiche l'écran de connexion / inscription
+          return const LoginScreen(); 
+        },
+      ),
     );
   }
 }
