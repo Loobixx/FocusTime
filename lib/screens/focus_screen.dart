@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:FocusTime/screens/select_destination_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Nécessaire pour le retour haptique
 
@@ -29,11 +30,13 @@ class _FocusScreenState extends State<FocusScreen> {
     HapticFeedback.lightImpact();
     setState(() {
       _focusMinutes -= minutesToRemove;
-      if (_focusMinutes < 30) {
-        _focusMinutes = 30; 
+      if (_focusMinutes < 1) {
+        _focusMinutes = 1; // Plancher à 1 minute min
       }
     });
   }
+
+  // Exemple d'utilisation quand on clique sur "Lancer le focus"
 
   // Formatage avec "00m" forcé quand il y a des heures (ex: "1h 00m", "1h 30m") ou juste les minutes si < 1h
   String _formatDuration(int totalMinutes) {
@@ -218,7 +221,16 @@ class _FocusScreenState extends State<FocusScreen> {
                       ),
                       onPressed: () {
                         HapticFeedback.mediumImpact();
-                        // Action de confirmation
+                        
+                        // Navigation vers l'écran de choix des villes connectées avec la durée choisie
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SelectDestinationScreen(
+                              selectedDurationMinutes: _focusMinutes,
+                            ),
+                          ),
+                        );
                       },
                       child: const Text(
                         'Confirmer la durée',
