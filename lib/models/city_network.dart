@@ -1,8 +1,13 @@
+class ShortestPathResult {
+  final List<String> path; // Liste des villes traversées (sans la ville de départ)
+  final int totalTravelMinutes;
+
+  ShortestPathResult({required this.path, required this.totalTravelMinutes});
+}
+
 class CityNode {
   final String name;
-  // La clé est le nom de la ville de destination.
-  // La valeur est le temps de trajet en minutes.
-  final Map<String, int> connectedCities; 
+  final Map<String, int> connectedCities;
 
   const CityNode({
     required this.name,
@@ -12,89 +17,155 @@ class CityNode {
 
 class CityNetwork {
   static final Map<String, CityNode> network = {
-    // 🌍 --- VILLES RÉELLES ---
-    'Valenciennes': CityNode(
+    'Valenciennes': const CityNode(
       name: 'Valenciennes',
-      connectedCities: {'Lille': 1, 'Arras': 1, 'Cambrai': 1},
+      connectedCities: {'Lille': 5, 'Arras': 5, 'Cambrai': 5},
     ),
-    'Lille': CityNode(
+    'Lille': const CityNode(
       name: 'Lille',
-      connectedCities: {'Valenciennes': 1, 'Dunkerque': 1, 'Calais': 1},
+      connectedCities: {'Valenciennes': 5, 'Dunkerque': 5, 'Calais': 5},
     ),
-    'Arras': CityNode(
+    'Arras': const CityNode(
       name: 'Arras',
-      connectedCities: {'Valenciennes': 1, 'Amiens': 1, 'Paris': 1},
+      connectedCities: {'Valenciennes': 5, 'Amiens': 5, 'Paris': 5},
     ),
-    'Cambrai': CityNode(
+    'Cambrai': const CityNode(
       name: 'Cambrai',
-      connectedCities: {'Valenciennes': 1, 'Saint-Quentin': 1},
+      connectedCities: {'Valenciennes': 5, 'Saint-Quentin': 5},
     ),
-    'Dunkerque': CityNode(
+    'Dunkerque': const CityNode(
       name: 'Dunkerque',
-      connectedCities: {'Lille': 1},
+      connectedCities: {'Lille': 5},
     ),
-    'Calais': CityNode(
+    'Calais': const CityNode(
       name: 'Calais',
-      connectedCities: {'Lille': 1},
+      connectedCities: {'Lille': 5},
     ),
-    'Amiens': CityNode(
+    'Amiens': const CityNode(
       name: 'Amiens',
-      connectedCities: {'Arras': 1, 'Rouen': 1, 'Paris': 1},
+      connectedCities: {'Arras': 5, 'Rouen': 5, 'Paris': 5},
     ),
-    'Saint-Quentin': CityNode(
+    'Saint-Quentin': const CityNode(
       name: 'Saint-Quentin',
-      connectedCities: {'Cambrai': 1, 'Reims': 1},
+      connectedCities: {'Cambrai': 5, 'Reims': 5},
     ),
-    'Rouen': CityNode(
+    'Rouen': const CityNode(
       name: 'Rouen',
-      connectedCities: {'Amiens': 1, 'Paris': 1},
+      connectedCities: {'Amiens': 5, 'Paris': 5},
     ),
-    'Reims': CityNode(
+    'Reims': const CityNode(
       name: 'Reims',
-      connectedCities: {'Saint-Quentin': 1, 'Paris': 1},
+      connectedCities: {'Saint-Quentin': 5, 'Paris': 5},
     ),
-    'Paris': CityNode(
+    'Paris': const CityNode(
       name: 'Paris',
-      connectedCities: {'Arras': 1, 'Amiens': 1, 'Rouen': 1, 'Reims': 1, 'Lyon': 1, 'Eldoria': 1},
+      connectedCities: {'Arras': 5, 'Amiens': 5, 'Rouen': 5, 'Reims': 5, 'Lyon': 5, 'Eldoria': 5},
     ),
-    'Lyon': CityNode(
+    'Lyon': const CityNode(
       name: 'Lyon',
-      connectedCities: {'Paris': 1, 'Solaris': 1},
+      connectedCities: {'Paris': 5, 'Solaris': 5},
     ),
-
-    // 🌌 --- VILLES IMAGINAIRES (Temps de trajet plus longs pour le challenge) ---
-    'Eldoria': CityNode(
+    'Eldoria': const CityNode(
       name: 'Eldoria',
-      connectedCities: {'Paris': 1, 'Chronos': 1, 'Lumina': 1},
+      connectedCities: {'Paris': 5, 'Chronos': 5, 'Lumina': 5},
     ),
-    'Chronos': CityNode(
+    'Chronos': const CityNode(
       name: 'Chronos',
-      connectedCities: {'Eldoria': 1, 'Nebula': 1},
+      connectedCities: {'Eldoria': 5, 'Nebula': 5},
     ),
-    'Lumina': CityNode(
+    'Lumina': const CityNode(
       name: 'Lumina',
-      connectedCities: {'Eldoria': 1, 'Atlantis': 1},
+      connectedCities: {'Eldoria': 5, 'Atlantis': 5},
     ),
-    'Solaris': CityNode(
+    'Solaris': const CityNode(
       name: 'Solaris',
-      connectedCities: {'Lyon': 1, 'Nebula': 1},
+      connectedCities: {'Lyon': 5, 'Nebula': 5},
     ),
-    'Nebula': CityNode(
+    'Nebula': const CityNode(
       name: 'Nebula',
-      connectedCities: {'Chronos': 1, 'Solaris': 1, 'Zenith': 1},
+      connectedCities: {'Chronos': 5, 'Solaris': 5, 'Zenith': 5},
     ),
-    'Atlantis': CityNode(
+    'Atlantis': const CityNode(
       name: 'Atlantis',
-      connectedCities: {'Lumina': 1, 'Zenith': 1},
+      connectedCities: {'Lumina': 5, 'Zenith': 5},
     ),
-    'Zenith': CityNode(
+    'Zenith': const CityNode(
       name: 'Zenith',
-      connectedCities: {'Nebula': 1, 'Atlantis': 1}, 
+      connectedCities: {'Nebula': 5, 'Atlantis': 5},
     ),
   };
 
-  // Récupérer les villes adjacentes avec leur durée
   static Map<String, int> getAvailableDestinations(String currentCity) {
     return network[currentCity]?.connectedCities ?? {};
+  }
+
+  // Algorithme de Dijkstra avec réduction /5 pour les villes visitées
+  static Map<String, ShortestPathResult> calculateAllShortestPaths({
+    required String startCity,
+    required Set<String> visitedCities,
+  }) {
+    final Map<String, int> distances = {};
+    final Map<String, String?> previous = {};
+    final Set<String> unvisited = Set.from(network.keys);
+
+    for (var city in network.keys) {
+      distances[city] = 999999;
+      previous[city] = null;
+    }
+    distances[startCity] = 0;
+
+    while (unvisited.isNotEmpty) {
+      String? current;
+      int minDistance = 999999;
+
+      for (var city in unvisited) {
+        if (distances[city]! < minDistance) {
+          minDistance = distances[city]!;
+          current = city;
+        }
+      }
+
+      if (current == null || minDistance == 999999) break;
+      unvisited.remove(current);
+
+      final neighbors = network[current]?.connectedCities ?? {};
+      for (var entry in neighbors.entries) {
+        final neighbor = entry.key;
+        if (!unvisited.contains(neighbor)) continue;
+
+        int weight = entry.value;
+        if (visitedCities.contains(neighbor)) {
+          weight = (weight ~/ 5).clamp(1, 999999);
+        }
+
+        int alt = distances[current]! + weight;
+        if (alt < distances[neighbor]!) {
+          distances[neighbor] = alt;
+          previous[neighbor] = current;
+        }
+      }
+    }
+
+    // Reconstitution des trajets
+    final Map<String, ShortestPathResult> results = {};
+
+    for (var targetCity in network.keys) {
+      if (targetCity == startCity || distances[targetCity] == 999999) continue;
+
+      List<String> path = [];
+      String? step = targetCity;
+
+      while (step != null && step != startCity) {
+        path.insert(0, step);
+        step = previous[step];
+      }
+
+      results[targetCity] = ShortestPathResult(
+        path: path,
+        totalTravelMinutes: distances[targetCity]!,
+      );
+    }
+
+    return results;
   }
 }
