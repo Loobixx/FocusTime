@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'home_screen.dart'; 
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/services.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,14 +37,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _signInWithGoogle() async {
     try {
-      // Si tu es sur Android, on peut récupérer ton client ID web depuis ton fichier firebase_options.dart 
-      // ou initialiser GoogleSignIn avec l'clientId web généré lors du flutterfire configure :
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId: '866476346837-c1613bd360304873dc015c.apps.googleusercontent.com', // Ton appClientId web extrait de ton firebase_options.dart
-      );
+      final GoogleSignIn googleSignIn = GoogleSignIn();
       
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      
+            
       if (googleUser == null) {
         return; 
       }
@@ -100,6 +97,14 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_isLogin && password != confirmPassword) {
       _showError("Les mots de passe ne correspondent pas.");
       return;
+    }
+
+    if (mounted) {
+      TextInput.finishAutofillContext();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
     }
 
     try {
@@ -195,9 +200,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: AnimatedSize(
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+                    child: AutofillGroup(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                         // --- FLÈCHE DE RETOUR ---
                         if (!_isLogin)
                           Align(
@@ -244,10 +250,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 32),
 
                         // --- CHAMPS DE TEXTE ---
-                        _buildTextField('Email', controller: _emailController),
+                        _buildTextField(
+                          'Email',
+                          controller: _emailController,
+                          autofillHints: const [AutofillHints.email],
+                        ),
                         const SizedBox(height: 16),
-                        _buildTextField('Mot de passe', isPassword: true, controller: _passwordController),
-                        
+                        _buildTextField(
+                          'Mot de passe',
+                          isPassword: true,
+                          controller: _passwordController,
+                          autofillHints: const [AutofillHints.password],
+                        ),                        
                         // Champ de confirmation
                         if (!_isLogin) ...[
                           const SizedBox(height: 16),
@@ -340,6 +354,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         )
                       ],
                     ),
+                    ),
                   ),
                 ),
               ),
@@ -351,10 +366,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // Méthode pour les champs de texte avec support du contrôleur
-  Widget _buildTextField(String hintText, {bool isPassword = false, required TextEditingController controller}) {
+  Widget _buildTextField(String hintText, {bool isPassword = false, required TextEditingController controller, List<String>? autofillHints}) {
     return TextField(
       controller: controller,
       obscureText: isPassword,
+      autofillHints: autofillHints,
+      keyboardType: isPassword ? TextInputType.visiblePassword : TextInputType.emailAddress,
       style: const TextStyle(fontSize: 16),
       decoration: InputDecoration(
         hintText: hintText,
