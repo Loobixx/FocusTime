@@ -9,10 +9,18 @@
       "client_info": {
         "mobilesdk_app_id": "1:866476346837:android:9de49065de77325adc015c",
         "android_client_info": {
-          "package_name": "com.example.FocusTime"
+          "package_name": "com.example.flutter_time"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "866476346837-mfmv4ibkh8cle3duetbltrdsa6e9vv5j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.flutter_time",
+            "certificate_hash": "8fef9e51545dbc359fafdb0ebe9b48cc7b8a945d"
+          }
+        },
         {
           "client_id": "866476346837-765b8ovlcodsq25n3k6e87435q9ni4qo.apps.googleusercontent.com",
           "client_type": 3
@@ -29,6 +37,13 @@
             {
               "client_id": "866476346837-765b8ovlcodsq25n3k6e87435q9ni4qo.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "866476346837-rbi7p4uq350od3e80ddp4gjjflammo9v.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterTime"
+              }
             }
           ]
         }
