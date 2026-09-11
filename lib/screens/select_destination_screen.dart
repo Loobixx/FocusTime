@@ -1,3 +1,4 @@
+import 'package:FocusTime/utils/time_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -126,14 +127,24 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text('Carburant (Focus)', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          Text('${widget.selectedDurationMinutes} min', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkBlue)),
+                          Text(
+                            formatMinutesToHours(widget.selectedDurationMinutes),
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkBlue),
+                          ),
                         ],
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           const Text('Trajet planifié', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          Text('$_plannedTime min', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _plannedTime > widget.selectedDurationMinutes ? Colors.red : focusOrange)),
+                          Text(
+                            formatMinutesToHours(_plannedTime),
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: _plannedTime > widget.selectedDurationMinutes ? Colors.red : focusOrange,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -213,20 +224,29 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: _plannedRoute.isNotEmpty ? focusOrange : Colors.grey, padding: const EdgeInsets.symmetric(vertical: 18)),
-                      onPressed: _plannedRoute.isEmpty ? null : () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ActiveTimerScreen(
-                              plannedRoute: _plannedRoute,
-                              durationMinutes: widget.selectedDurationMinutes,
-                            ),
-                          ),
-                        );
-                      },
-                      child: const Text('DÉMARRER LE VOYAGE', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-                    ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _plannedRoute.isNotEmpty ? focusOrange : Colors.grey,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                      ),
+                      onPressed: _plannedRoute.isEmpty
+                          ? null
+                          : () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ActiveTimerScreen(
+                                    plannedRoute: _plannedRoute,
+                                    durationMinutes: widget.selectedDurationMinutes,
+                                    plannedTravelMinutes: _plannedTime, // <--- Valeur indispensable pour l'affichage
+                                  ),
+                                ),
+                              );
+                            },
+                      child: const Text(
+                        'DÉMARRER LE VOYAGE',
+                        style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    )
                   ),
                 ),
               ],

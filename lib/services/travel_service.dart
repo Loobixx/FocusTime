@@ -27,6 +27,27 @@ class TravelService {
     await _firestore.collection('users').doc(user.uid).collection('travel').doc('status').set(data, SetOptions(merge: true));
   }
 
+  Future<void> recordFailedTrip({
+    required int durationMinutes,
+    required List<String> plannedRoute,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Valenciennes';
+
+    await userRef.collection('travel_history').add({
+      'date': FieldValue.serverTimestamp(),
+      'startCity': currentCity,
+      'endCity': plannedRoute.isNotEmpty ? plannedRoute.last : currentCity,
+      'durationMinutes': durationMinutes,
+      'plannedRoute': plannedRoute,
+      'isCompleted': false,
+      'isFailed': true,
+      'visitedDuringTripCount': 0,
+    });
+  }
 
   // --- 2. Fonction appelée à la FIN du chrono pour calculer l'avancée ---
   Future<void> processTripResults({
@@ -91,6 +112,19 @@ class TravelService {
         remainingFuel = 0;
       }
     }
+
+    int visitedDuringTrip = plannedRoute.length - citiesToVisit.length;
+
+    await userRef.collection('travel_history').add({
+      'date': FieldValue.serverTimestamp(),
+      'startCity': (await userRef.get()).data()?['currentCity'] ?? 'Valenciennes',
+      'endCity': currentCity,
+      'durationMinutes': totalFuelMinutes,
+      'plannedRoute': plannedRoute,
+      'isCompleted': midRouteDestination == null,
+      'isFailed': false,
+      'visitedDuringTripCount': visitedDuringTrip,
+    });
 
     // Sauvegarder le nouvel état
     await userRef.update({'currentCity': currentCity});

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:FocusTime/utils/time_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -32,34 +33,41 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('travel')
-        .doc('status')
-        .get();
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final doc = await userRef.collection('travel').doc('status').get();
 
-    // Si on lance l'appli et qu'un focus est resté actif, c'est qu'il a été interrompu !
     if (doc.exists && doc.data()?['isFocusActive'] == true) {
-      // 1. On nettoie la base de données
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('travel')
-          .doc('status')
-          .update({
+      final data = doc.data()!;
+      final destination = data['activeDestination'] as String? ?? 'Inconnue';
+      final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Valenciennes';
+
+      // 1. Enregistre la session interrompue comme échec dans l'historique
+      await userRef.collection('travel_history').add({
+        'date': FieldValue.serverTimestamp(),
+        'startCity': currentCity,
+        'endCity': destination,
+        'durationMinutes': 0,
+        'plannedRoute': [destination],
+        'isCompleted': false,
+        'isFailed': true,
+        'visitedDuringTripCount': 0,
+      });
+
+      // 2. Nettoie l'état du voyage
+      await userRef.collection('travel').doc('status').update({
         'isFocusActive': false,
         'activeDestination': FieldValue.delete(),
         'endTime': FieldValue.delete(),
       });
 
-      // 2. On affiche le message de perte
+      // 3. Affiche le message de perte
       if (mounted) {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text('🧭 Tu t\'es perdu !'),
-            content: const Text('L\'application a été fermée pendant ton voyage. Ton trajet a été annulé et tu es de retour à ton point de départ.'),
+            content: const Text('L\'application a été fermée pendant ton voyage. Ton trajet a été annulé et comptabilisé comme un échec.'),
             actions: [
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
@@ -277,9 +285,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.35),
+                          color: Colors.white.withValues(alpha: 0.75), // Fond plus opaque pour le contraste
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
                         child: StreamBuilder<DocumentSnapshot>(
                           stream: FirebaseFirestore.instance
@@ -304,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 bool isFocusActive = false;
                                 String? midRouteDestination;
                                 String? activeDestination;
-                                int midRouteProgress = 0; // Ajout pour le calcul
+                                int midRouteProgress = 0;
 
                                 if (travelSnapshot.hasData && travelSnapshot.data!.exists) {
                                   final travelData = travelSnapshot.data!.data() as Map<String, dynamic>?;
@@ -314,7 +329,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   midRouteProgress = travelData?['midRouteProgress'] ?? 0;
                                 }
 
-                                // --- GESTION DE LA POSITION ---
                                 String displayPosition = currentCity;
                                 if (isFocusActive && activeDestination != null) {
                                   displayPosition = '$currentCity ➔ $activeDestination';
@@ -322,80 +336,96 @@ class _HomeScreenState extends State<HomeScreen> {
                                   displayPosition = '$currentCity ➔ $midRouteDestination';
                                 }
 
-                                // --- CALCUL DU TEMPS RESTANT STATIQUE ---
-                                int staticTimeRemaining = 0;
-                                if (!isFocusActive && midRouteDestination != null) {
-                                  int fullTime = CityNetwork.getAvailableDestinations(currentCity)[midRouteDestination] ?? 0;
-                                  staticTimeRemaining = fullTime - midRouteProgress;
-                                  if (staticTimeRemaining < 0) staticTimeRemaining = 0;
-                                }
+                                return FutureBuilder<QuerySnapshot>(
+                                  future: FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(FirebaseAuth.instance.currentUser?.uid)
+                                      .collection('visited_cities')
+                                      .get(),
+                                  builder: (context, visitedSnapshot) {
+                                    Set<String> visitedCities = {};
+                                    if (visitedSnapshot.hasData) {
+                                      visitedCities = visitedSnapshot.data!.docs.map((d) => d.id).toSet();
+                                    }
 
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Ligne 1 : Position
-                                    Row(
+                                    int staticTimeRemaining = 0;
+                                    if (!isFocusActive && midRouteDestination != null) {
+                                      int fullTime = CityNetwork.getAvailableDestinations(currentCity)[midRouteDestination] ?? 0;
+                                      if (visitedCities.contains(midRouteDestination)) {
+                                        fullTime = fullTime ~/ 5;
+                                      }
+                                      staticTimeRemaining = fullTime - midRouteProgress;
+                                      if (staticTimeRemaining < 0) staticTimeRemaining = 0;
+                                    }
+
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Icon(Icons.location_on, color: Color(0xFFFF8C00), size: 22),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          'Position : ',
-                                          style: TextStyle(fontSize: 15, color: const Color(0xFF143063).withValues(alpha: 0.8), fontWeight: FontWeight.w600),
+                                        // Ligne 1 : Position
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.location_on, color: Color(0xFFFF8C00), size: 24),
+                                            const SizedBox(width: 10),
+                                            const Text(
+                                              'Position : ',
+                                              style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                displayPosition,
+                                                style: const TextStyle(fontSize: 16, color: darkBlue, fontWeight: FontWeight.bold),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        Expanded(
-                                          child: Text(
-                                            displayPosition,
-                                            style: const TextStyle(fontSize: 16, color: Color(0xFF143063), fontWeight: FontWeight.bold),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
+                                        const SizedBox(height: 12),
+
+                                        // Ligne 2 : Statut
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              isFocusActive ? Icons.directions_car : Icons.nights_stay,
+                                              color: isFocusActive ? Colors.green.shade600 : const Color(0xFF6A1B9A),
+                                              size: 24,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            const Text(
+                                              'Statut : ',
+                                              style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600),
+                                            ),
+                                            Text(
+                                              isFocusActive ? 'En plein voyage !' : 'Au repos sur le bas-côté',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                color: isFocusActive ? Colors.green.shade700 : const Color(0xFF6A1B9A),
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    
-                                    // Ligne 2 : Statut
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          isFocusActive ? Icons.warning_amber_rounded : Icons.nights_stay,
-                                          color: isFocusActive ? Colors.redAccent : Colors.grey.shade600,
-                                          size: 22,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          'Statut : ',
-                                          style: TextStyle(fontSize: 15, color: const Color(0xFF143063).withValues(alpha: 0.8), fontWeight: FontWeight.w600),
-                                        ),
-                                        Text(
-                                          isFocusActive ? 'Focus en cours...' : 'Au repos sur le bas-côté',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            color: isFocusActive ? Colors.redAccent : Colors.grey.shade700,
-                                            fontWeight: isFocusActive ? FontWeight.bold : FontWeight.normal,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    
-                                    // Ligne 3 : Temps restant statique (S'affiche UNIQUEMENT si au repos sur un trajet)
-                                    if (!isFocusActive && midRouteDestination != null) ...[
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.route, color: Color(0xFFFF8C00), size: 22),
-                                          const SizedBox(width: 10),
-                                          Text(
-                                            'Reste pour arriver : ',
-                                            style: TextStyle(fontSize: 15, color: const Color(0xFF143063).withValues(alpha: 0.8), fontWeight: FontWeight.w600),
-                                          ),
-                                          Text(
-                                            '$staticTimeRemaining min',
-                                            style: const TextStyle(fontSize: 16, color: Color(0xFF143063), fontWeight: FontWeight.bold),
+
+                                        // Ligne 3 : Temps restant statique
+                                        if (!isFocusActive && midRouteDestination != null) ...[
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.timer_outlined, color: Color(0xFFFF8C00), size: 24),
+                                              const SizedBox(width: 10),
+                                              const Text(
+                                                'Reste pour arriver : ',
+                                                style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600),
+                                              ),
+                                              Text(
+                                                formatMinutesToHours(staticTimeRemaining),
+                                                style: const TextStyle(fontSize: 16, color: darkBlue, fontWeight: FontWeight.bold),
+                                              ),
+                                            ],
                                           ),
                                         ],
-                                      ),
-                                    ],
-                                  ],
+                                      ],
+                                    );
+                                  },
                                 );
                               },
                             );

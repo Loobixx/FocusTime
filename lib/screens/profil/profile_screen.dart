@@ -6,6 +6,8 @@ import 'package:FocusTime/screens/profil/about_screen.dart';
 import 'package:FocusTime/screens/profil/character_customize_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../login_screen.dart';
+import 'package:FocusTime/screens/profil/history_screen.dart';
+import 'package:FocusTime/screens/profil/stats_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -91,7 +93,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
-    const focusOrange = Color(0xFFFF8C00);
     final email = FirebaseAuth.instance.currentUser?.email ?? 'Email inconnu';
 
     return Scaffold(
@@ -209,8 +210,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             isAvailable: true,
                             onTap: _showChangePseudoDialog,
                           ),
-                          _buildMenuItem(Icons.bar_chart, 'Voir mes statistiques', isAvailable: false),
-                          _buildMenuItem(Icons.calendar_month, 'Historique de concentration', isAvailable: false),
+                          _buildMenuItem(
+                            Icons.bar_chart,
+                            'Voir mes statistiques',
+                            isAvailable: true,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const StatsScreen()),
+                              );
+                            },
+                          ),
+                          _buildMenuItem(
+                            Icons.calendar_month,
+                            'Historique de concentration',
+                            isAvailable: true,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const HistoryScreen()),
+                              );
+                            },
+                          ),
                           const SizedBox(height: 16),
                           _buildMenuItem(Icons.lock_outline, 'Changer le mot de passe', isAvailable: false),
                           _buildMenuItem(Icons.volume_up_outlined, 'Son et vibration', isAvailable: false),
