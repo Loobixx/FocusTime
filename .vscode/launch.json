@@ -13,18 +13,18 @@
         },
 
         {
-            "name": "flutter_time",
+            "name": "FocusTime",
             "request": "launch",
             "type": "dart"
         },
         {
-            "name": "flutter_time (profile mode)",
+            "name": "FocusTime (profile mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
         },
         {
-            "name": "flutter_time (release mode)",
+            "name": "FocusTime (release mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"

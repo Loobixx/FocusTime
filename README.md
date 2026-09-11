@@ -1,4 +1,4 @@
-# flutter_time
+# FocusTime
 
 A new Flutter project.
 

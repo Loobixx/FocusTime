@@ -2,8 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_time/screens/profil/about_screen.dart';
-import 'package:flutter_time/screens/profil/character_customize_screen.dart';
+import 'package:FocusTime/screens/profil/about_screen.dart';
+import 'package:FocusTime/screens/profil/character_customize_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../login_screen.dart';
 

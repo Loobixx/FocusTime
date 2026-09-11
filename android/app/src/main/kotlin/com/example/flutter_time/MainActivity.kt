@@ -1,4 +1,4 @@
-package com.example.flutter_time
+package com.example.FocusTime
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -2,9 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_time/screens/focus_screen.dart';
-import 'package:flutter_time/screens/map/map_screen.dart';
-import 'profil/profile_screen.dart';
+import 'package:FocusTime/screens/focus_screen.dart';
+import 'package:FocusTime/screens/map/map_screen.dart';
+import 'package:FocusTime/screens/profil/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   

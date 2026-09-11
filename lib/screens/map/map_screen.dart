@@ -2,8 +2,8 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_time/screens/map/map_region_data.dart';
-import 'package:flutter_time/screens/map/region_detail_screen.dart';
+import 'package:FocusTime/screens/map/map_region_data.dart';
+import 'package:FocusTime/screens/map/region_detail_screen.dart';
 // Importation du fichier des coordonnées
 
 class MapScreen extends StatefulWidget {

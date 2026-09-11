@@ -1,11 +1,11 @@
 {
-    "name": "flutter_time",
-    "short_name": "flutter_time",
+    "name": "FocusTime",
+    "short_name": "FocusTime",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#143063",
+    "theme_color": "#143063",
+    "description": "FocusTime",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
