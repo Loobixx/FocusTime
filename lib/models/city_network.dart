@@ -17,81 +17,84 @@ class CityNode {
 
 class CityNetwork {
   static final Map<String, CityNode> network = {
-    'Valenciennes': const CityNode(
-      name: 'Valenciennes',
-      connectedCities: {'Lille': 5, 'Arras': 5, 'Cambrai': 5},
+    // --- ZONE DÉSERT (Sahur) ---
+    'La port de commerce de Solaris': const CityNode(
+      name: 'La port de commerce de Solaris',
+      connectedCities: {'La cité Solaris': 1, 'Le puits des Mirages': 1},
     ),
-    'Lille': const CityNode(
-      name: 'Lille',
-      connectedCities: {'Valenciennes': 5, 'Dunkerque': 5, 'Calais': 5},
+    'La cité Solaris': const CityNode(
+      name: 'La cité Solaris',
+      connectedCities: {'La port de commerce de Solaris': 1, 'Le piège des sables': 1, 'La stelle du desert de Sahur': 1},
     ),
-    'Arras': const CityNode(
-      name: 'Arras',
-      connectedCities: {'Valenciennes': 5, 'Amiens': 5, 'Paris': 5},
+    'Le puits des Mirages': const CityNode(
+      name: 'Le puits des Mirages',
+      connectedCities: {'La port de commerce de Solaris': 1, 'Le piège des sables': 1},
     ),
-    'Cambrai': const CityNode(
-      name: 'Cambrai',
-      connectedCities: {'Valenciennes': 5, 'Saint-Quentin': 5},
+    'Le piège des sables': const CityNode(
+      name: 'Le piège des sables',
+      connectedCities: {'La cité Solaris': 1, 'Le puits des Mirages': 1, 'La stelle du desert de Sahur': 1},
     ),
-    'Dunkerque': const CityNode(
-      name: 'Dunkerque',
-      connectedCities: {'Lille': 5},
+    'La stelle du desert de Sahur': const CityNode(
+      name: 'La stelle du desert de Sahur',
+      connectedCities: {'La cité Solaris': 1, 'Le piège des sables': 1, 'Le coeur du désert': 1},
     ),
-    'Calais': const CityNode(
-      name: 'Calais',
-      connectedCities: {'Lille': 5},
+    'Le coeur du désert': const CityNode(
+      name: 'Le coeur du désert',
+      connectedCities: {'La stelle du desert de Sahur': 1, 'La piste des marchands': 1, 'Les monts de Sahur': 1},
     ),
-    'Amiens': const CityNode(
-      name: 'Amiens',
-      connectedCities: {'Arras': 5, 'Rouen': 5, 'Paris': 5},
+    'La piste des marchands': const CityNode(
+      name: 'La piste des marchands',
+      connectedCities: {'Le coeur du désert': 1, 'Le champs des épines': 1, 'La porte du désert': 1},
     ),
-    'Saint-Quentin': const CityNode(
-      name: 'Saint-Quentin',
-      connectedCities: {'Cambrai': 5, 'Reims': 5},
+    'Le champs des épines': const CityNode(
+      name: 'Le champs des épines',
+      connectedCities: {'La piste des marchands': 1, 'Les monts de Sahur': 1},
     ),
-    'Rouen': const CityNode(
-      name: 'Rouen',
-      connectedCities: {'Amiens': 5, 'Paris': 5},
+    'Les monts de Sahur': const CityNode(
+      name: 'Les monts de Sahur',
+      connectedCities: {'Le coeur du désert': 1, 'Le champs des épines': 1, 'L\'autel du soleil': 1},
     ),
-    'Reims': const CityNode(
-      name: 'Reims',
-      connectedCities: {'Saint-Quentin': 5, 'Paris': 5},
+    'La porte du désert': const CityNode(
+      name: 'La porte du désert',
+      connectedCities: {'La piste des marchands': 1, 'Le cimetières des géants': 1, 'Rive Calme': 1}, // Connexion vers le lac
     ),
-    'Paris': const CityNode(
-      name: 'Paris',
-      connectedCities: {'Arras': 5, 'Amiens': 5, 'Rouen': 5, 'Reims': 5, 'Lyon': 5, 'Eldoria': 5},
+    'L\'autel du soleil': const CityNode(
+      name: 'L\'autel du soleil',
+      connectedCities: {'Les monts de Sahur': 1, 'Le bain du désert': 1, 'La grotte infini': 1},
     ),
-    'Lyon': const CityNode(
-      name: 'Lyon',
-      connectedCities: {'Paris': 5, 'Solaris': 5},
+    'Le bain du désert': const CityNode(
+      name: 'Le bain du désert',
+      connectedCities: {'L\'autel du soleil': 1, 'Le cimetières des géants': 1},
     ),
-    'Eldoria': const CityNode(
-      name: 'Eldoria',
-      connectedCities: {'Paris': 5, 'Chronos': 5, 'Lumina': 5},
+    'Le cimetières des géants': const CityNode(
+      name: 'Le cimetières des géants',
+      connectedCities: {'Le bain du désert': 1, 'La porte du désert': 1},
     ),
-    'Chronos': const CityNode(
-      name: 'Chronos',
-      connectedCities: {'Eldoria': 5, 'Nebula': 5},
+    'La grotte infini': const CityNode(
+      name: 'La grotte infini',
+      connectedCities: {'L\'autel du soleil': 1, 'Le passage secret': 1},
     ),
-    'Lumina': const CityNode(
-      name: 'Lumina',
-      connectedCities: {'Eldoria': 5, 'Atlantis': 5},
+    'Le passage secret': const CityNode(
+      name: 'Le passage secret',
+      connectedCities: {'La grotte infini': 1, 'L\'oasis de l\'exil': 1},
     ),
-    'Solaris': const CityNode(
-      name: 'Solaris',
-      connectedCities: {'Lyon': 5, 'Nebula': 5},
+    'L\'oasis de l\'exil': const CityNode(
+      name: 'L\'oasis de l\'exil',
+      connectedCities: {'Le passage secret': 1},
     ),
-    'Nebula': const CityNode(
-      name: 'Nebula',
-      connectedCities: {'Chronos': 5, 'Solaris': 5, 'Zenith': 5},
+
+    // --- AUTRES ZONES ---
+    'Rive Calme': const CityNode(
+      name: 'Rive Calme',
+      connectedCities: {'La porte du désert': 1, 'Sanctuaire Obscur': 1, 'Île Céleste': 1},
     ),
-    'Atlantis': const CityNode(
-      name: 'Atlantis',
-      connectedCities: {'Lumina': 5, 'Zenith': 5},
+    'Sanctuaire Obscur': const CityNode(
+      name: 'Sanctuaire Obscur',
+      connectedCities: {'Rive Calme': 1},
     ),
-    'Zenith': const CityNode(
-      name: 'Zenith',
-      connectedCities: {'Nebula': 5, 'Atlantis': 5},
+    'Île Céleste': const CityNode(
+      name: 'Île Céleste',
+      connectedCities: {'Rive Calme': 1},
     ),
   };
 
