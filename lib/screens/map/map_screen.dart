@@ -2,28 +2,52 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:FocusTime/screens/map/map_region_data.dart';
 import 'package:FocusTime/screens/map/region_detail_screen.dart';
-// Importation du fichier des coordonnées
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  final int selectedDurationMinutes;
+  const MapScreen({super.key, this.selectedDurationMinutes = 0});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
 
 class _MapScreenState extends State<MapScreen> {
-  String? _selectedRegionId; 
-  String? _hoveredRegionId; 
-  bool _debugShowZones = false; 
+  String? _selectedRegionId;
+  String? _hoveredRegionId;
 
   late final TransformationController _transformationController;
+  bool _viewInitialized = false;
+  double _fitScale = 1.0;
+
+  static const double baseWidth = 1023.0;
+  static const double baseHeight = 1537.0;
+
+  // Facteurs de zoom par rapport au niveau "fit"
+  static const double _zoomInFactor = 3.0;
+  static const double _zoomOutFactor = 1.0; // dézoome 2x plus loin que le "fit" initial
+
+  final List<RegionShape> _regions = MapRegionsData.regions;
 
   @override
   void initState() {
     super.initState();
     _transformationController = TransformationController();
+    _loadVisitedCities();
+  }
+
+  Future<void> _loadVisitedCities() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('visited_cities')
+        .get();
   }
 
   @override
@@ -32,18 +56,15 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
-  // On récupère directement les régions depuis le fichier externe
-  final List<RegionShape> _regions = MapRegionsData.regions;
-
-
-RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
-  for (var region in scaled) {
-    if (region.path.contains(localPosition)) {
-      return region;
+  RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
+    for (var region in scaled) {
+      if (region.path.contains(localPosition)) {
+        return region;
+      }
     }
+    return null;
   }
-  return null;
-}
+
   void _handleHover(PointerHoverEvent event, List<RegionShape> scaled) {
     final region = _regionAt(event.localPosition, scaled);
     if (region?.id != _hoveredRegionId) {
@@ -71,7 +92,10 @@ RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RegionDetailScreen(regionName: regionId),
+        builder: (context) => RegionDetailScreen(
+          regionName: regionId,
+          selectedDurationMinutes: widget.selectedDurationMinutes,
+        ),
       ),
     );
   }
@@ -80,6 +104,32 @@ RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
     final id = _hoveredRegionId ?? _selectedRegionId;
     if (id == null) return null;
     return _regions.firstWhere((r) => r.id == id).name;
+  }
+
+  // Calcule un fit "dézoomé" volontairement (on divise par un facteur pour voir plus de contexte au départ)
+  void _setupInitialView(Size screenSize) {
+    final double fitScale = math.max(
+      screenSize.width / baseWidth,
+      screenSize.height / baseHeight,
+    );
+    
+    // On part volontairement plus dézoomé que le "fit" strict
+    _fitScale = fitScale * 1;
+
+    final double scaledWidth = baseWidth * _fitScale;
+    final double scaledHeight = baseHeight * _fitScale;
+    final double dx = (screenSize.width - scaledWidth) / 2;
+    final double dy = (screenSize.height - scaledHeight) / 2;
+
+    _transformationController.value = Matrix4.identity()
+      ..translate(dx, dy)
+      ..scale(_fitScale);
+  }
+
+  void _resetZoom(Size screenSize) {
+    setState(() {
+      _setupInitialView(screenSize);
+    });
   }
 
   @override
@@ -91,28 +141,37 @@ RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
       body: Stack(
         children: [
           Positioned.fill(
+            child: Image.asset(
+              'assets/fond_de_zoom.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // On utilise directement la taille de base de l'image comme référence fixe (1023x1537)
-                // L'InteractiveViewer permettra de zoomer et de se déplacer librement dessus.
-                const double baseWidth = 1023.0;
-                const double baseHeight = 1537.0;
+                final Size screenSize = Size(constraints.maxWidth, constraints.maxHeight);
 
-                // Le zoom minimum garantit que l'image couvre toujours tout l'écran
-                final double minScaleToCover = math.max(
-                  constraints.maxWidth / baseWidth,
-                  constraints.maxHeight / baseHeight,
-                );
+                if (!_viewInitialized) {
+                  _viewInitialized = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    setState(() {
+                      _setupInitialView(screenSize);
+                    });
+                  });
+                }
 
-                // Pas besoin de recalculer un scale complexe, les chemins correspondent déjà à 1023x1537 !
-                final scaledRegions = _regions; // On utilise directement _regions sans multiplier par un scale externe
+                final double minScale = _fitScale * _zoomOutFactor;
+                final double maxScale = _fitScale * _zoomInFactor;
+
+                final scaledRegions = _regions;
 
                 return InteractiveViewer(
                   transformationController: _transformationController,
-                  constrained: false, 
+                  constrained: false,
                   boundaryMargin: EdgeInsets.zero,
-                  minScale: minScaleToCover,
-                  maxScale: math.max(minScaleToCover * 3, 3.5),
+                  minScale: minScale,
+                  maxScale: maxScale,
                   child: SizedBox(
                     width: baseWidth,
                     height: baseHeight,
@@ -123,21 +182,24 @@ RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
                       onHover: (e) => _handleHover(e, scaledRegions),
                       onExit: (_) => setState(() => _hoveredRegionId = null),
                       child: GestureDetector(
-                        onTapUp: (details) =>
-                            _handleTapUp(details, scaledRegions),
-                        child: CustomPaint(
-                          foregroundPainter: MapPainter(
-                            regions: scaledRegions,
-                            selectedRegionId: _selectedRegionId,
-                            hoveredRegionId: _hoveredRegionId,
-                            debugShowAll: _debugShowZones,
-                          ),
-                          child: Image.asset(
-                            'assets/map_global.png',
-                            width: baseWidth,
-                            height: baseHeight,
-                            fit: BoxFit.fill,
-                          ),
+                        onTapUp: (details) => _handleTapUp(details, scaledRegions),
+                        child: Stack(
+                          children: [
+                            Image.asset(
+                              'assets/map_global.png',
+                              width: baseWidth,
+                              height: baseHeight,
+                              fit: BoxFit.fill,
+                            ),
+                            CustomPaint(
+                              size: Size(baseWidth, baseHeight),
+                              painter: MapPainter(
+                                regions: scaledRegions,
+                                selectedRegionId: _selectedRegionId,
+                                hoveredRegionId: _hoveredRegionId,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -174,21 +236,40 @@ RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
             ),
           ),
 
-          // Bouton debug
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Align(
-                alignment: Alignment.topRight,
-                child: FloatingActionButton.small(
-                  heroTag: 'debug',
-                  backgroundColor: Colors.white.withValues(alpha: 0.7),
-                  onPressed: () =>
-                      setState(() => _debugShowZones = !_debugShowZones),
-                  child: const Text('🐞'),
+          // Bouton reset zoom
+          Builder(
+            builder: (context) {
+              return SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.zoom_out_map, color: darkBlue),
+                            onPressed: () {
+                              final RenderBox? box = context.findRenderObject() as RenderBox?;
+                              if (box != null) {
+                                _resetZoom(box.size);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
 
           // Label
@@ -222,20 +303,15 @@ RegionShape? _regionAt(Offset localPosition, List<RegionShape> scaled) {
   }
 }
 
-/// -----------------------------------------------------------------------
-/// PAINTER
-/// -----------------------------------------------------------------------
 class MapPainter extends CustomPainter {
   final List<RegionShape> regions;
   final String? selectedRegionId;
   final String? hoveredRegionId;
-  final bool debugShowAll;
 
   MapPainter({
     required this.regions,
     this.selectedRegionId,
     this.hoveredRegionId,
-    this.debugShowAll = false,
   });
 
   @override
@@ -243,18 +319,6 @@ class MapPainter extends CustomPainter {
     for (final region in regions) {
       final bool isHovered = region.id == hoveredRegionId;
       final bool isSelected = region.id == selectedRegionId;
-
-      if (debugShowAll) {
-        final debugFill = Paint()
-          ..color = region.color.withValues(alpha: 0.35)
-          ..style = PaintingStyle.fill;
-        final debugStroke = Paint()
-          ..color = Colors.red
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2;
-        canvas.drawPath(region.path, debugFill);
-        canvas.drawPath(region.path, debugStroke);
-      }
 
       if (isHovered || isSelected) {
         final highlightFill = Paint()
@@ -274,7 +338,6 @@ class MapPainter extends CustomPainter {
   bool shouldRepaint(covariant MapPainter oldDelegate) {
     return oldDelegate.selectedRegionId != selectedRegionId ||
         oldDelegate.hoveredRegionId != hoveredRegionId ||
-        oldDelegate.debugShowAll != debugShowAll ||
         oldDelegate.regions != regions;
   }
 }

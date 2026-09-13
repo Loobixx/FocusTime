@@ -1,7 +1,7 @@
 import 'dart:ui';
+import 'package:FocusTime/screens/map/map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'select_destination_screen.dart';
 import '../utils/time_formatter.dart';
 
 class FocusScreen extends StatefulWidget {
@@ -259,9 +259,7 @@ class _FocusScreenState extends State<FocusScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => SelectDestinationScreen(
-                                    selectedDurationMinutes: _focusMinutes,
-                                  ),
+                                  builder: (context) => MapScreen(selectedDurationMinutes: _focusMinutes),
                                 ),
                               );
                             },

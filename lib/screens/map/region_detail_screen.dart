@@ -1,10 +1,20 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:FocusTime/screens/map/region_cross_data.dart';
+import '../select_destination_screen.dart';
 
 class RegionDetailScreen extends StatefulWidget {
   final String regionName;
-  const RegionDetailScreen({super.key, required this.regionName});
+  final int selectedDurationMinutes;
+  const RegionDetailScreen({
+    super.key,
+    required this.regionName,
+    this.selectedDurationMinutes = 0,
+  });
 
   @override
   State<RegionDetailScreen> createState() => _RegionDetailScreenState();
@@ -12,68 +22,64 @@ class RegionDetailScreen extends StatefulWidget {
 
 class _RegionDetailScreenState extends State<RegionDetailScreen> {
   late final TransformationController _controller;
-  bool _initialized = false;
 
-  // Taille réelle de l'image, résolue dynamiquement (plus de valeur codée en dur).
   Size? _imageSize;
+  bool _viewInitialized = false;
 
-  // Échelle de repos (carte entière visible). Sert de référence pour savoir
-  // si l'utilisateur a zoomé ou non.
-  double _minScaleToContain = 1.0;
+  // Niveau de zoom "normal" (image ajustée à l'écran), calculé une fois la taille connue
+  double _fitScale = 1.0;
 
-  // Le pan (glisser) n'est autorisé que si l'utilisateur a zoomé au-delà
-  // de l'échelle de repos — sinon un simple drag ne fait rien.
-  bool _panEnabled = false;
+  String? _hoveredCrossId;
+  Set<String> _visitedCities = {};
+
+  // Facteurs de zoom par rapport au niveau "fit"
+  static const double _zoomInFactor = 4.0;   // on peut zoomer jusqu'à 4x le niveau normal
+  static const double _zoomOutFactor = 0.25; // on peut dézoomer jusqu'à 1/4 du niveau normal
 
   @override
   void initState() {
     super.initState();
     _controller = TransformationController();
-    _controller.addListener(_onTransformChanged);
+    _loadImageDimensions();
+    _loadVisitedCities();
   }
 
-  void _onTransformChanged() {
-    // On récupère l'échelle actuelle depuis la matrice de transformation.
-    final double currentScale = _controller.value.getMaxScaleOnAxis();
+  Future<void> _loadVisitedCities() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-    // Petite tolérance pour éviter des allers-retours trop sensibles
-    // pile à l'échelle minimale.
-    final bool shouldEnablePan = currentScale > _minScaleToContain * 1.01;
+    final visitedDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('visited_cities')
+        .get();
 
-    if (shouldEnablePan != _panEnabled) {
+    if (mounted) {
       setState(() {
-        _panEnabled = shouldEnablePan;
+        _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
       });
     }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _resolveImageSize();
-  }
-
-  void _resolveImageSize() {
-    final imageProvider = AssetImage(_getImageAsset(widget.regionName));
-    final stream = imageProvider.resolve(createLocalImageConfiguration(context));
-    late final ImageStreamListener listener;
-    listener = ImageStreamListener((ImageInfo info, bool _) {
-      if (mounted) {
-        setState(() {
-          _imageSize = Size(
-            info.image.width.toDouble(),
-            info.image.height.toDouble(),
-          );
-        });
-      }
-      stream.removeListener(listener);
-    });
-    stream.addListener(listener);
+  String _getRegionDisplayName(String regionName) {
+    switch (regionName) {
+      case 'desert':
+        return 'Terres du Désert';
+      case 'montagnes':
+        return 'Pics Enneigés';
+      case 'nuit':
+        return 'Vallée Nocturne';
+      case 'nuages':
+        return 'Cité des Nuages';
+      case 'lac':
+        return 'Rives du Lac';
+      default:
+        return regionName;
+    }
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_onTransformChanged);
     _controller.dispose();
     super.dispose();
   }
@@ -95,113 +101,240 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     }
   }
 
+  void _loadImageDimensions() {
+    final String assetPath = _getImageAsset(widget.regionName);
+    final ImageStream stream = AssetImage(assetPath).resolve(ImageConfiguration.empty);
+
+    stream.addListener(ImageStreamListener((ImageInfo info, bool synchronousCall) {
+      if (!mounted) return;
+      setState(() {
+        _imageSize = Size(
+          info.image.width.toDouble(),
+          info.image.height.toDouble(),
+        );
+      });
+    }));
+  }
+
+  // Calcule le "fit scale" pour une taille d'écran donnée, et centre la vue.
+  void _setupInitialView(Size screenSize) {
+    if (_imageSize == null) return;
+
+    final double imgWidth = _imageSize!.width;
+    final double imgHeight = _imageSize!.height;
+
+    final double fitScale = math.min(
+      screenSize.width / imgWidth,
+      screenSize.height / imgHeight,
+    );
+
+    _fitScale = fitScale;
+
+    final double scaledWidth = imgWidth * fitScale;
+    final double scaledHeight = imgHeight * fitScale;
+    final double dx = (screenSize.width - scaledWidth) / 2;
+    final double dy = (screenSize.height - scaledHeight) / 2;
+
+    _controller.value = Matrix4.identity()
+      ..translate(dx, dy)
+      ..scale(fitScale);
+  }
+
+  void _resetZoom(Size screenSize) {
+    setState(() {
+      _setupInitialView(screenSize);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
+    final List<RegionCross> regionCrosses = RegionCrossesData.crossesByRegion[widget.regionName] ?? [];
 
     return Scaffold(
       backgroundColor: const Color(0xFF12121C),
       body: Stack(
         children: [
-          // 1. Fond général (fond_de_zoom.png) qui couvre tout l'écran en arrière-plan
           Positioned.fill(
             child: Image.asset(
               'assets/fond_de_zoom.png',
               fit: BoxFit.cover,
             ),
           ),
-
-          // 2. Image de zoom interactive par-dessus
           Positioned.fill(
             child: _imageSize == null
-                ? const SizedBox.shrink() // ou un loader le temps de connaître la taille réelle
+                ? const SizedBox.shrink()
                 : LayoutBuilder(
                     builder: (context, constraints) {
-                      final double imgWidth = _imageSize!.width;
-                      final double imgHeight = _imageSize!.height;
+                      final Size screenSize = Size(constraints.maxWidth, constraints.maxHeight);
 
-                      // "contain" : on veut que la carte ENTIÈRE soit visible au départ,
-                      // donc on prend le MIN des deux ratios (et non le max comme avant).
-                      final double minScaleToContain = math.min(
-                        constraints.maxWidth / imgWidth,
-                        constraints.maxHeight / imgHeight,
-                      );
-
-                      final double maxScale = math.max(minScaleToContain * 4, 5.0);
-
-                      if (!_initialized) {
-                        _initialized = true;
-                        _minScaleToContain = minScaleToContain;
-
+                      // On initialise la vue une seule fois, dès que la taille d'écran est connue.
+                      if (!_viewInitialized) {
+                        _viewInitialized = true;
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          // On centre l'image dans le viewport : on calcule l'espace
-                          // restant une fois l'image mise à l'échelle, et on le
-                          // répartit en translation X/Y de chaque côté.
-                          final double scaledWidth = imgWidth * minScaleToContain;
-                          final double scaledHeight = imgHeight * minScaleToContain;
-                          final double dx =
-                              (constraints.maxWidth - scaledWidth) / 2;
-                          final double dy =
-                              (constraints.maxHeight - scaledHeight) / 2;
-
-                          _controller.value = Matrix4.identity()
-                            ..translate(dx, dy)
-                            ..scale(minScaleToContain);
+                          if (!mounted) return;
+                          setState(() {
+                            _setupInitialView(screenSize);
+                          });
                         });
                       }
 
-                      return InteractiveViewer(
-                        transformationController: _controller,
-                        constrained: false,
-                        boundaryMargin: EdgeInsets.zero,
-                        minScale: minScaleToContain,
-                        maxScale: maxScale,
-                        // Tant que l'utilisateur n'a pas zoommé (échelle == repos),
-                        // on bloque le pan pour éviter le "saut" au premier drag.
-                        // Le pinch-to-zoom, lui, reste toujours actif.
-                        panEnabled: _panEnabled,
-                        child: SizedBox(
-                          width: imgWidth,
-                          height: imgHeight,
-                          child: Image.asset(
-                            _getImageAsset(widget.regionName),
-                            width: imgWidth,
-                            height: imgHeight,
-                            // fill n'est plus nécessaire : la SizedBox a déjà
-                            // le ratio natif de l'image, donc pas de déformation.
-                            fit: BoxFit.fill,
+                      final double imgWidth = _imageSize!.width;
+                      final double imgHeight = _imageSize!.height;
+
+                      final double minScale = _fitScale * _zoomOutFactor;
+                      final double maxScale = _fitScale * _zoomInFactor;
+
+                      return Stack(
+                        children: [
+                          InteractiveViewer(
+                            transformationController: _controller,
+                            constrained: false,
+                            boundaryMargin: const EdgeInsets.all(2000),
+                            minScale: minScale,
+                            maxScale: maxScale,
+                            child: SizedBox(
+                              width: imgWidth,
+                              height: imgHeight,
+                              child: Stack(
+                                children: [
+                                  Image.asset(
+                                    _getImageAsset(widget.regionName),
+                                    width: imgWidth,
+                                    height: imgHeight,
+                                    fit: BoxFit.fill,
+                                  ),
+                                  ...regionCrosses.map((cross) {
+                                    final bool isHovered = _hoveredCrossId == cross.id;
+                                    final bool isVisited = _visitedCities.contains(cross.name);
+                                    final double currentSize = isHovered ? cross.size * 1.3 : cross.size;
+
+                                    return Positioned(
+                                      left: cross.x - (currentSize / 2),
+                                      top: cross.y - (currentSize / 2),
+                                      child: GestureDetector(
+                                        onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
+                                        onTapCancel: () => setState(() => _hoveredCrossId = null),
+                                        onTapUp: (_) {
+                                          setState(() => _hoveredCrossId = null);
+                                          if (widget.selectedDurationMinutes == 0) {
+                                            return;
+                                          }
+                                          HapticFeedback.lightImpact();
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => SelectDestinationScreen(
+                                                selectedDurationMinutes: widget.selectedDurationMinutes,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 150),
+                                          width: currentSize,
+                                          height: currentSize,
+                                          alignment: Alignment.center,
+                                          color: Colors.red.withValues(alpha: 0.5),
+                                          child: Transform.rotate(
+                                            angle: cross.angle * (math.pi / 180),
+                                            child: Icon(
+                                              Icons.close,
+                                              size: currentSize,
+                                              color: isVisited ? Colors.green : Colors.black,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
+
+                          // Bouton retour
+                          SafeArea(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Align(
+                                alignment: Alignment.topLeft,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(30),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.4),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.arrow_back_ios_new, color: darkBlue),
+                                        onPressed: () => Navigator.pop(context),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Titre de la région
+                          SafeArea(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 16.0),
+                              child: Align(
+                                alignment: Alignment.topCenter,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: darkBlue.withValues(alpha: 0.75),
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  child: Text(
+                                    _getRegionDisplayName(widget.regionName),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Bouton reset zoom
+                          SafeArea(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Align(
+                                alignment: Alignment.bottomRight,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(30),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.4),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.zoom_out_map, color: darkBlue),
+                                        onPressed: () => _resetZoom(screenSize),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       );
                     },
                   ),
-          ),
-
-          // 3. Bouton de retour en haut à gauche
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new, color: darkBlue),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
           ),
         ],
       ),
