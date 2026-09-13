@@ -18,7 +18,7 @@ class MapRegionsData {
   static final List<RegionShape> regions = [
 RegionShape(
       id: 'desert',
-      name: 'Terres du Désert',
+      name: 'Sahur',
       color: const Color(0xFFE8C468),
       path: () {
         final p = Path();
@@ -152,7 +152,7 @@ RegionShape(
       
    RegionShape(
       id: 'lac',
-      name: 'Monde de l\'Eau',
+      name: 'Nayris',
       color: const Color(0xFF3FA9C9),
       path: Path()
         ..moveTo(392, 685)
@@ -421,7 +421,7 @@ RegionShape(
     ),
     RegionShape(
       id: 'nuages',
-      name: 'Les Nuages Féeriques',
+      name: 'Valoris',
       color: const Color(0xFFE79ACB),
       path: () {
         final p = Path();
@@ -715,7 +715,7 @@ RegionShape(
     ),
     RegionShape(
       id: 'montagnes',
-      name: 'Sommets des Montagnes',
+      name: 'Orane',
       color: const Color(0xFF4F9A5B),
       path: () {
         final p = Path();

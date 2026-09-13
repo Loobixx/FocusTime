@@ -26,15 +26,16 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
   Size? _imageSize;
   bool _viewInitialized = false;
 
-  // Niveau de zoom "normal" (image ajustée à l'écran), calculé une fois la taille connue
   double _fitScale = 1.0;
-
   String? _hoveredCrossId;
+  
+  // ✨ NOUVEAU : On retient l'ID de la croix qui est cliquée pour afficher son image
+  String? _selectedCrossId; 
+  
   Set<String> _visitedCities = {};
 
-  // Facteurs de zoom par rapport au niveau "fit"
-  static const double _zoomInFactor = 4.0;   // on peut zoomer jusqu'à 4x le niveau normal
-  static const double _zoomOutFactor = 0.25; // on peut dézoomer jusqu'à 1/4 du niveau normal
+  static const double _zoomInFactor = 4.0;
+  static const double _zoomOutFactor = 1;
 
   @override
   void initState() {
@@ -63,18 +64,12 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
 
   String _getRegionDisplayName(String regionName) {
     switch (regionName) {
-      case 'desert':
-        return 'Terres du Désert';
-      case 'montagnes':
-        return 'Pics Enneigés';
-      case 'nuit':
-        return 'Vallée Nocturne';
-      case 'nuages':
-        return 'Cité des Nuages';
-      case 'lac':
-        return 'Rives du Lac';
-      default:
-        return regionName;
+      case 'desert': return 'Sahur';
+      case 'montagnes': return 'Orane';
+      case 'nuit': return 'Vallée Nocturne';
+      case 'nuages': return 'Valoris';
+      case 'lac': return 'Nayris';
+      default: return regionName;
     }
   }
 
@@ -86,18 +81,12 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
 
   String _getImageAsset(String regionName) {
     switch (regionName) {
-      case 'desert':
-        return 'assets/desert.png';
-      case 'montagnes':
-        return 'assets/montagnes.png';
-      case 'nuit':
-        return 'assets/nuit.png';
-      case 'nuages':
-        return 'assets/nuages.png';
-      case 'lac':
-        return 'assets/lac.png';
-      default:
-        return 'assets/fond1.png';
+      case 'desert': return 'assets/desert.png';
+      case 'montagnes': return 'assets/montagnes.png';
+      case 'nuit': return 'assets/nuit.png';
+      case 'nuages': return 'assets/nuages.png';
+      case 'lac': return 'assets/lac.png';
+      default: return 'assets/fond1.png';
     }
   }
 
@@ -108,15 +97,11 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     stream.addListener(ImageStreamListener((ImageInfo info, bool synchronousCall) {
       if (!mounted) return;
       setState(() {
-        _imageSize = Size(
-          info.image.width.toDouble(),
-          info.image.height.toDouble(),
-        );
+        _imageSize = Size(info.image.width.toDouble(), info.image.height.toDouble());
       });
     }));
   }
 
-  // Calcule le "fit scale" pour une taille d'écran donnée, et centre la vue.
   void _setupInitialView(Size screenSize) {
     if (_imageSize == null) return;
 
@@ -143,6 +128,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
   void _resetZoom(Size screenSize) {
     setState(() {
       _setupInitialView(screenSize);
+      _selectedCrossId = null; // On cache l'image si on dézoome
     });
   }
 
@@ -156,10 +142,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset(
-              'assets/fond_de_zoom.png',
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/fond_de_zoom.png', fit: BoxFit.cover),
           ),
           Positioned.fill(
             child: _imageSize == null
@@ -168,7 +151,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                     builder: (context, constraints) {
                       final Size screenSize = Size(constraints.maxWidth, constraints.maxHeight);
 
-                      // On initialise la vue une seule fois, dès que la taille d'écran est connue.
                       if (!_viewInitialized) {
                         _viewInitialized = true;
                         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -185,12 +167,18 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                       final double minScale = _fitScale * _zoomOutFactor;
                       final double maxScale = _fitScale * _zoomInFactor;
 
+                      final double horizontalMargin = math.max(0.0, (screenSize.width - (imgWidth * minScale)) / (2 * minScale));
+                      final double verticalMargin = math.max(0.0, (screenSize.height - (imgHeight * minScale)) / (2 * minScale));
+
                       return Stack(
                         children: [
                           InteractiveViewer(
                             transformationController: _controller,
                             constrained: false,
-                            boundaryMargin: const EdgeInsets.all(2000),
+                            boundaryMargin: EdgeInsets.symmetric(
+                              horizontal: horizontalMargin,
+                              vertical: verticalMargin,
+                            ),
                             minScale: minScale,
                             maxScale: maxScale,
                             child: SizedBox(
@@ -198,12 +186,43 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                               height: imgHeight,
                               child: Stack(
                                 children: [
+                                  // COUCHE 1 : La carte de fond
                                   Image.asset(
                                     _getImageAsset(widget.regionName),
                                     width: imgWidth,
                                     height: imgHeight,
                                     fit: BoxFit.fill,
                                   ),
+                                  
+                                  // COUCHE 2 : L'image de la ville (Affichée DERRIÈRE les croix)
+                                  if (_selectedCrossId != null)
+                                    ...regionCrosses
+                                        .where((c) => c.id == _selectedCrossId && c.imagePath != null && c.imageX != null && c.imageY != null)
+                                        .map((cross) => Positioned(
+                                              left: cross.imageX,
+                                              top: cross.imageY,
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  if (widget.selectedDurationMinutes == 0) return;
+                                                  HapticFeedback.lightImpact();
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) => SelectDestinationScreen(
+                                                        selectedDurationMinutes: widget.selectedDurationMinutes,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                child: Image.asset(
+                                                  cross.imagePath!,
+                                                  width: imgWidth,
+                                                  height: imgHeight,
+                                                ),
+                                              ),
+                                            )),
+
+                                  // COUCHE 3 : Toutes les croix (Affichées TOUT DEVANT)
                                   ...regionCrosses.map((cross) {
                                     final bool isHovered = _hoveredCrossId == cross.id;
                                     final bool isVisited = _visitedCities.contains(cross.name);
@@ -216,32 +235,36 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                                         onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
                                         onTapCancel: () => setState(() => _hoveredCrossId = null),
                                         onTapUp: (_) {
-                                          setState(() => _hoveredCrossId = null);
-                                          if (widget.selectedDurationMinutes == 0) {
-                                            return;
-                                          }
-                                          HapticFeedback.lightImpact();
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => SelectDestinationScreen(
-                                                selectedDurationMinutes: widget.selectedDurationMinutes,
-                                              ),
-                                            ),
-                                          );
+                                          setState(() {
+                                            _hoveredCrossId = null;
+                                            if (_selectedCrossId == cross.id) {
+                                              _selectedCrossId = null; // Ferme l'image si on reclique
+                                            } else {
+                                              _selectedCrossId = cross.id; // Ouvre l'image
+                                            }
+                                          });
                                         },
                                         child: AnimatedContainer(
                                           duration: const Duration(milliseconds: 150),
                                           width: currentSize,
                                           height: currentSize,
                                           alignment: Alignment.center,
-                                          color: Colors.red.withValues(alpha: 0.5),
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.white.withValues(alpha: 0.8),
+                                                blurRadius: 15.0,
+                                                spreadRadius: 4.0,
+                                              ),
+                                            ],
+                                          ),
                                           child: Transform.rotate(
                                             angle: cross.angle * (math.pi / 180),
                                             child: Icon(
                                               Icons.close,
                                               size: currentSize,
-                                              color: isVisited ? Colors.green : Colors.black,
+                                              color: Colors.transparent,
                                             ),
                                           ),
                                         ),
@@ -273,31 +296,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                                         icon: const Icon(Icons.arrow_back_ios_new, color: darkBlue),
                                         onPressed: () => Navigator.pop(context),
                                       ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Titre de la région
-                          SafeArea(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 16.0),
-                              child: Align(
-                                alignment: Alignment.topCenter,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: darkBlue.withValues(alpha: 0.75),
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  child: Text(
-                                    _getRegionDisplayName(widget.regionName),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),

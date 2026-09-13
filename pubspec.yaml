@@ -73,6 +73,22 @@ flutter:
     - assets/lac.png
     - assets/desert.png
     - assets/fond_de_zoom.png
+    - assets/NomCitiesDesert/d1.png
+    - assets/NomCitiesDesert/d2.png
+    - assets/NomCitiesDesert/d3.png
+    - assets/NomCitiesDesert/d4.png
+    - assets/NomCitiesDesert/d5.png
+    - assets/NomCitiesDesert/d6.png
+    - assets/NomCitiesDesert/d7.png
+    - assets/NomCitiesDesert/d8.png
+    - assets/NomCitiesDesert/d9.png
+    - assets/NomCitiesDesert/d10.png
+    - assets/NomCitiesDesert/d11.png
+    - assets/NomCitiesDesert/d12.png
+    - assets/NomCitiesDesert/d13.png
+    - assets/NomCitiesDesert/d14.png
+    - assets/NomCitiesDesert/d15.png
+    - assets/NomCitiesDesert/d16.png
 
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg

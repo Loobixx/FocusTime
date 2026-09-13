@@ -5,6 +5,11 @@ class RegionCross {
   final double y;
   final double angle;
   final double size;
+  
+  // ✨ Les 3 nouvelles petites lignes pour l'image ✨
+  final String? imagePath; 
+  final double? imageX;
+  final double? imageY;
 
   const RegionCross({
     required this.id,
@@ -12,7 +17,10 @@ class RegionCross {
     required this.x,
     required this.y,
     this.angle = 0.0,
-    this.size = 28.0, // ← modifie ici pour changer la taille par défaut de toutes les croix
+    this.size = 28.0,
+    this.imagePath, // Le lien vers l'image (ex: 'assets/ville.png')
+    this.imageX,    // La position X de l'image
+    this.imageY,    // La position Y de l'image
   });
 }
 
@@ -21,8 +29,22 @@ class RegionCrossesData {
     'montagnes': [
     ],
     'desert': [
-      RegionCross(id: 'd1', name: 'Oasis Perdue', x: 300.0, y: 500.0, angle: 0.0, size: 50.0),
-      RegionCross(id: 'd2', name: 'Dunes Brûlantes', x: 600.0, y: 900.0, angle: 30.0, size: 32.0),
+      RegionCross(id: 'd1', name: 'La port de commerce de Solaris', x: 435.0, y: 483.0, angle: 0.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d1.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd2', name: 'La cité Solaris', x: 561.0, y: 431.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d2.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd3', name: 'Le coeur du désert', x: 669.0, y: 705.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d3.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd4', name: 'La piste des marchands', x: 645.0, y: 820.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d4.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd5', name: 'Le bain du désert', x: 399.0, y: 1002.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d5.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd6', name: 'L\'autel du soleil', x: 540.0, y: 1001.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d6.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd7', name: 'Le cimetières des géants', x: 651.0, y: 1179.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d7.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd8', name: 'Le puits des Mirages', x: 664.0, y: 105.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d8.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd9', name: 'Le piège des sables', x: 776.0, y: 427.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d9.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd10', name: 'La stelle du desert de Sahur', x: 824.0, y: 500.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d10.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd11', name: 'Le champs des épines', x: 914.0, y: 713.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d11.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd12', name: 'La porte du désert', x: 917.0, y: 779.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d12.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd13', name: 'Les monts de Sahur', x: 758.0, y: 927.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d13.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id:'d14', name:'Le passage secret', x:317.0, y:1540.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesDesert/d14.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'d15', name:'La grotte infini', x:383.0, y:1156.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesDesert/d15.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'d16', name:'L\'oasis de l\'exil', x:194.0, y:1497.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesDesert/d16.png', imageX:0.0, imageY:0.0),
     ],
     'lac': [
       RegionCross(id: 'l1', name: 'Rive Calme', x: 400.0, y: 600.0, angle: 10.0, size: 28.0),
