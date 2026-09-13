@@ -19,8 +19,6 @@ class RegionCross {
 class RegionCrossesData {
   static const Map<String, List<RegionCross>> crossesByRegion = {
     'montagnes': [
-      RegionCross(id: 'm1', name: 'Camp de Base', x: 450.0, y: 800.0, angle: 15.0, size: 30.0),
-      RegionCross(id: 'm2', name: 'Col des Vents', x: 720.0, y: 1200.0, angle: 45.0, size: 25.0),
     ],
     'desert': [
       RegionCross(id: 'd1', name: 'Oasis Perdue', x: 300.0, y: 500.0, angle: 0.0, size: 50.0),
