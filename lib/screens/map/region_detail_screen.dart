@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:FocusTime/screens/map/region_cross_data.dart';
 import '../select_destination_screen.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 class RegionDetailScreen extends StatefulWidget {
   final String regionName;
@@ -32,6 +33,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
   // ✨ NOUVEAU : On retient l'ID de la croix qui est cliquée pour afficher son image
   String? _selectedCrossId; 
   
+  String? _currentCity; 
   Set<String> _visitedCities = {};
 
   static const double _zoomInFactor = 4.0;
@@ -45,10 +47,29 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     _loadVisitedCities();
   }
 
+  bool get _isDesktopOrWeb {
+    if (kIsWeb) return true;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.macOS:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   Future<void> _loadVisitedCities() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    // 1. On récupère le document de l'utilisateur pour connaître sa ville actuelle
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    // 2. On récupère la liste de ses villes visitées
     final visitedDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
@@ -57,6 +78,8 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
 
     if (mounted) {
       setState(() {
+        // On suppose que le champ s'appelle 'currentCity' dans ton document utilisateur
+        _currentCity = userDoc.data()?['currentCity'] as String?; 
         _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
       });
     }
@@ -194,6 +217,34 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                                     fit: BoxFit.fill,
                                   ),
                                   
+                                  // COUCHE 1.5 : Marqueur FIXE de la position du personnage.
+                                  // Ne dépend d'AUCUN état de hover/sélection -> ne bouge jamais.
+                                  if (_currentCity != null)
+                                    ...regionCrosses
+                                        .where((c) => c.name == _currentCity)
+                                        .map((cross) => Positioned(
+                                              left: cross.x - (cross.size / 2),
+                                              top: cross.y - (cross.size / 2),
+                                              child: IgnorePointer(
+                                                // IgnorePointer : ce halo n'intercepte jamais les clics/hover,
+                                                // la zone cliquable de la COUCHE 3 reste seule responsable de l'interaction.
+                                                child: Container(
+                                                  width: cross.size,
+                                                  height: cross.size,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: const Color(0xFF143063).withValues(alpha: 0.85),
+                                                        blurRadius: 15.0,
+                                                        spreadRadius: 4.0,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            )),
+                                            
                                   // COUCHE 2 : L'image de la ville (Affichée DERRIÈRE les croix)
                                   if (_selectedCrossId != null)
                                     ...regionCrosses
@@ -224,79 +275,88 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
 
                                   // COUCHE 3 : Toutes les croix (Affichées TOUT DEVANT)
                                   ...regionCrosses.map((cross) {
-                                    final bool isHovered = _hoveredCrossId == cross.id;
-                                    
-                                    // 1. La taille du visuel (le petit cercle)
-                                    final double visualSize = isHovered ? cross.size * 1.3 : cross.size;
-                                    
-                                    // 2. La taille de la zone cliquable (fixée à 60x60 minimum pour les gros doigts !)
-                                    final double clickAreaSize = math.max(visualSize, 50.0);
+                                  // Taille fixe, ne grossit plus au survol
+                                  final double visualSize = cross.size;
 
-                                    // 3. Ta fonction magique pour choisir la couleur selon l'ID
-                                    Color getAuraColor(String id) {
-                                      switch (id) {
-                                        case 'm1': return Colors.blue.withValues(alpha: 0.6);   // Exemple : Bleu pour le port
-                                        case 'm2': return Colors.orange.withValues(alpha: 0.6); // Exemple : Orange pour la cité
-                                        case 'm3': return Colors.cyan.withValues(alpha: 0.6);   // Exemple : Cyan pour le bain
-                                        
-                                        // Par défaut, l'aura est totalement transparente (invisible) !
+                                  // Même taille sur pc comme sur mobile, mais on augmente la zone cliquable pour faciliter l'interaction
+                                  final double clickAreaSize = math.max(visualSize, 80.0);
+
+                                    // 3. Ta fonction magique pour choisir la couleur
+                                    Color getAuraColor(RegionCross c) {
+                                      switch (c.id) {
+                                        case 'm1': return Colors.blue.withValues(alpha: 0.6);   
+                                        case 'm2': return Colors.orange.withValues(alpha: 0.6); 
+                                        case 'm3': return Colors.cyan.withValues(alpha: 0.6);   
                                         default: return Colors.transparent; 
                                       }
                                     }
 
                                     return Positioned(
-                                      // On centre la position par rapport à la GRANDE zone cliquable
-                                      left: cross.x - (clickAreaSize / 2),
-                                      top: cross.y - (clickAreaSize / 2),
-                                      child: GestureDetector(
-                                        // IMPORTANT : Ceci permet de cliquer même si le fond est transparent !
-                                        behavior: HitTestBehavior.opaque, 
-                                        onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
-                                        onTapCancel: () => setState(() => _hoveredCrossId = null),
-                                        onTapUp: (_) {
-                                          setState(() {
-                                            _hoveredCrossId = null;
-                                            if (_selectedCrossId == cross.id) {
-                                              _selectedCrossId = null; // Ferme l'image
-                                            } else {
-                                              _selectedCrossId = cross.id; // Ouvre l'image
-                                            }
-                                          });
-                                        },
-                                        // La grande boîte cliquable
-                                        child: SizedBox(
-                                          width: clickAreaSize,
-                                          height: clickAreaSize,
-                                          child: Center(
-                                            // Le visuel (l'aura) qui reste à sa petite taille d'origine
-                                            child: AnimatedContainer(
-                                              duration: const Duration(milliseconds: 150),
-                                              width: visualSize,
-                                              height: visualSize,
-                                              alignment: Alignment.center,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: getAuraColor(cross.id), // Appelle ta fonction ici !
-                                                    blurRadius: 15.0,
-                                                    spreadRadius: 4.0,
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Transform.rotate(
-                                                angle: cross.angle * (math.pi / 180),
-                                                child: Icon(
-                                                  Icons.close,
-                                                  size: visualSize,
-                                                  color: Colors.transparent, // La croix elle-même reste invisible
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
+  left: cross.x - (clickAreaSize / 2),
+  top: cross.y - (clickAreaSize / 2),
+  child: MouseRegion(
+    onEnter: _isDesktopOrWeb
+        ? (_) => setState(() {
+              _hoveredCrossId = cross.id;
+              _selectedCrossId = cross.id;
+            })
+        : null,
+    onExit: _isDesktopOrWeb
+        ? (_) => setState(() {
+              _hoveredCrossId = null;
+              _selectedCrossId = null;
+            })
+        : null,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
+      onTapCancel: () => setState(() => _hoveredCrossId = null),
+      // Sur desktop/web, le hover suffit : on désactive le toggle au clic
+      onTapUp: _isDesktopOrWeb
+          ? null
+          : (_) {
+              setState(() {
+                _hoveredCrossId = null;
+                if (_selectedCrossId == cross.id) {
+                  _selectedCrossId = null;
+                } else {
+                  _selectedCrossId = cross.id;
+                }
+              });
+            },
+      child: SizedBox(
+        width: clickAreaSize,
+        height: clickAreaSize,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: visualSize,
+            height: visualSize,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: getAuraColor(cross),
+                  blurRadius: 15.0,
+                  spreadRadius: 4.0,
+                ),
+              ],
+            ),
+            child: Transform.rotate(
+              angle: cross.angle * (math.pi / 180),
+              child: Icon(
+                Icons.close,
+                size: visualSize,
+                color: Colors.transparent,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ),
+);
                                   }),
                                 ],
                               ),
