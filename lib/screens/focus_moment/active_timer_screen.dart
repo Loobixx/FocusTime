@@ -744,14 +744,15 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                             onPressed: _endPauseNormal,
                           ),
 
-                        // Plan de route
+                        // Plan de route plus compact
                         ClipRRect(
                           borderRadius: BorderRadius.circular(20),
                           child: BackdropFilter(
                             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                             child: Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.all(16),
+                              // 👈 1. On réduit les marges internes (verticales surtout)
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.8),
                                 borderRadius: BorderRadius.circular(20),
@@ -759,9 +760,10 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min, // 👈 2. Force la colonne à ne prendre que la place nécessaire
                                 children: [
-                                  const Text('Plan de route :', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: darkBlue)),
-                                  const SizedBox(height: 8),
+                                  const Text('Plan de route :', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkBlue)),
+                                  const SizedBox(height: 6), // 👈 Espace réduit
                                   Wrap(
                                     spacing: 8,
                                     runSpacing: 6,
@@ -777,37 +779,38 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                                           : (idx == currentLegIndex ? Icons.navigation : Icons.radio_button_unchecked);
 
                                       return Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        // 👈 3. Les puces (chips) sont légèrement affinées
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(
                                           color: chipColor.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(10),
                                           border: Border.all(color: chipColor, width: 1.2),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(chipIcon, size: 14, color: chipColor),
+                                            Icon(chipIcon, size: 13, color: chipColor),
                                             const SizedBox(width: 4),
-                                            Text(city, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: chipColor)),
+                                            Text(city, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: chipColor)),
                                           ],
                                         ),
                                       );
                                     }).toList(),
                                   ),
-                                  const Divider(height: 20),
+                                  const Divider(height: 12), // 👈 4. Ligne de séparation plus resserrée
                                   Row(
                                     children: [
-                                      const Icon(Icons.timer_outlined, color: darkBlue, size: 18),
-                                      const SizedBox(width: 6),
+                                      const Icon(Icons.timer_outlined, color: darkBlue, size: 16),
+                                      const SizedBox(width: 4),
                                       Expanded(
-                                        child: Text('Voyage : ${formatMinutesToHours(travelMinutes)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkBlue), overflow: TextOverflow.ellipsis),
+                                        child: Text('Voyage : ${formatMinutesToHours(travelMinutes)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkBlue), overflow: TextOverflow.ellipsis),
                                       ),
                                       if (restMinutes > 0) ...[
-                                        const SizedBox(width: 12),
-                                        const Icon(Icons.hotel, color: Color(0xFF6A1B9A), size: 18),
-                                        const SizedBox(width: 6),
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.hotel, color: Color(0xFF6A1B9A), size: 16),
+                                        const SizedBox(width: 4),
                                         Expanded(
-                                          child: Text('Repos : ${formatMinutesToHours(restMinutes)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A)), overflow: TextOverflow.ellipsis),
+                                          child: Text('Repos : ${formatMinutesToHours(restMinutes)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A)), overflow: TextOverflow.ellipsis),
                                         ),
                                       ],
                                     ],
