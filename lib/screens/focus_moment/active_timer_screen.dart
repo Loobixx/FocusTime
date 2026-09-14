@@ -256,30 +256,46 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      
+      // ✨ 1. LE JOUEUR QUITTE PENDANT LA MARCHE = TRICHE 🚫
       if (!_isCompleted && !_hasCheated && !_isPaused) {
-        
-        String dest = _routeMilestones.isNotEmpty ? _routeMilestones.last.destination : "ta destination";
+        _hasCheated = true; // Pris la main dans le sac !
+        _timer?.cancel();
 
-        // ✨ ON SÉPARE SELON LE TÉLÉPHONE
+        await _travelService.recordFailedTrip(
+          durationMinutes: widget.durationMinutes,
+          plannedRoute: widget.plannedRoute,
+        );
+
+        await _travelService.setFocusActive(false);
+      } 
+      // ✨ 2. LE JOUEUR QUITTE PENDANT LA PAUSE = AUTORISÉ ✅
+      else if (_isPaused) {
+        // On lance la notification pour le prévenir de revenir à la fin de la pause
         if (Platform.isAndroid) {
-          NotificationService().showLiveTimerNotification(_remainingSeconds, dest);
+          NotificationService().showLiveTimerNotification(_pauseRemainingSeconds, "Fin de la pause");
         } else if (Platform.isIOS) {
-          NotificationService().scheduleIOSNotification(_remainingSeconds, dest);
+          NotificationService().scheduleIOSNotification(_pauseRemainingSeconds, "Fin de la pause");
         }
       }
+
     } else if (state == AppLifecycleState.resumed) {
-      // ✨ L'utilisateur revient : on annule les notifications d'attente
+      // ✨ 3. LE JOUEUR REVIENT SUR L'APPLICATION
+      
+      // On annule les notifications de pause puisqu'il est de retour
       if (Platform.isAndroid) {
-        NotificationService().cancelNotification(99); // Annule le chrono
+        NotificationService().cancelNotification(99); 
       } else if (Platform.isIOS) {
-        NotificationService().cancelNotification(100); // Annule l'alerte de 1 minute si elle n'a pas encore sonné
+        NotificationService().cancelNotification(100); 
       }
 
+      // S'il avait triché, on affiche l'écran de défaite et on arrête tout
       if (_hasCheated) {
         _showLostDialogAndPop();
         return;
       }
 
+      // S'il revient d'une pause légale, on recalcule le temps
       if (_isPaused && _pauseEndTime != null) {
         final now = DateTime.now();
         final diffSeconds = _pauseEndTime!.difference(now).inSeconds;
@@ -289,6 +305,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
             _pauseRemainingSeconds = diffSeconds;
             _pauseOvertimeSeconds = 0;
           } else {
+            // S'il a traîné sur les réseaux, il prend du retard !
             _pauseRemainingSeconds = 0;
             _pauseOvertimeSeconds = diffSeconds.abs();
           }
