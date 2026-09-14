@@ -90,6 +90,30 @@ flutter:
     - assets/NomCitiesDesert/d15.png
     - assets/NomCitiesDesert/d16.png
 
+    - assets/NomCitiesMontagnes/m1.png
+    - assets/NomCitiesMontagnes/m2.png
+    - assets/NomCitiesMontagnes/m3.png
+    - assets/NomCitiesMontagnes/m4.png
+    - assets/NomCitiesMontagnes/m5.png 
+    - assets/NomCitiesMontagnes/m6.png
+    - assets/NomCitiesMontagnes/m7.png
+    # - assets/NomCitiesMontagnes/m8.png
+    - assets/NomCitiesMontagnes/m9.png
+    - assets/NomCitiesMontagnes/m10.png
+    - assets/NomCitiesMontagnes/m11.png
+    - assets/NomCitiesMontagnes/m12.png
+    - assets/NomCitiesMontagnes/m13.png
+    - assets/NomCitiesMontagnes/m14.png
+    # - assets/NomCitiesMontagnes/m15.png
+    - assets/NomCitiesMontagnes/m16.png
+    - assets/NomCitiesMontagnes/m17.png
+    - assets/NomCitiesMontagnes/m18.png
+    - assets/NomCitiesMontagnes/m19.png
+    - assets/NomCitiesMontagnes/m20.png
+    - assets/NomCitiesMontagnes/m21.png
+    - assets/NomCitiesMontagnes/m22.png
+    - assets/NomCitiesMontagnes/m23.png
+
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 
