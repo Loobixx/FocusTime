@@ -1,4 +1,5 @@
 import 'package:FocusTime/screens/home_screen.dart';
+import 'package:FocusTime/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'firebase_options.dart'; // Importe le fichier qui vient d'être généré
@@ -11,6 +12,7 @@ import 'package:flutter/foundation.dart';
 void main() async{
   // On s'assure que les widgets sont bien initialisés
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().init();
   
     await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

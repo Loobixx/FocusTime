@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:FocusTime/screens/focus_moment/animated_character.dart';
+import 'package:FocusTime/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,6 +11,7 @@ import '../../services/travel_service.dart';
 import '../../utils/time_formatter.dart';
 import '../home_screen.dart';
 import 'package:flutter/scheduler.dart';
+import 'dart:io' show Platform;
 
 class ParallaxBackground extends StatefulWidget {
   final bool isRunning;
@@ -255,17 +257,24 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       if (!_isCompleted && !_hasCheated && !_isPaused) {
-        _hasCheated = true;
-        _timer?.cancel();
+        
+        String dest = _routeMilestones.isNotEmpty ? _routeMilestones.last.destination : "ta destination";
 
-        await _travelService.recordFailedTrip(
-          durationMinutes: widget.durationMinutes,
-          plannedRoute: widget.plannedRoute,
-        );
-
-        await _travelService.setFocusActive(false);
+        // ✨ ON SÉPARE SELON LE TÉLÉPHONE
+        if (Platform.isAndroid) {
+          NotificationService().showLiveTimerNotification(_remainingSeconds, dest);
+        } else if (Platform.isIOS) {
+          NotificationService().scheduleIOSNotification(_remainingSeconds, dest);
+        }
       }
     } else if (state == AppLifecycleState.resumed) {
+      // ✨ L'utilisateur revient : on annule les notifications d'attente
+      if (Platform.isAndroid) {
+        NotificationService().cancelNotification(99); // Annule le chrono
+      } else if (Platform.isIOS) {
+        NotificationService().cancelNotification(100); // Annule l'alerte de 1 minute si elle n'a pas encore sonné
+      }
+
       if (_hasCheated) {
         _showLostDialogAndPop();
         return;
@@ -277,11 +286,9 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
         setState(() {
           if (diffSeconds > 0) {
-            // S'il reste du temps de pause
             _pauseRemainingSeconds = diffSeconds;
             _pauseOvertimeSeconds = 0;
           } else {
-            // ✨ S'il a dépassé l'heure pendant que l'app était en arrière-plan
             _pauseRemainingSeconds = 0;
             _pauseOvertimeSeconds = diffSeconds.abs();
           }
@@ -372,7 +379,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildPauseOptionButton(dialogContext, '5 min', 1, focusOrange),
+                _buildPauseOptionButton(dialogContext, '5 min', 1, focusOrange), // ✨ Pour tester, on peut mettre 1 minute au lieu de 5
                 _buildPauseOptionButton(dialogContext, '10 min', 10, focusOrange),
                 _buildPauseOptionButton(dialogContext, '15 min', 15, focusOrange),
               ],
