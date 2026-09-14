@@ -10,7 +10,6 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
-    // Initialisation des fuseaux horaires (obligatoire pour programmer dans le futur)
     tz.initializeTimeZones();
 
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -28,7 +27,6 @@ class NotificationService {
       macOS: initializationSettingsDarwin,
     );
 
-    // ✨ CORRECTION : Le paramètre s'appelle maintenant "settings"
     await _notificationsPlugin.initialize(settings: initializationSettings);
   }
 
@@ -47,7 +45,6 @@ class NotificationService {
       iOS: DarwinNotificationDetails(),
     );
 
-    // ✨ CORRECTION : Utilisation des paramètres nommés
     await _notificationsPlugin.show(
       id: id, 
       title: title, 
@@ -56,49 +53,55 @@ class NotificationService {
     );
   }
 
-  // CHRONO EN DIRECT (UNIQUEMENT ANDROID)
-  Future<void> showLiveTimerNotification(int remainingSeconds, String destination) async {
+  // CHRONO DE PAUSE EN DIRECT (UNIQUEMENT ANDROID)
+  Future<void> showPauseChronometer(int remainingSeconds) async {
     final int endTime = DateTime.now().millisecondsSinceEpoch + (remainingSeconds * 1000);
 
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'live_timer_channel',
-      'Marche en cours',
+      'pause_chrono_channel',
+      'Pause au feu de camp',
+      channelDescription: 'Affiche le temps de pause restant en direct',
       importance: Importance.low,
       priority: Priority.low,
-      ongoing: true, 
+      ongoing: true,
       autoCancel: false,
-      usesChronometer: true, 
-      chronometerCountDown: true, 
-      when: endTime, 
+      usesChronometer: true,
+      chronometerCountDown: true,
+      when: endTime,
       showWhen: true,
     );
 
     final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
-    // ✨ CORRECTION : Utilisation des paramètres nommés
     await _notificationsPlugin.show(
-      id: 99, 
-      title: '🥾 En marche vers $destination',
-      body: 'Temps restant :',
+      id: 200,
+      title: '🔥 Pause au coin du feu',
+      body: 'Temps de repos restant :',
       notificationDetails: platformDetails,
     );
   }
 
-  // NOTIFICATION PROGRAMMÉE 1 MINUTE AVANT (UNIQUEMENT IOS)
-  Future<void> scheduleIOSNotification(int remainingSeconds, String destination) async {
-    // Si on est à moins d'une minute de l'arrivée, pas la peine de prévenir
-    if (remainingSeconds <= 60) return; 
+  // ✨ NOTIFICATION PROGRAMMÉE 2 MINUTES AVANT LA FIN (POUR IOS ET ANDROID SI BESOIN)
+  Future<void> schedulePauseEndNotification(int remainingSeconds, String message) async {
+    // Si la pause est trop courte (moins de 2 minutes), on ne programme rien
+    if (remainingSeconds <= 120) return; 
 
-    // On calcule le délai : temps total moins 60 secondes
-    final int delayInSeconds = remainingSeconds - 60;
+    // On calcule le délai : temps total moins 120 secondes (2 minutes)
+    final int delayInSeconds = remainingSeconds - 120;
 
-    // ✨ CORRECTION : Utilisation des paramètres nommés et suppression de uiLocalNotificationDateInterpretation
     await _notificationsPlugin.zonedSchedule(
-      id: 100, 
-      title: 'Presque arrivé !',
-      body: 'Tu arrives à $destination dans moins d\'une minute, prépare-toi !',
+      id: 200, 
+      title: '⏰ Bientôt la fin de la pause !',
+      body: message,
       scheduledDate: tz.TZDateTime.now(tz.local).add(Duration(seconds: delayInSeconds)),
       notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'pause_channel_id',
+          'Fin de pause',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+        ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
@@ -110,7 +113,6 @@ class NotificationService {
   }
 
   Future<void> cancelNotification(int id) async {
-    // ✨ CORRECTION : Le paramètre s'appelle maintenant "id"
     await _notificationsPlugin.cancel(id: id);
   }
 }

@@ -436,9 +436,18 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     setState(() {
       _isPaused = true;
       _pauseRemainingSeconds = durationSec;
-      _pauseOvertimeSeconds = 0; // ✨ On réinitialise l'overtime
+      _pauseOvertimeSeconds = 0; 
       _pauseEndTime = DateTime.now().add(Duration(seconds: durationSec));
     });
+
+    // ✨ PROGRAMMER LA NOTIFICATION DE FIN DE PAUSE ICI
+    if (Platform.isAndroid) {
+      // Sur Android, on peut programmer un rappel à la fin exacte des secondes
+      // (Tu peux adapter showLiveTimerNotification ou créer un rappel simple)
+    } else if (Platform.isIOS) {
+      // Sur iOS, on prévient 1 minute avant (ou dès que le temps est court)
+      NotificationService().scheduleIOSNotification(durationSec, "Fin de la pause au feu de camp");
+    }
 
     _pauseTimer?.cancel();
     _pauseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -447,17 +456,19 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
         if (_pauseRemainingSeconds > 0) {
           _pauseRemainingSeconds--;
         } else {
-          // ✨ CHRONO INVERSÉ : Au lieu de s'arrêter, le temps commence à s'accumuler en retard !
           _pauseOvertimeSeconds++;
         }
       });
     });
   }
 
-  void _endPauseNormal() {
+void _endPauseNormal() {
     _pauseTimer?.cancel();
     
-    // ✨ On stocke le retard accumulé
+    // ✨ Annuler les notifications en attente
+    NotificationService().cancelNotification(99);
+    NotificationService().cancelNotification(100);
+
     int penalty = _pauseOvertimeSeconds;
 
     setState(() {
@@ -466,7 +477,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       _pauseOvertimeSeconds = 0;
       _pauseEndTime = null;
       
-      // ✨ La pénalité s'ajoute au temps de travail
       if (penalty > 0) {
         _remainingSeconds += penalty; 
       }
