@@ -6,10 +6,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:FocusTime/screens/focus_screen.dart';
 import 'package:FocusTime/screens/map/map_screen.dart';
 import 'package:FocusTime/screens/profil/profile_screen.dart';
-import '../models/city_network.dart'; // NOUVEL IMPORT NÉCESSAIRE
+import '../models/city_network.dart';
+// ✨ NOUVEL IMPORT À AJOUTER :
+import 'package:FocusTime/screens/character_selection_screen.dart'; 
 
 class HomeScreen extends StatefulWidget {
-  
   const HomeScreen({super.key});
 
   @override
@@ -19,14 +20,35 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   Color? _borderColor;
 
-@override
+  @override
   void initState() {
     super.initState();
     _loadCharacterColor();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkPseudo();
-      _checkInterruptedTrip(); // On ajoute la vérification ici
+      // ✨ On lance d'abord notre nouvelle vérification
+      _checkCharacterSelection(); 
     });
+  }
+
+  // ✨ LA NOUVELLE FONCTION QUI GÈRE LA REDIRECTION
+  Future<void> _checkCharacterSelection() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final currentCity = doc.data()?['currentCity'] as String?;
+
+    if ((currentCity == null || currentCity.trim().isEmpty) && mounted) {
+      // 🚨 Le joueur n'a pas de ville : on remplace l'écran d'accueil par le choix du personnage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const CharacterSelectionScreen()),
+      );
+    } else {
+      // ✅ Le joueur a déjà un personnage : on peut lancer les autres vérifications (pseudo, perte de trajet)
+      _checkPseudo();
+      _checkInterruptedTrip();
+    }
   }
 
   Future<void> _checkInterruptedTrip() async {

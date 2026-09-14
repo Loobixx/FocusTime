@@ -16,6 +16,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isLogin = true;
 
+  // ✨ NOUVEAU : Variables pour gérer la visibilité des mots de passe
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
   // Contrôleurs pour récupérer les valeurs des champs de texte
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -81,8 +85,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
   }
-
-
 
   // Fonction de soumission connectée à Firebase
   Future<void> _submitAuth() async {
@@ -248,16 +250,35 @@ class _LoginScreenState extends State<LoginScreen> {
                           autofillHints: const [AutofillHints.email],
                         ),
                         const SizedBox(height: 16),
+
+                        // ✨ NOUVEAU : Appel du champ mot de passe avec l'état de visibilité
                         _buildTextField(
                           'Mot de passe',
                           isPassword: true,
+                          obscureText: _obscurePassword,
+                          onToggleVisibility: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
                           controller: _passwordController,
                           autofillHints: const [AutofillHints.password],
                         ),                        
                         // Champ de confirmation
                         if (!_isLogin) ...[
                           const SizedBox(height: 16),
-                          _buildTextField('Confirmer le mot de passe', isPassword: true, controller: _confirmPasswordController),
+                          // ✨ NOUVEAU : Appel du champ confirmation avec son propre état
+                          _buildTextField(
+                            'Confirmer le mot de passe', 
+                            isPassword: true, 
+                            obscureText: _obscureConfirmPassword,
+                            onToggleVisibility: () {
+                              setState(() {
+                                _obscureConfirmPassword = !_obscureConfirmPassword;
+                              });
+                            },
+                            controller: _confirmPasswordController
+                          ),
                         ],
 
                         // --- MOT DE PASSE OUBLIÉ ---
@@ -287,7 +308,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           _isLogin ? 'SE CONNECTER' : 'S\'INSCRIRE', 
                           focusOrange, 
                           Colors.white,
-                          _submitAuth, // Appelle la fonction Firebase
+                          _submitAuth, 
                         ),
                         const SizedBox(height: 24),
 
@@ -307,7 +328,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // --- BOUTONS GOOGLE & APPLE (Désactivés) ---
+                        // --- BOUTONS GOOGLE & APPLE ---
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -316,8 +337,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 'Google', 
                                 Colors.white, 
                                 Colors.black, 
-                                _signInWithGoogle, // <-- On branche la fonction ici
-                                isAvailable: true,  // <-- On le rend disponible
+                                _signInWithGoogle, 
+                                isAvailable: true,  
                               ),
                             ),                            
                             const SizedBox(width: 16),
@@ -357,11 +378,18 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Méthode pour les champs de texte avec support du contrôleur
-  Widget _buildTextField(String hintText, {bool isPassword = false, required TextEditingController controller, List<String>? autofillHints}) {
+  // ✨ NOUVEAU : La méthode _buildTextField prend maintenant en charge l'œil de visibilité
+  Widget _buildTextField(
+    String hintText, {
+    bool isPassword = false, 
+    bool obscureText = false, // Paramètre pour savoir s'il faut cacher le texte
+    VoidCallback? onToggleVisibility, // Fonction appelée quand on clique sur l'œil
+    required TextEditingController controller, 
+    List<String>? autofillHints
+  }) {
     return TextField(
       controller: controller,
-      obscureText: isPassword,
+      obscureText: isPassword ? obscureText : false, // On cache uniquement si c'est un mdp ET que l'œil est fermé
       autofillHints: autofillHints,
       keyboardType: isPassword ? TextInputType.visiblePassword : TextInputType.emailAddress,
       style: const TextStyle(fontSize: 16),
@@ -375,6 +403,16 @@ class _LoginScreenState extends State<LoginScreen> {
           borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+        // ✨ NOUVEAU : L'icône suffixe s'affiche uniquement sur les champs de mot de passe
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: const Color(0xFF143063).withValues(alpha: 0.5),
+                ),
+                onPressed: onToggleVisibility, // Lance le changement d'état (ouvert/fermé)
+              )
+            : null,
       ),
     );
   }

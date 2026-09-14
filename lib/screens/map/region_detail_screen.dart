@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:FocusTime/screens/map/region_cross_data.dart';
-import '../select_destination_screen.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import '../../models/city_network.dart';
 import '../active_timer_screen.dart';
@@ -100,16 +99,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     }
   }
 
-  String _getRegionDisplayName(String regionName) {
-    switch (regionName) {
-      case 'desert': return 'Sahur';
-      case 'montagnes': return 'Orane';
-      case 'nuit': return 'Vallée Nocturne';
-      case 'nuages': return 'Valoris';
-      case 'lac': return 'Nayris';
-      default: return regionName;
-    }
-  }
 
   @override
   void dispose() {
@@ -360,21 +349,24 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                               behavior: HitTestBehavior.opaque,
                               onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
                               onTapCancel: () => setState(() => _hoveredCrossId = null),
-                              onTap: () => _navigateToCross(cross),
-                              // Sur desktop/web, le hover global suffit à afficher l'image :
-                              // on désactive le toggle au clic pour ce cas.
-                              onTapUp: _isDesktopOrWeb
-                                  ? null
-                                  : (_) {
-                                      setState(() {
-                                        _hoveredCrossId = null;
-                                        if (_selectedCrossId == cross.id) {
-                                          _selectedCrossId = null; // Ferme l'image
-                                        } else {
-                                          _selectedCrossId = cross.id; // Ouvre l'image
-                                        }
-                                      });
-                                    },
+                              // ✨ C'est ici qu'on gère l'affichage pour PC et Mobile !
+                              onTap: () {
+                                setState(() {
+                                  _hoveredCrossId = null;
+                                  
+                                  if (_isDesktopOrWeb) {
+                                    // Sur PC, cliquer force l'affichage (même si le survol le fait déjà)
+                                    _selectedCrossId = cross.id;
+                                  } else {
+                                    // Sur Mobile, cliquer agit comme un interrupteur (ouvre/ferme)
+                                    if (_selectedCrossId == cross.id) {
+                                      _selectedCrossId = null; // Ferme l'image
+                                    } else {
+                                      _selectedCrossId = cross.id; // Ouvre l'image
+                                    }
+                                  }
+                                });
+                              },
                               child: SizedBox(
                                 width: clickAreaSize,
                                 height: clickAreaSize,

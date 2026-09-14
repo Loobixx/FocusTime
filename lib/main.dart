@@ -5,6 +5,7 @@ import 'firebase_options.dart'; // Importe le fichier qui vient d'être génér�
 import 'package:firebase_core/firebase_core.dart'; // Import Firebase
 import 'screens/login_screen.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 
 void main() async{
@@ -16,7 +17,9 @@ void main() async{
   );
 
   // Force Firebase Auth à stocker la session en local sur l'appareil
-  await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+  if (kIsWeb) {
+    await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+  }
   
   // On rend la barre de statut transparente
   SystemChrome.setSystemUIOverlayStyle(

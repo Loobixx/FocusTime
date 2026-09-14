@@ -17,7 +17,16 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
   bool _loading = true;
   bool _saving = false;
 
-  final List<Color> _colors = [Colors.blue, Colors.orange, Colors.green, Colors.purple, Colors.red];
+  // ✨ NOUVEAU : J'ai ajouté les couleurs spécifiques de tes 5 régions à la palette
+  final List<Color> _colors = [
+    Colors.orange,          // Désert
+    Colors.green,           // Montagnes
+    Colors.blue,            // Eau
+    Colors.deepPurple,      // Nocturne
+    Colors.lightBlueAccent, // Nuages
+    Colors.red,             // Extra
+  ];
+  
   final List<String> _hats = ['Aucun', 'Casquette', 'Chapeau magique', 'Couronne'];
 
   @override
@@ -38,8 +47,22 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
 
     Color loadedColor = Colors.blue;
     final colorValue = data?['characterColor'];
+    
+    // 1. On regarde si le joueur a DÉJÀ sauvegardé une couleur personnalisée
     if (colorValue is int) {
       loadedColor = Color(colorValue);
+    } 
+    // ✨ 2. NOUVEAU : Sinon (première fois), on prend la couleur de sa région de départ !
+    else {
+      final profileRegion = data?['profileRegion'] as String?;
+      switch (profileRegion) {
+        case 'desert': loadedColor = Colors.orange; break;
+        case 'montagnes': loadedColor = Colors.green; break;
+        case 'eau': loadedColor = Colors.blue; break;
+        case 'nocturne': loadedColor = Colors.deepPurple; break;
+        case 'nuages': loadedColor = Colors.lightBlueAccent; break;
+        default: loadedColor = Colors.blue;
+      }
     }
 
     setState(() {
@@ -157,7 +180,7 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                             const Text('Accessoire / Chapeau', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkBlue)),
                             const SizedBox(height: 10),
                             DropdownButtonFormField<String>(
-                              initialValue: _selectedHat,
+                              value: _hats.contains(_selectedHat) ? _selectedHat : 'Aucun',
                               dropdownColor: Colors.white.withValues(alpha: 0.9),
                               decoration: InputDecoration(
                                 filled: true,
