@@ -225,46 +225,73 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                                   // COUCHE 3 : Toutes les croix (Affichées TOUT DEVANT)
                                   ...regionCrosses.map((cross) {
                                     final bool isHovered = _hoveredCrossId == cross.id;
-                                    final bool isVisited = _visitedCities.contains(cross.name);
-                                    final double currentSize = isHovered ? cross.size * 1.3 : cross.size;
+                                    
+                                    // 1. La taille du visuel (le petit cercle)
+                                    final double visualSize = isHovered ? cross.size * 1.3 : cross.size;
+                                    
+                                    // 2. La taille de la zone cliquable (fixée à 60x60 minimum pour les gros doigts !)
+                                    final double clickAreaSize = math.max(visualSize, 50.0);
+
+                                    // 3. Ta fonction magique pour choisir la couleur selon l'ID
+                                    Color getAuraColor(String id) {
+                                      switch (id) {
+                                        case 'm1': return Colors.blue.withValues(alpha: 0.6);   // Exemple : Bleu pour le port
+                                        case 'm2': return Colors.orange.withValues(alpha: 0.6); // Exemple : Orange pour la cité
+                                        case 'm3': return Colors.cyan.withValues(alpha: 0.6);   // Exemple : Cyan pour le bain
+                                        
+                                        // Par défaut, l'aura est totalement transparente (invisible) !
+                                        default: return Colors.transparent; 
+                                      }
+                                    }
 
                                     return Positioned(
-                                      left: cross.x - (currentSize / 2),
-                                      top: cross.y - (currentSize / 2),
+                                      // On centre la position par rapport à la GRANDE zone cliquable
+                                      left: cross.x - (clickAreaSize / 2),
+                                      top: cross.y - (clickAreaSize / 2),
                                       child: GestureDetector(
+                                        // IMPORTANT : Ceci permet de cliquer même si le fond est transparent !
+                                        behavior: HitTestBehavior.opaque, 
                                         onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
                                         onTapCancel: () => setState(() => _hoveredCrossId = null),
                                         onTapUp: (_) {
                                           setState(() {
                                             _hoveredCrossId = null;
                                             if (_selectedCrossId == cross.id) {
-                                              _selectedCrossId = null; // Ferme l'image si on reclique
+                                              _selectedCrossId = null; // Ferme l'image
                                             } else {
                                               _selectedCrossId = cross.id; // Ouvre l'image
                                             }
                                           });
                                         },
-                                        child: AnimatedContainer(
-                                          duration: const Duration(milliseconds: 150),
-                                          width: currentSize,
-                                          height: currentSize,
-                                          alignment: Alignment.center,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.white.withValues(alpha: 0.8),
-                                                blurRadius: 15.0,
-                                                spreadRadius: 4.0,
+                                        // La grande boîte cliquable
+                                        child: SizedBox(
+                                          width: clickAreaSize,
+                                          height: clickAreaSize,
+                                          child: Center(
+                                            // Le visuel (l'aura) qui reste à sa petite taille d'origine
+                                            child: AnimatedContainer(
+                                              duration: const Duration(milliseconds: 150),
+                                              width: visualSize,
+                                              height: visualSize,
+                                              alignment: Alignment.center,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: getAuraColor(cross.id), // Appelle ta fonction ici !
+                                                    blurRadius: 15.0,
+                                                    spreadRadius: 4.0,
+                                                  ),
+                                                ],
                                               ),
-                                            ],
-                                          ),
-                                          child: Transform.rotate(
-                                            angle: cross.angle * (math.pi / 180),
-                                            child: Icon(
-                                              Icons.close,
-                                              size: currentSize,
-                                              color: Colors.transparent,
+                                              child: Transform.rotate(
+                                                angle: cross.angle * (math.pi / 180),
+                                                child: Icon(
+                                                  Icons.close,
+                                                  size: visualSize,
+                                                  color: Colors.transparent, // La croix elle-même reste invisible
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
