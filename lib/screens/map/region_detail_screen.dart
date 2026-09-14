@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:FocusTime/screens/map/region_cross_data.dart';
 import '../select_destination_screen.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import '../../models/city_network.dart';
+import '../active_timer_screen.dart';
 
 class RegionDetailScreen extends StatefulWidget {
   final String regionName;
@@ -29,15 +31,21 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
 
   double _fitScale = 1.0;
   String? _hoveredCrossId;
-  
-  // ✨ NOUVEAU : On retient l'ID de la croix qui est cliquée pour afficher son image
-  String? _selectedCrossId; 
-  
-  String? _currentCity; 
+
+  Map<String, ShortestPathResult> _routes = {};
+
+  // ✨ On retient l'ID de la croix qui est cliquée/survolée pour afficher son image
+  String? _selectedCrossId;
+
+  String? _currentCity;
   Set<String> _visitedCities = {};
 
   static const double _zoomInFactor = 4.0;
   static const double _zoomOutFactor = 1;
+
+  // Rayon (en pixels, dans le référentiel de l'image) utilisé pour détecter
+  // la croix la plus proche du curseur lors du hover global sur desktop/web.
+  static const double _maxHoverDistance = 40.0;
 
   @override
   void initState() {
@@ -79,8 +87,15 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     if (mounted) {
       setState(() {
         // On suppose que le champ s'appelle 'currentCity' dans ton document utilisateur
-        _currentCity = userDoc.data()?['currentCity'] as String?; 
+        _currentCity = userDoc.data()?['currentCity'] as String?;
         _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
+
+        if (_currentCity != null) {
+          _routes = CityNetwork.calculateAllShortestPaths(
+            startCity: _currentCity!,
+            visitedCities: _visitedCities,
+          );
+        }
       });
     }
   }
@@ -155,6 +170,85 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     });
   }
 
+  bool get _hasFocusPlanned => widget.selectedDurationMinutes > 0;
+
+  ShortestPathResult? _routeFor(RegionCross cross) => _routes[cross.name];
+
+  bool _isReachable(RegionCross cross) {
+    if (!_hasFocusPlanned) return false;
+    if (_currentCity != null && cross.name == _currentCity) return false;
+    final route = _routeFor(cross);
+    if (route == null) return false;
+    return route.totalTravelMinutes <= widget.selectedDurationMinutes;
+  }
+
+  // ------------------------------------------------------------------
+  // Hover global (desktop/web uniquement) : on calcule, à chaque
+  // mouvement de souris, quelle croix est la plus proche du curseur.
+  // Ça évite les faux positifs dus au chevauchement de zones
+  // cliquables individuelles quand les croix sont proches les unes
+  // des autres sur la carte.
+  // ------------------------------------------------------------------
+  void _handleHoverPosition(Offset localPosition, List<RegionCross> crosses) {
+    String? closestId;
+    double closestDistance = double.infinity;
+
+    for (final cross in crosses) {
+      final double dx = cross.x - localPosition.dx;
+      final double dy = cross.y - localPosition.dy;
+      final double distance = math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= _maxHoverDistance && distance < closestDistance) {
+        closestDistance = distance;
+        closestId = cross.id;
+      }
+    }
+
+    if (closestId != _hoveredCrossId) {
+      setState(() {
+        _hoveredCrossId = closestId;
+        _selectedCrossId = closestId;
+      });
+    }
+  }
+
+  void _clearHover() {
+    if (_hoveredCrossId != null || _selectedCrossId != null) {
+      setState(() {
+        _hoveredCrossId = null;
+        _selectedCrossId = null;
+      });
+    }
+  }
+
+  void _navigateToCross(RegionCross cross) {
+    final route = _routeFor(cross);
+    if (!_isReachable(cross) || route == null) return;
+    HapticFeedback.lightImpact();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ActiveTimerScreen(
+          plannedRoute: route.path,
+          durationMinutes: widget.selectedDurationMinutes,
+          plannedTravelMinutes: route.totalTravelMinutes,
+        ),
+      ),
+    );
+  }
+
+  Color _getAuraColor(RegionCross c) {
+    if (_isReachable(c)) {
+      return Colors.green.withValues(alpha: 0.7);
+    }
+    switch (c.id) {
+      case 'm1': return Colors.blue.withValues(alpha: 0.6);
+      case 'm2': return Colors.orange.withValues(alpha: 0.6);
+      case 'm3': return Colors.cyan.withValues(alpha: 0.6);
+      default: return Colors.transparent;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
@@ -193,6 +287,129 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                       final double horizontalMargin = math.max(0.0, (screenSize.width - (imgWidth * minScale)) / (2 * minScale));
                       final double verticalMargin = math.max(0.0, (screenSize.height - (imgHeight * minScale)) / (2 * minScale));
 
+                      // Contenu du Stack interne (carte + marqueurs + croix).
+                      // Construit une seule fois et réutilisé, que le hover
+                      // global (desktop/web) soit actif ou non (mobile).
+                      final List<Widget> mapStackChildren = [
+                        // COUCHE 1 : La carte de fond
+                        Image.asset(
+                          _getImageAsset(widget.regionName),
+                          width: imgWidth,
+                          height: imgHeight,
+                          fit: BoxFit.fill,
+                        ),
+
+                        // COUCHE 1.5 : Marqueur FIXE de la position du personnage.
+                        // Ne dépend d'AUCUN état de hover/sélection -> ne bouge jamais.
+                        if (_currentCity != null)
+                          ...regionCrosses
+                              .where((c) => c.name == _currentCity)
+                              .map((cross) => Positioned(
+                                    left: cross.x - (cross.size / 2),
+                                    top: cross.y - (cross.size / 2),
+                                    child: IgnorePointer(
+                                      // IgnorePointer : ce halo n'intercepte jamais les clics/hover,
+                                      // la zone cliquable de la COUCHE 3 reste seule responsable de l'interaction.
+                                      child: Container(
+                                        width: cross.size,
+                                        height: cross.size,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF143063).withValues(alpha: 0.85),
+                                              blurRadius: 15.0,
+                                              spreadRadius: 4.0,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  )),
+
+                        // COUCHE 2 : L'image de la ville (Affichée DERRIÈRE les croix)
+                        if (_selectedCrossId != null)
+                          ...regionCrosses
+                              .where((c) => c.id == _selectedCrossId && c.imagePath != null && c.imageX != null && c.imageY != null)
+                              .map((cross) => Positioned(
+                                    left: cross.imageX,
+                                    top: cross.imageY,
+                                    child: GestureDetector(
+                                      onTap: () => _navigateToCross(cross),
+                                      child: Image.asset(
+                                        cross.imagePath!,
+                                        width: imgWidth,
+                                        height: imgHeight,
+                                      ),
+                                    ),
+                                  )),
+
+                        // COUCHE 3 : Toutes les croix (Affichées TOUT DEVANT)
+                        ...regionCrosses.map((cross) {
+                          // Taille fixe, ne grossit plus au survol
+                          final double visualSize = cross.size;
+
+                          // Même taille sur pc comme sur mobile, mais on augmente
+                          // la zone cliquable pour faciliter l'interaction (surtout au tap).
+                          final double clickAreaSize = math.max(visualSize, 80.0);
+
+                          return Positioned(
+                            left: cross.x - (clickAreaSize / 2),
+                            top: cross.y - (clickAreaSize / 2),
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
+                              onTapCancel: () => setState(() => _hoveredCrossId = null),
+                              onTap: () => _navigateToCross(cross),
+                              // Sur desktop/web, le hover global suffit à afficher l'image :
+                              // on désactive le toggle au clic pour ce cas.
+                              onTapUp: _isDesktopOrWeb
+                                  ? null
+                                  : (_) {
+                                      setState(() {
+                                        _hoveredCrossId = null;
+                                        if (_selectedCrossId == cross.id) {
+                                          _selectedCrossId = null; // Ferme l'image
+                                        } else {
+                                          _selectedCrossId = cross.id; // Ouvre l'image
+                                        }
+                                      });
+                                    },
+                              child: SizedBox(
+                                width: clickAreaSize,
+                                height: clickAreaSize,
+                                child: Center(
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 150),
+                                    width: visualSize,
+                                    height: visualSize,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: _getAuraColor(cross),
+                                          blurRadius: 15.0,
+                                          spreadRadius: 4.0,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Transform.rotate(
+                                      angle: cross.angle * (math.pi / 180),
+                                      child: Icon(
+                                        Icons.close,
+                                        size: visualSize,
+                                        color: Colors.transparent,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ];
+
                       return Stack(
                         children: [
                           InteractiveViewer(
@@ -207,159 +424,14 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                             child: SizedBox(
                               width: imgWidth,
                               height: imgHeight,
-                              child: Stack(
-                                children: [
-                                  // COUCHE 1 : La carte de fond
-                                  Image.asset(
-                                    _getImageAsset(widget.regionName),
-                                    width: imgWidth,
-                                    height: imgHeight,
-                                    fit: BoxFit.fill,
-                                  ),
-                                  
-                                  // COUCHE 1.5 : Marqueur FIXE de la position du personnage.
-                                  // Ne dépend d'AUCUN état de hover/sélection -> ne bouge jamais.
-                                  if (_currentCity != null)
-                                    ...regionCrosses
-                                        .where((c) => c.name == _currentCity)
-                                        .map((cross) => Positioned(
-                                              left: cross.x - (cross.size / 2),
-                                              top: cross.y - (cross.size / 2),
-                                              child: IgnorePointer(
-                                                // IgnorePointer : ce halo n'intercepte jamais les clics/hover,
-                                                // la zone cliquable de la COUCHE 3 reste seule responsable de l'interaction.
-                                                child: Container(
-                                                  width: cross.size,
-                                                  height: cross.size,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: const Color(0xFF143063).withValues(alpha: 0.85),
-                                                        blurRadius: 15.0,
-                                                        spreadRadius: 4.0,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            )),
-                                            
-                                  // COUCHE 2 : L'image de la ville (Affichée DERRIÈRE les croix)
-                                  if (_selectedCrossId != null)
-                                    ...regionCrosses
-                                        .where((c) => c.id == _selectedCrossId && c.imagePath != null && c.imageX != null && c.imageY != null)
-                                        .map((cross) => Positioned(
-                                              left: cross.imageX,
-                                              top: cross.imageY,
-                                              child: GestureDetector(
-                                                onTap: () {
-                                                  if (widget.selectedDurationMinutes == 0) return;
-                                                  HapticFeedback.lightImpact();
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) => SelectDestinationScreen(
-                                                        selectedDurationMinutes: widget.selectedDurationMinutes,
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                                child: Image.asset(
-                                                  cross.imagePath!,
-                                                  width: imgWidth,
-                                                  height: imgHeight,
-                                                ),
-                                              ),
-                                            )),
-
-                                  // COUCHE 3 : Toutes les croix (Affichées TOUT DEVANT)
-                                  ...regionCrosses.map((cross) {
-                                  // Taille fixe, ne grossit plus au survol
-                                  final double visualSize = cross.size;
-
-                                  // Même taille sur pc comme sur mobile, mais on augmente la zone cliquable pour faciliter l'interaction
-                                  final double clickAreaSize = math.max(visualSize, 80.0);
-
-                                    // 3. Ta fonction magique pour choisir la couleur
-                                    Color getAuraColor(RegionCross c) {
-                                      switch (c.id) {
-                                        case 'm1': return Colors.blue.withValues(alpha: 0.6);   
-                                        case 'm2': return Colors.orange.withValues(alpha: 0.6); 
-                                        case 'm3': return Colors.cyan.withValues(alpha: 0.6);   
-                                        default: return Colors.transparent; 
-                                      }
-                                    }
-
-                                    return Positioned(
-  left: cross.x - (clickAreaSize / 2),
-  top: cross.y - (clickAreaSize / 2),
-  child: MouseRegion(
-    onEnter: _isDesktopOrWeb
-        ? (_) => setState(() {
-              _hoveredCrossId = cross.id;
-              _selectedCrossId = cross.id;
-            })
-        : null,
-    onExit: _isDesktopOrWeb
-        ? (_) => setState(() {
-              _hoveredCrossId = null;
-              _selectedCrossId = null;
-            })
-        : null,
-    child: GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
-      onTapCancel: () => setState(() => _hoveredCrossId = null),
-      // Sur desktop/web, le hover suffit : on désactive le toggle au clic
-      onTapUp: _isDesktopOrWeb
-          ? null
-          : (_) {
-              setState(() {
-                _hoveredCrossId = null;
-                if (_selectedCrossId == cross.id) {
-                  _selectedCrossId = null;
-                } else {
-                  _selectedCrossId = cross.id;
-                }
-              });
-            },
-      child: SizedBox(
-        width: clickAreaSize,
-        height: clickAreaSize,
-        child: Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: visualSize,
-            height: visualSize,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: getAuraColor(cross),
-                  blurRadius: 15.0,
-                  spreadRadius: 4.0,
-                ),
-              ],
-            ),
-            child: Transform.rotate(
-              angle: cross.angle * (math.pi / 180),
-              child: Icon(
-                Icons.close,
-                size: visualSize,
-                color: Colors.transparent,
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
-  ),
-);
-                                  }),
-                                ],
-                              ),
+                              child: _isDesktopOrWeb
+                                  ? MouseRegion(
+                                      onHover: (event) =>
+                                          _handleHoverPosition(event.localPosition, regionCrosses),
+                                      onExit: (_) => _clearHover(),
+                                      child: Stack(children: mapStackChildren),
+                                    )
+                                  : Stack(children: mapStackChildren),
                             ),
                           ),
 
