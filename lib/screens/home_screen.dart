@@ -8,7 +8,7 @@ import 'package:FocusTime/screens/map/map_screen.dart';
 import 'package:FocusTime/screens/profil/profile_screen.dart';
 import '../models/city_network.dart';
 // ✨ NOUVEL IMPORT À AJOUTER :
-import 'package:FocusTime/screens/character_selection_screen.dart'; 
+import 'package:FocusTime/starter/character_selection_screen.dart'; 
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

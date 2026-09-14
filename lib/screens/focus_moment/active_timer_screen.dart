@@ -1,14 +1,153 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:FocusTime/screens/focus_moment/animated_character.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import '../models/city_network.dart';
-import '../services/travel_service.dart';
-import '../utils/time_formatter.dart';
-import 'home_screen.dart';
+import '../../models/city_network.dart';
+import '../../services/travel_service.dart';
+import '../../utils/time_formatter.dart';
+import '../home_screen.dart';
+import 'package:flutter/scheduler.dart';
 
+class ParallaxBackground extends StatefulWidget {
+  final bool isRunning;
+
+  const ParallaxBackground({super.key, required this.isRunning});
+
+  @override
+  State<ParallaxBackground> createState() => _ParallaxBackgroundState();
+}
+
+class _ParallaxBackgroundState extends State<ParallaxBackground>
+    with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  Duration _elapsed = Duration.zero;
+  Duration _lastTick = Duration.zero;
+  bool _isRunning = false;
+
+  static const double _groundSpeed = 60.0; // px/seconde
+  static const double _bgSpeedFactor = 1 / 3;
+
+  @override
+  void initState() {
+    super.initState();
+    _isRunning = widget.isRunning;
+    _ticker = createTicker(_onTick)..start();
+  }
+
+  void _onTick(Duration elapsed) {
+    final delta = elapsed - _lastTick;
+    _lastTick = elapsed;
+    if (_isRunning) {
+      setState(() => _elapsed += delta);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ParallaxBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _isRunning = widget.isRunning;
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  Widget _buildInfiniteLayer({
+    required String asset,
+    required double screenWidth,
+    required double screenHeight,
+    required double offset,
+  }) {
+    final tileIndex = (offset / screenWidth).floor();
+    final localOffset = offset - tileIndex * screenWidth;
+
+    Widget tile(int index) {
+      Widget img = Image.asset(
+        asset,
+        fit: BoxFit.cover,
+        width: screenWidth,
+        height: screenHeight,
+      );
+      if (index.isOdd) {
+        img = Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.diagonal3Values(-1, 1, 1),
+          child: img,
+        );
+      }
+      return img;
+    }
+
+    return Stack(
+      children: [
+        Positioned(
+          left: -localOffset,
+          top: 0,
+          width: screenWidth,
+          height: screenHeight,
+          child: tile(tileIndex),
+        ),
+        Positioned(
+          left: screenWidth - localOffset,
+          top: 0,
+          width: screenWidth,
+          height: screenHeight,
+          child: tile(tileIndex + 1),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final seconds = _elapsed.inMilliseconds / 1000.0;
+
+    final groundOffset = seconds * _groundSpeed;
+    final bgOffset = groundOffset * _bgSpeedFactor;
+
+    return SizedBox.expand(
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: _buildInfiniteLayer(
+              asset: 'assets/fond_lointain.png',
+              screenWidth: size.width,
+              screenHeight: size.height,
+              offset: bgOffset,
+            ),
+          ),
+          Positioned.fill(
+            child: _buildInfiniteLayer(
+              asset: 'assets/sol_proche.png',
+              screenWidth: size.width,
+              screenHeight: size.height,
+              offset: groundOffset,
+            ),
+          ),
+          // --- LE PERSONNAGE AU PREMIER PLAN ---
+          Positioned(
+            bottom: 80, // Ajuste ce chiffre si ses pieds ne touchent plus le sol avec sa nouvelle taille
+            left: (size.width / 2) - 280, // Centre le perso selon sa taille
+            child: AnimatedCharacter(
+              size: 420, 
+              isWalking: widget.isRunning, 
+            ),            
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ==========================================
+// ÉCRAN DU MINUTEUR ACTIF
+// ==========================================
 class ActiveTimerScreen extends StatefulWidget {
   final List<String> plannedRoute;
   final int durationMinutes;
@@ -42,7 +181,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   List<_LegTimeline> _routeMilestones = [];
   bool _isMilestonesReady = false;
 
-  // Gestion des pauses et des arrivées
   final Set<int> _triggeredMilestoneIndexes = {};
   bool _isPaused = false;
   int _pauseRemainingSeconds = 0;
@@ -118,7 +256,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      // Si on est en voyage et hors pause : triche détectée
       if (!_isCompleted && !_hasCheated && !_isPaused) {
         _hasCheated = true;
         _timer?.cancel();
@@ -136,18 +273,15 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
         return;
       }
 
-      // Si retour pendant ou après une pause autorisée
       if (_isPaused && _pauseEndTime != null) {
         final now = DateTime.now();
         final diffSeconds = _pauseEndTime!.difference(now).inSeconds;
 
         if (diffSeconds > 0) {
-          // Pause encore en cours
           setState(() {
             _pauseRemainingSeconds = diffSeconds;
           });
         } else {
-          // Retard : calcul de la pénalité de temps
           final lateSeconds = diffSeconds.abs();
           _endPauseWithPenalty(lateSeconds);
         }
@@ -188,7 +322,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
         if (_remainingSeconds > 0) {
           _remainingSeconds--;
 
-          // Vérification du passage à une destination
           int elapsed = (widget.durationMinutes * 60) - _remainingSeconds;
           for (int i = 0; i < _routeMilestones.length; i++) {
             if (elapsed >= _routeMilestones[i].cumulativeSeconds && !_triggeredMilestoneIndexes.contains(i)) {
@@ -205,7 +338,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     });
   }
 
-  // --- POPUP DE PROPOSITION DE PAUSE À L'ARRIVÉE ---
   void _openArrivalPauseDialog(String cityName) {
     _timer?.cancel();
     const darkBlue = Color(0xFF143063);
@@ -312,15 +444,12 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     _startTimer();
   }
 
-  // Fin de pause avec application de la pénalité de retard
   void _endPauseWithPenalty(int lateSeconds) {
     _pauseTimer?.cancel();
     setState(() {
       _isPaused = false;
       _pauseRemainingSeconds = 0;
       _pauseEndTime = null;
-
-      // Ajoute le temps de retard au chronomètre restant (recul dans le temps)
       _remainingSeconds += lateSeconds;
     });
 
@@ -462,7 +591,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
         }
       }
       if (!isStillTravelling) {
-        // Ambiance camping / bivouac installée
         currentLegTitle = "⛺ Bivouac installé à ${_routeMilestones.last.destination}";
         currentLegIndex = _routeMilestones.length;
       }
@@ -486,22 +614,16 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       child: Scaffold(
         body: Stack(
           children: [
+            // --- COUCHE 1 : Le fond en Parallax (S'arrête si on est en pause) ---
             Positioned.fill(
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage('assets/fond2.png'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              ),
+              child: ParallaxBackground(isRunning: !_isPaused && !_isCompleted),
             ),
+            // Filtre sombre pour garder la lisibilité du texte par-dessus les images
             Positioned.fill(
               child: Container(color: Colors.black.withValues(alpha: 0.15)),
             ),
+
+            // --- COUCHE 2 : L'interface utilisateur ---
             SafeArea(
               child: Center(
                 child: ConstrainedBox(
@@ -512,21 +634,84 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                       children: [
                         Padding(
                           padding: const EdgeInsets.only(top: 8.0),
-                          child: Align(
-                            alignment: Alignment.topLeft,
-                            child: InkWell(
-                              onTap: _showAbandonConfirmationDialog,
-                              borderRadius: BorderRadius.circular(16),
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.3),
+                          // ✨ 1. On utilise un Stack pour centrer le chrono sans bouger le bouton retour
+                          child: Stack(
+                            alignment: Alignment.topCenter,
+                            children: [
+                              // Bouton retour fixé à gauche
+                              Align(
+                                alignment: Alignment.topLeft,
+                                child: InkWell(
+                                  onTap: _showAbandonConfirmationDialog,
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                                    ),
+                                    child: const Icon(Icons.arrow_back_ios_new, color: darkBlue, size: 20),
+                                  ),
                                 ),
-                                child: const Icon(Icons.arrow_back_ios_new, color: darkBlue, size: 20),
                               ),
-                            ),
+                              
+                              // ✨ 2. LE CHRONO AU CENTRE ET PLUS GROS
+                              Align(
+                                alignment: Alignment.topCenter,
+                                // 👈 On ajoute un Padding ici pour le pousser vers le bas
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 40.0), // 👈 Ajuste ce chiffre (15, 20 ou 30) pour le descendre plus ou moins
+                                  child: SizedBox(
+                                    width: 200, 
+                                    height: 200,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: _isPaused ? const Color(0xFF1B2A3D) : const Color(0xFF1E2430),
+                                            border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2.0),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.2),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 200, 
+                                          height: 200,
+                                          child: CircularProgressIndicator(
+                                            value: _isPaused ? null : progress.clamp(0.0, 1.0),
+                                            strokeWidth: 8, 
+                                            backgroundColor: Colors.white.withValues(alpha: 0.2),
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              _isPaused ? Colors.blueAccent : focusOrange,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          _isPaused
+                                              ? _formatLiveTime(_pauseRemainingSeconds).replaceAll(' ', '\n')
+                                              : _formatLiveTime(_remainingSeconds).replaceAll(' ', '\n'),
+                                          style: const TextStyle(
+                                            fontSize: 26, 
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                            height: 1.1,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
 
@@ -543,80 +728,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                           textAlign: TextAlign.center,
                         ),
 
-                        const Spacer(flex: 1),
-
-                        // Cadran central
-                        Center(
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                width: 270,
-                                height: 270,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withValues(alpha: 0.25),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.15),
-                                      blurRadius: 24,
-                                      offset: const Offset(0, 8),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(
-                                width: 246,
-                                height: 246,
-                                child: CircularProgressIndicator(
-                                  value: _isPaused ? null : progress.clamp(0.0, 1.0),
-                                  strokeWidth: 6,
-                                  backgroundColor: Colors.white.withValues(alpha: 0.2),
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    _isPaused ? Colors.blueAccent : focusOrange,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                width: 215,
-                                height: 215,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: _isPaused ? const Color(0xFF1B2A3D) : const Color(0xFF1E2430),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      _isPaused
-                                          ? _formatLiveTime(_pauseRemainingSeconds)
-                                          : _formatLiveTime(_remainingSeconds),
-                                      style: const TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                        letterSpacing: 1.0,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      _isPaused ? 'FIN DE LA PAUSE' : 'TEMPS RESTANT',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 1.5,
-                                        color: Colors.white.withValues(alpha: 0.6),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
+                        // ✨ 3. L'ancien gros cadran a été supprimé, le Spacer prend toute la place pour laisser voir le décor
+                        const Spacer(flex: 5),
 
                         if (_isPaused)
                           ElevatedButton.icon(
@@ -630,8 +743,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                             label: const Text('Reprendre le voyage', style: TextStyle(fontWeight: FontWeight.bold)),
                             onPressed: _endPauseNormal,
                           ),
-
-                        const Spacer(flex: 1),
 
                         // Plan de route
                         ClipRRect(
@@ -688,12 +799,16 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                                     children: [
                                       const Icon(Icons.timer_outlined, color: darkBlue, size: 18),
                                       const SizedBox(width: 6),
-                                      Text('Voyage : ${formatMinutesToHours(travelMinutes)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkBlue)),
+                                      Expanded(
+                                        child: Text('Voyage : ${formatMinutesToHours(travelMinutes)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: darkBlue), overflow: TextOverflow.ellipsis),
+                                      ),
                                       if (restMinutes > 0) ...[
                                         const SizedBox(width: 12),
                                         const Icon(Icons.hotel, color: Color(0xFF6A1B9A), size: 18),
                                         const SizedBox(width: 6),
-                                        Text('Repos : ${formatMinutesToHours(restMinutes)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A))),
+                                        Expanded(
+                                          child: Text('Repos : ${formatMinutesToHours(restMinutes)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A)), overflow: TextOverflow.ellipsis),
+                                        ),
                                       ],
                                     ],
                                   ),
@@ -703,7 +818,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                           ),
                         ),
 
-                        const Spacer(flex: 1),
+                        const SizedBox(height: 16),
 
                         Padding(
                           padding: const EdgeInsets.only(bottom: 24.0),

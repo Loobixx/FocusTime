@@ -114,6 +114,27 @@ flutter:
     - assets/NomCitiesMontagnes/m22.png
     - assets/NomCitiesMontagnes/m23.png
 
+    - assets/sol_proche.png
+    - assets/fond_lointain.png
+
+    - assets/PersonnageAnimation/Nuit/1.png
+    - assets/PersonnageAnimation/Nuit/2.png
+    - assets/PersonnageAnimation/Nuit/3.png
+    - assets/PersonnageAnimation/Nuit/4.png
+    - assets/PersonnageAnimation/Nuit/5.png
+    - assets/PersonnageAnimation/Nuit/6.png
+    - assets/PersonnageAnimation/Nuit/7.png
+    - assets/PersonnageAnimation/Nuit/8.png
+    - assets/PersonnageAnimation/Nuit/9.png
+    - assets/PersonnageAnimation/Nuit/10.png
+    - assets/PersonnageAnimation/Nuit/11.png
+    - assets/PersonnageAnimation/Nuit/12.png
+    - assets/PersonnageAnimation/Nuit/13.png
+    - assets/PersonnageAnimation/Nuit/14.png
+    - assets/PersonnageAnimation/Nuit/15.png
+    - assets/PersonnageAnimation/Nuit/16.png
+
+
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

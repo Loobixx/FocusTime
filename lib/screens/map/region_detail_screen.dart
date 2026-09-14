@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:FocusTime/screens/map/region_cross_data.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import '../../models/city_network.dart';
-import '../active_timer_screen.dart';
+import '../focus_moment/active_timer_screen.dart';
 
 class RegionDetailScreen extends StatefulWidget {
   final String regionName;
@@ -349,23 +349,24 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                               behavior: HitTestBehavior.opaque,
                               onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
                               onTapCancel: () => setState(() => _hoveredCrossId = null),
-                              // ✨ C'est ici qu'on gère l'affichage pour PC et Mobile !
+                              // 1. Un simple clic pour afficher l'image de la ville (surtout utile sur mobile ou pour découvrir)
                               onTap: () {
                                 setState(() {
                                   _hoveredCrossId = null;
-                                  
-                                  if (_isDesktopOrWeb) {
-                                    // Sur PC, cliquer force l'affichage (même si le survol le fait déjà)
-                                    _selectedCrossId = cross.id;
-                                  } else {
-                                    // Sur Mobile, cliquer agit comme un interrupteur (ouvre/ferme)
+                                  if (!_isDesktopOrWeb) {
                                     if (_selectedCrossId == cross.id) {
-                                      _selectedCrossId = null; // Ferme l'image
+                                      _selectedCrossId = null;
                                     } else {
-                                      _selectedCrossId = cross.id; // Ouvre l'image
+                                      _selectedCrossId = cross.id;
                                     }
                                   }
                                 });
+                              },
+                              // 2. ✨ Le double-clic sur PC lance directement le voyage si c'est accessible !
+                              onDoubleTap: () {
+                                if (_isDesktopOrWeb) {
+                                  _navigateToCross(cross);
+                                }
                               },
                               child: SizedBox(
                                 width: clickAreaSize,

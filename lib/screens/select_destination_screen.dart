@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/city_network.dart';
 import '../utils/time_formatter.dart';
-import 'active_timer_screen.dart';
+import 'focus_moment/active_timer_screen.dart';
 
 class SelectDestinationScreen extends StatefulWidget {
   final int selectedDurationMinutes;
