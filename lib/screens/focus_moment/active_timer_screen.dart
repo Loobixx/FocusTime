@@ -186,7 +186,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   final Set<int> _triggeredMilestoneIndexes = {};
   bool _isPaused = false;
   int _pauseRemainingSeconds = 0;
-  int _pauseOvertimeSeconds = 0; // ✨ NOUVEAU : Track le temps de retard
+  int _pauseOvertimeSeconds = 0; 
   DateTime? _pauseEndTime;
   Timer? _pauseTimer;
 
@@ -215,12 +215,10 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
     final userDoc = await userRef.get();
     final statusDoc = await userRef.collection('travel').doc('status').get();
-    final visitedDoc = await userRef.collection('visited_cities').get();
 
     String currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
     String? midRouteDestination = statusDoc.data()?['midRouteDestination'];
     int midRouteProgress = statusDoc.data()?['midRouteProgress'] ?? 0;
-    Set<String> visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
 
     List<_LegTimeline> milestones = [];
     int totalCumulativeSeconds = 0;
@@ -259,7 +257,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       
       // ✨ 1. LE JOUEUR QUITTE PENDANT LA MARCHE = TRICHE 🚫
       if (!_isCompleted && !_hasCheated && !_isPaused) {
-        _hasCheated = true; // Pris la main dans le sac !
+        _hasCheated = true; 
         _timer?.cancel();
 
         await _travelService.recordFailedTrip(
@@ -271,24 +269,13 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       } 
       // ✨ 2. LE JOUEUR QUITTE PENDANT LA PAUSE = AUTORISÉ ✅
       else if (_isPaused) {
-        // On lance la notification pour le prévenir de revenir à la fin de la pause
-        if (Platform.isAndroid) {
-          NotificationService().showLiveTimerNotification(_pauseRemainingSeconds, "Fin de la pause");
-        } else if (Platform.isIOS) {
-          NotificationService().scheduleIOSNotification(_pauseRemainingSeconds, "Fin de la pause");
-        }
+        // Pendant la pause, si on est sur Android, le chrono tourne déjà dans la notif persistante.
+        // Sur iOS, l'alarme de 2 minutes avant la fin a déjà été programmée au démarrage de la pause.
       }
 
     } else if (state == AppLifecycleState.resumed) {
       // ✨ 3. LE JOUEUR REVIENT SUR L'APPLICATION
       
-      // On annule les notifications de pause puisqu'il est de retour
-      if (Platform.isAndroid) {
-        NotificationService().cancelNotification(99); 
-      } else if (Platform.isIOS) {
-        NotificationService().cancelNotification(100); 
-      }
-
       // S'il avait triché, on affiche l'écran de défaite et on arrête tout
       if (_hasCheated) {
         _showLostDialogAndPop();
@@ -305,7 +292,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
             _pauseRemainingSeconds = diffSeconds;
             _pauseOvertimeSeconds = 0;
           } else {
-            // S'il a traîné sur les réseaux, il prend du retard !
             _pauseRemainingSeconds = 0;
             _pauseOvertimeSeconds = diffSeconds.abs();
           }
@@ -367,6 +353,13 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
 
+    // Notifier l'arrivée à l'étape
+    NotificationService().showNotification(
+      id: 1,
+      title: '🔥 Étape atteinte !',
+      body: 'Tu es arrivé à $cityName. Installe ton bivouac !',
+    );
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -396,7 +389,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildPauseOptionButton(dialogContext, '5 min', 1, focusOrange), // ✨ Pour tester, on peut mettre 1 minute au lieu de 5
+                _buildPauseOptionButton(dialogContext, '5 min', 5, focusOrange),
                 _buildPauseOptionButton(dialogContext, '10 min', 10, focusOrange),
                 _buildPauseOptionButton(dialogContext, '15 min', 15, focusOrange),
               ],
@@ -440,13 +433,14 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       _pauseEndTime = DateTime.now().add(Duration(seconds: durationSec));
     });
 
-    // ✨ PROGRAMMER LA NOTIFICATION DE FIN DE PAUSE ICI
+    // ✨ GESTION DES NOTIFICATIONS DE PAUSE SELON L'OS
     if (Platform.isAndroid) {
-      // Sur Android, on peut programmer un rappel à la fin exacte des secondes
-      // (Tu peux adapter showLiveTimerNotification ou créer un rappel simple)
+      NotificationService().showPauseChronometer(durationSec);
     } else if (Platform.isIOS) {
-      // Sur iOS, on prévient 1 minute avant (ou dès que le temps est court)
-      NotificationService().scheduleIOSNotification(durationSec, "Fin de la pause au feu de camp");
+      NotificationService().schedulePauseEndNotification(
+        durationSec, 
+        "Ta pause au feu de camp se termine dans 2 minutes, prépare-toi à repartir !"
+      );
     }
 
     _pauseTimer?.cancel();
@@ -462,12 +456,11 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     });
   }
 
-void _endPauseNormal() {
+  void _endPauseNormal() {
     _pauseTimer?.cancel();
     
-    // ✨ Annuler les notifications en attente
-    NotificationService().cancelNotification(99);
-    NotificationService().cancelNotification(100);
+    // ✨ Annuler les notifications de pause en cours (ID 200)
+    NotificationService().cancelNotification(200);
 
     int penalty = _pauseOvertimeSeconds;
 
@@ -484,7 +477,6 @@ void _endPauseNormal() {
 
     _startTimer();
 
-    // Notification si perte de temps
     if (penalty > 0) {
       int lateMinutes = (penalty / 60).ceil();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -500,6 +492,7 @@ void _endPauseNormal() {
   Future<void> _cancelTrip() async {
     _timer?.cancel();
     _pauseTimer?.cancel();
+    NotificationService().cancelNotification(200);
 
     await _travelService.recordFailedTrip(
       durationMinutes: widget.durationMinutes,
@@ -546,6 +539,13 @@ void _endPauseNormal() {
 
   Future<void> _finishTrip() async {
     setState(() => _isCompleted = true);
+    NotificationService().cancelNotification(200);
+
+    NotificationService().showNotification(
+      id: 3,
+      title: '🎉 Fin de session !',
+      body: 'Ton trajet et ton temps de focus ont bien été enregistrés.',
+    );
 
     await _travelService.processTripResults(
       totalFuelMinutes: widget.durationMinutes,
@@ -638,10 +638,11 @@ void _endPauseNormal() {
         ? (_remainingSeconds / (widget.durationMinutes * 60))
         : 0.0;
 
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
         _showAbandonConfirmationDialog();
-        return false;
       },
       child: Scaffold(
         body: Stack(
@@ -696,11 +697,9 @@ void _endPauseNormal() {
                                         Container(
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
-                                            // ✨ Le fond devient rouge clair en cas de dépassement
                                             color: _isPaused 
                                                 ? (_pauseOvertimeSeconds > 0 ? Colors.red.withValues(alpha: 0.15) : const Color(0xFF1B2A3D)) 
                                                 : const Color(0xFF1E2430),
-                                            // ✨ La bordure devient rouge
                                             border: Border.all(
                                                 color: _pauseOvertimeSeconds > 0 ? Colors.redAccent : Colors.white.withValues(alpha: 0.5), 
                                                 width: 2.0),
@@ -720,7 +719,6 @@ void _endPauseNormal() {
                                             value: _isPaused ? null : progress.clamp(0.0, 1.0),
                                             strokeWidth: 8, 
                                             backgroundColor: Colors.white.withValues(alpha: 0.2),
-                                            // ✨ La jauge de chargement tourne en rouge !
                                             valueColor: AlwaysStoppedAnimation<Color>(
                                               _isPaused 
                                                   ? (_pauseOvertimeSeconds > 0 ? Colors.redAccent : Colors.blueAccent) 
@@ -729,7 +727,6 @@ void _endPauseNormal() {
                                           ),
                                         ),
                                         Text(
-                                          // ✨ On affiche le retard avec un petit "+" devant
                                           _isPaused
                                               ? (_pauseOvertimeSeconds > 0 
                                                   ? "+${_formatLiveTime(_pauseOvertimeSeconds)}".replaceAll(' ', '\n')
@@ -738,7 +735,6 @@ void _endPauseNormal() {
                                           style: TextStyle(
                                             fontSize: 26, 
                                             fontWeight: FontWeight.bold,
-                                            // ✨ Le texte passe en rouge
                                             color: _pauseOvertimeSeconds > 0 ? Colors.redAccent : Colors.white,
                                             height: 1.1,
                                           ),
@@ -769,7 +765,6 @@ void _endPauseNormal() {
                             ],
                           ),
                           child: Text(
-                            // ✨ On adapte le titre si on est en retard !
                             _isPaused 
                                 ? (_pauseOvertimeSeconds > 0 ? '⚠️ Pause dépassée !' : '☕ Bivouac au feu de camp') 
                                 : currentLegTitle,
@@ -882,7 +877,6 @@ void _endPauseNormal() {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              // ✨ Avertissement rouge beaucoup plus visible si on traîne
                               _isPaused
                                   ? (_pauseOvertimeSeconds > 0 
                                       ? '🚨 Reviens vite à la marche, tu perds du temps !' 
