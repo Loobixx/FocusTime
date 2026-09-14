@@ -132,8 +132,8 @@ class _ParallaxBackgroundState extends State<ParallaxBackground>
           ),
           // --- LE PERSONNAGE AU PREMIER PLAN ---
           Positioned(
-            bottom: 80, // Ajuste ce chiffre si ses pieds ne touchent plus le sol avec sa nouvelle taille
-            left: (size.width / 2) - 280, // Centre le perso selon sa taille
+            bottom: 80, 
+            left: (size.width / 2) - 280, 
             child: AnimatedCharacter(
               size: 420, 
               isWalking: widget.isRunning, 
@@ -184,6 +184,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   final Set<int> _triggeredMilestoneIndexes = {};
   bool _isPaused = false;
   int _pauseRemainingSeconds = 0;
+  int _pauseOvertimeSeconds = 0; // ✨ NOUVEAU : Track le temps de retard
   DateTime? _pauseEndTime;
   Timer? _pauseTimer;
 
@@ -224,9 +225,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
     for (String city in widget.plannedRoute) {
       int fullTime = CityNetwork.getAvailableDestinations(currentCity)[city] ?? 0;
-      if (visitedCities.contains(city)) {
-        fullTime = fullTime ~/ 5;
-      }
 
       int effectiveMinutes;
       if (city == midRouteDestination) {
@@ -277,14 +275,17 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
         final now = DateTime.now();
         final diffSeconds = _pauseEndTime!.difference(now).inSeconds;
 
-        if (diffSeconds > 0) {
-          setState(() {
+        setState(() {
+          if (diffSeconds > 0) {
+            // S'il reste du temps de pause
             _pauseRemainingSeconds = diffSeconds;
-          });
-        } else {
-          final lateSeconds = diffSeconds.abs();
-          _endPauseWithPenalty(lateSeconds);
-        }
+            _pauseOvertimeSeconds = 0;
+          } else {
+            // ✨ S'il a dépassé l'heure pendant que l'app était en arrière-plan
+            _pauseRemainingSeconds = 0;
+            _pauseOvertimeSeconds = diffSeconds.abs();
+          }
+        });
       }
     }
   }
@@ -339,7 +340,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   }
 
   void _openArrivalPauseDialog(String cityName) {
-    _timer?.cancel();
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
 
@@ -356,10 +356,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
             ),
             IconButton(
               icon: const Icon(Icons.close, color: Colors.grey),
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                _startTimer();
-              },
+              onPressed: () => Navigator.pop(dialogContext),
             ),
           ],
         ),
@@ -375,8 +372,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildPauseOptionButton(dialogContext, '0 min', 0, focusOrange),
-                _buildPauseOptionButton(dialogContext, '5 min', 5, focusOrange),
+                _buildPauseOptionButton(dialogContext, '5 min', 1, focusOrange),
                 _buildPauseOptionButton(dialogContext, '10 min', 10, focusOrange),
                 _buildPauseOptionButton(dialogContext, '15 min', 15, focusOrange),
               ],
@@ -391,11 +387,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     return InkWell(
       onTap: () {
         Navigator.pop(dialogCtx);
-        if (minutes == 0) {
-          _startTimer();
-        } else {
-          _startPauseTimer(minutes);
-        }
+        _startPauseTimer(minutes); 
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -414,10 +406,13 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   }
 
   void _startPauseTimer(int minutes) {
+    _timer?.cancel(); 
+    
     final durationSec = minutes * 60;
     setState(() {
       _isPaused = true;
       _pauseRemainingSeconds = durationSec;
+      _pauseOvertimeSeconds = 0; // ✨ On réinitialise l'overtime
       _pauseEndTime = DateTime.now().add(Duration(seconds: durationSec));
     });
 
@@ -428,7 +423,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
         if (_pauseRemainingSeconds > 0) {
           _pauseRemainingSeconds--;
         } else {
-          _endPauseNormal();
+          // ✨ CHRONO INVERSÉ : Au lieu de s'arrêter, le temps commence à s'accumuler en retard !
+          _pauseOvertimeSeconds++;
         }
       });
     });
@@ -436,33 +432,35 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
   void _endPauseNormal() {
     _pauseTimer?.cancel();
+    
+    // ✨ On stocke le retard accumulé
+    int penalty = _pauseOvertimeSeconds;
+
     setState(() {
       _isPaused = false;
       _pauseRemainingSeconds = 0;
+      _pauseOvertimeSeconds = 0;
       _pauseEndTime = null;
-    });
-    _startTimer();
-  }
-
-  void _endPauseWithPenalty(int lateSeconds) {
-    _pauseTimer?.cancel();
-    setState(() {
-      _isPaused = false;
-      _pauseRemainingSeconds = 0;
-      _pauseEndTime = null;
-      _remainingSeconds += lateSeconds;
+      
+      // ✨ La pénalité s'ajoute au temps de travail
+      if (penalty > 0) {
+        _remainingSeconds += penalty; 
+      }
     });
 
     _startTimer();
 
-    int lateMinutes = (lateSeconds / 60).ceil();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('⏳ Tu as dépassé ta pause de $lateMinutes min. Ce temps a été rajouté à ton voyage !'),
-        backgroundColor: Colors.redAccent,
-        duration: const Duration(seconds: 5),
-      ),
-    );
+    // Notification si perte de temps
+    if (penalty > 0) {
+      int lateMinutes = (penalty / 60).ceil();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('⏳ Tu as traîné $lateMinutes min... Ce temps a été rajouté à ton voyage en pénalité !'),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
   }
 
   Future<void> _cancelTrip() async {
@@ -614,16 +612,13 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       child: Scaffold(
         body: Stack(
           children: [
-            // --- COUCHE 1 : Le fond en Parallax (S'arrête si on est en pause) ---
             Positioned.fill(
               child: ParallaxBackground(isRunning: !_isPaused && !_isCompleted),
             ),
-            // Filtre sombre pour garder la lisibilité du texte par-dessus les images
             Positioned.fill(
               child: Container(color: Colors.black.withValues(alpha: 0.15)),
             ),
 
-            // --- COUCHE 2 : L'interface utilisateur ---
             SafeArea(
               child: Center(
                 child: ConstrainedBox(
@@ -634,11 +629,9 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                       children: [
                         Padding(
                           padding: const EdgeInsets.only(top: 8.0),
-                          // ✨ 1. On utilise un Stack pour centrer le chrono sans bouger le bouton retour
                           child: Stack(
                             alignment: Alignment.topCenter,
                             children: [
-                              // Bouton retour fixé à gauche
                               Align(
                                 alignment: Alignment.topLeft,
                                 child: InkWell(
@@ -656,12 +649,10 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                                 ),
                               ),
                               
-                              // ✨ 2. LE CHRONO AU CENTRE ET PLUS GROS
                               Align(
                                 alignment: Alignment.topCenter,
-                                // 👈 On ajoute un Padding ici pour le pousser vers le bas
                                 child: Padding(
-                                  padding: const EdgeInsets.only(top: 40.0), // 👈 Ajuste ce chiffre (15, 20 ou 30) pour le descendre plus ou moins
+                                  padding: const EdgeInsets.only(top: 40.0), 
                                   child: SizedBox(
                                     width: 200, 
                                     height: 200,
@@ -671,11 +662,17 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                                         Container(
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
-                                            color: _isPaused ? const Color(0xFF1B2A3D) : const Color(0xFF1E2430),
-                                            border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2.0),
+                                            // ✨ Le fond devient rouge clair en cas de dépassement
+                                            color: _isPaused 
+                                                ? (_pauseOvertimeSeconds > 0 ? Colors.red.withValues(alpha: 0.15) : const Color(0xFF1B2A3D)) 
+                                                : const Color(0xFF1E2430),
+                                            // ✨ La bordure devient rouge
+                                            border: Border.all(
+                                                color: _pauseOvertimeSeconds > 0 ? Colors.redAccent : Colors.white.withValues(alpha: 0.5), 
+                                                width: 2.0),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.2),
+                                                color: _pauseOvertimeSeconds > 0 ? Colors.redAccent.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.2),
                                                 blurRadius: 8,
                                                 offset: const Offset(0, 4),
                                               ),
@@ -689,19 +686,26 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                                             value: _isPaused ? null : progress.clamp(0.0, 1.0),
                                             strokeWidth: 8, 
                                             backgroundColor: Colors.white.withValues(alpha: 0.2),
+                                            // ✨ La jauge de chargement tourne en rouge !
                                             valueColor: AlwaysStoppedAnimation<Color>(
-                                              _isPaused ? Colors.blueAccent : focusOrange,
+                                              _isPaused 
+                                                  ? (_pauseOvertimeSeconds > 0 ? Colors.redAccent : Colors.blueAccent) 
+                                                  : focusOrange,
                                             ),
                                           ),
                                         ),
                                         Text(
+                                          // ✨ On affiche le retard avec un petit "+" devant
                                           _isPaused
-                                              ? _formatLiveTime(_pauseRemainingSeconds).replaceAll(' ', '\n')
+                                              ? (_pauseOvertimeSeconds > 0 
+                                                  ? "+${_formatLiveTime(_pauseOvertimeSeconds)}".replaceAll(' ', '\n')
+                                                  : _formatLiveTime(_pauseRemainingSeconds).replaceAll(' ', '\n'))
                                               : _formatLiveTime(_remainingSeconds).replaceAll(' ', '\n'),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 26, 
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.white,
+                                            // ✨ Le texte passe en rouge
+                                            color: _pauseOvertimeSeconds > 0 ? Colors.redAccent : Colors.white,
                                             height: 1.1,
                                           ),
                                           textAlign: TextAlign.center,
@@ -717,18 +721,33 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
                         const Spacer(flex: 1),
 
-                        Text(
-                          _isPaused ? '☕ Pause autorisée' : currentLegTitle,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: darkBlue,
-                            shadows: [Shadow(color: Colors.white70, blurRadius: 10)],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.75), 
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          textAlign: TextAlign.center,
+                          child: Text(
+                            // ✨ On adapte le titre si on est en retard !
+                            _isPaused 
+                                ? (_pauseOvertimeSeconds > 0 ? '⚠️ Pause dépassée !' : '☕ Bivouac au feu de camp') 
+                                : currentLegTitle,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: darkBlue, 
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
 
-                        // ✨ 3. L'ancien gros cadran a été supprimé, le Spacer prend toute la place pour laisser voir le décor
                         const Spacer(flex: 5),
 
                         if (_isPaused)
@@ -744,29 +763,27 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                             onPressed: _endPauseNormal,
                           ),
 
-                        // Plan de route plus compact
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16), 
                           child: BackdropFilter(
                             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                             child: Container(
                               width: double.infinity,
-                              // 👈 1. On réduit les marges internes (verticales surtout)
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), 
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.8),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(16),
                                 border: Border.all(color: Colors.white, width: 1.5),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min, // 👈 2. Force la colonne à ne prendre que la place nécessaire
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text('Plan de route :', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkBlue)),
-                                  const SizedBox(height: 6), // 👈 Espace réduit
+                                  const Text('Plan de route :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: darkBlue)), 
+                                  const SizedBox(height: 4), 
                                   Wrap(
-                                    spacing: 8,
-                                    runSpacing: 6,
+                                    spacing: 6, 
+                                    runSpacing: 4,
                                     children: widget.plannedRoute.asMap().entries.map((entry) {
                                       int idx = entry.key;
                                       String city = entry.value;
@@ -779,38 +796,37 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                                           : (idx == currentLegIndex ? Icons.navigation : Icons.radio_button_unchecked);
 
                                       return Container(
-                                        // 👈 3. Les puces (chips) sont légèrement affinées
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), 
                                         decoration: BoxDecoration(
                                           color: chipColor.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(color: chipColor, width: 1.2),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: chipColor, width: 1.0),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(chipIcon, size: 13, color: chipColor),
-                                            const SizedBox(width: 4),
-                                            Text(city, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: chipColor)),
+                                            Icon(chipIcon, size: 11, color: chipColor), 
+                                            const SizedBox(width: 3),
+                                            Text(city, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: chipColor)), 
                                           ],
                                         ),
                                       );
                                     }).toList(),
                                   ),
-                                  const Divider(height: 12), // 👈 4. Ligne de séparation plus resserrée
+                                  const Divider(height: 8, thickness: 0.5), 
                                   Row(
                                     children: [
-                                      const Icon(Icons.timer_outlined, color: darkBlue, size: 16),
+                                      const Icon(Icons.timer_outlined, color: darkBlue, size: 14), 
                                       const SizedBox(width: 4),
                                       Expanded(
-                                        child: Text('Voyage : ${formatMinutesToHours(travelMinutes)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkBlue), overflow: TextOverflow.ellipsis),
+                                        child: Text('Voyage : ${formatMinutesToHours(travelMinutes)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: darkBlue), overflow: TextOverflow.ellipsis),
                                       ),
                                       if (restMinutes > 0) ...[
-                                        const SizedBox(width: 8),
-                                        const Icon(Icons.hotel, color: Color(0xFF6A1B9A), size: 16),
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.hotel, color: Color(0xFF6A1B9A), size: 14),
                                         const SizedBox(width: 4),
                                         Expanded(
-                                          child: Text('Repos : ${formatMinutesToHours(restMinutes)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A)), overflow: TextOverflow.ellipsis),
+                                          child: Text('Repos : ${formatMinutesToHours(restMinutes)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A)), overflow: TextOverflow.ellipsis),
                                         ),
                                       ],
                                     ],
@@ -825,15 +841,27 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
                         Padding(
                           padding: const EdgeInsets.only(bottom: 24.0),
-                          child: Text(
-                            _isPaused
-                                ? '🔥 En train de faire une pause au feu de camp...'
-                                : (_isCompleted ? 'Enregistrement de l\'étape...' : '🥾 Garde le rythme de marche, ne quitte pas l\'app !'),
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: _isPaused ? Colors.blue.shade900 : Colors.redAccent,
-                              shadows: const [Shadow(color: Colors.white, blurRadius: 8)],
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65), 
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              // ✨ Avertissement rouge beaucoup plus visible si on traîne
+                              _isPaused
+                                  ? (_pauseOvertimeSeconds > 0 
+                                      ? '🚨 Reviens vite à la marche, tu perds du temps !' 
+                                      : '🔥 En train de faire une pause au feu de camp...')
+                                  : (_isCompleted ? 'Enregistrement de l\'étape...' : '🥾 Garde le rythme de marche, ne quitte pas l\'app !'),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: _isPaused 
+                                    ? (_pauseOvertimeSeconds > 0 ? Colors.redAccent : Colors.lightBlueAccent) 
+                                    : const Color(0xFFFF6B6B), 
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ),
