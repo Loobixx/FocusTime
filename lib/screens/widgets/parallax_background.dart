@@ -127,7 +127,7 @@ class _ParallaxBackgroundState extends State<ParallaxBackground>
             child: AnimatedCharacter(
               size: 420,
               isWalking: widget.isRunning,
-              frames: List.generate(16, (i) => 'assets/PersonnageAnimation/Nuit/${i + 1}.png'),
+              frames: List.generate(16, (i) => 'assets/PersonnageAnimation/Nuit/Marche/${i + 1}.png'),
             ),     
           ),
         ],
