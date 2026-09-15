@@ -28,6 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  permission_handler: ^11.3.1
   flutter:
     sdk: flutter
   firebase_core: ^4.14.0     # Pour initialiser Firebase
@@ -119,22 +120,46 @@ flutter:
     - assets/sol_proche.png
     - assets/fond_lointain.png
 
-    - assets/PersonnageAnimation/Nuit/1.png
-    - assets/PersonnageAnimation/Nuit/2.png
-    - assets/PersonnageAnimation/Nuit/3.png
-    - assets/PersonnageAnimation/Nuit/4.png
-    - assets/PersonnageAnimation/Nuit/5.png
-    - assets/PersonnageAnimation/Nuit/6.png
-    - assets/PersonnageAnimation/Nuit/7.png
-    - assets/PersonnageAnimation/Nuit/8.png
-    - assets/PersonnageAnimation/Nuit/9.png
-    - assets/PersonnageAnimation/Nuit/10.png
-    - assets/PersonnageAnimation/Nuit/11.png
-    - assets/PersonnageAnimation/Nuit/12.png
-    - assets/PersonnageAnimation/Nuit/13.png
-    - assets/PersonnageAnimation/Nuit/14.png
-    - assets/PersonnageAnimation/Nuit/15.png
-    - assets/PersonnageAnimation/Nuit/16.png
+    - assets/PersonnageAnimation/Nuit/Marche/1.png
+    - assets/PersonnageAnimation/Nuit/Marche/2.png
+    - assets/PersonnageAnimation/Nuit/Marche/3.png
+    - assets/PersonnageAnimation/Nuit/Marche/4.png
+    - assets/PersonnageAnimation/Nuit/Marche/5.png
+    - assets/PersonnageAnimation/Nuit/Marche/6.png
+    - assets/PersonnageAnimation/Nuit/Marche/7.png
+    - assets/PersonnageAnimation/Nuit/Marche/8.png
+    - assets/PersonnageAnimation/Nuit/Marche/9.png
+    - assets/PersonnageAnimation/Nuit/Marche/10.png
+    - assets/PersonnageAnimation/Nuit/Marche/11.png
+    - assets/PersonnageAnimation/Nuit/Marche/12.png
+    - assets/PersonnageAnimation/Nuit/Marche/13.png
+    - assets/PersonnageAnimation/Nuit/Marche/14.png
+    - assets/PersonnageAnimation/Nuit/Marche/15.png
+    - assets/PersonnageAnimation/Nuit/Marche/16.png
+
+    - assets/PersonnageAnimation/Nuit/Arret/1.png
+    - assets/PersonnageAnimation/Nuit/Arret/2.png
+    - assets/PersonnageAnimation/Nuit/Arret/3.png
+    - assets/PersonnageAnimation/Nuit/Arret/4.png
+    - assets/PersonnageAnimation/Nuit/Arret/5.png
+    - assets/PersonnageAnimation/Nuit/Arret/6.png
+    - assets/PersonnageAnimation/Nuit/Arret/7.png
+    - assets/PersonnageAnimation/Nuit/Arret/8.png
+    - assets/PersonnageAnimation/Nuit/Arret/9.png
+    - assets/PersonnageAnimation/Nuit/Arret/10.png
+    - assets/PersonnageAnimation/Nuit/Arret/11.png
+    - assets/PersonnageAnimation/Nuit/Arret/12.png
+    - assets/PersonnageAnimation/Nuit/Arret/13.png
+    - assets/PersonnageAnimation/Nuit/Arret/14.png
+    - assets/PersonnageAnimation/Nuit/Arret/15.png
+    - assets/PersonnageAnimation/Nuit/Arret/16.png
+    - assets/PersonnageAnimation/Nuit/Arret/17.png
+    - assets/PersonnageAnimation/Nuit/Arret/18.png
+    - assets/PersonnageAnimation/Nuit/Arret/19.png
+    - assets/PersonnageAnimation/Nuit/Arret/20.png
+    - assets/PersonnageAnimation/Nuit/Arret/21.png
+
+
 
 
   #   - images/a_dot_burr.jpeg

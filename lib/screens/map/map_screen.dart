@@ -1,11 +1,14 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:FocusTime/screens/focus_moment/animated_character.dart';
+import 'package:FocusTime/screens/map/player_marker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:FocusTime/screens/map/map_region_data.dart';
 import 'package:FocusTime/screens/map/region_detail_screen.dart';
+import 'package:FocusTime/screens/map/region_cross_data.dart';
 
 class MapScreen extends StatefulWidget {
   final int selectedDurationMinutes;
@@ -18,6 +21,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   String? _selectedRegionId;
   String? _hoveredRegionId;
+  String? _currentRegionId;
 
   late final TransformationController _transformationController;
   bool _viewInitialized = false;
@@ -26,9 +30,8 @@ class _MapScreenState extends State<MapScreen> {
   static const double baseWidth = 1023.0;
   static const double baseHeight = 1537.0;
 
-  // Facteurs de zoom par rapport au niveau "fit"
   static const double _zoomInFactor = 3.0;
-  static const double _zoomOutFactor = 1.0; // dézoome 2x plus loin que le "fit" initial
+  static const double _zoomOutFactor = 1.0;
 
   final List<RegionShape> _regions = MapRegionsData.regions;
 
@@ -36,18 +39,37 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _transformationController = TransformationController();
-    _loadVisitedCities();
+    _loadUserRegion();
   }
 
-  Future<void> _loadVisitedCities() async {
+  Future<void> _loadUserRegion() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    await FirebaseFirestore.instance
+    final userDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
-        .collection('visited_cities')
         .get();
+
+    String? currentCity = userDoc.data()?['currentCity'] as String?;
+    if (currentCity == null) return;
+
+    String? foundRegion;
+    for (var entry in RegionCrossesData.crossesByRegion.entries) {
+      for (var cross in entry.value) {
+        if (cross.name == currentCity) {
+          foundRegion = entry.key;
+          break;
+        }
+      }
+      if (foundRegion != null) break;
+    }
+
+    if (mounted) {
+      setState(() {
+        _currentRegionId = foundRegion;
+      });
+    }
   }
 
   @override
@@ -106,14 +128,12 @@ class _MapScreenState extends State<MapScreen> {
     return _regions.firstWhere((r) => r.id == id).name;
   }
 
-  // Calcule un fit "dézoomé" volontairement (on divise par un facteur pour voir plus de contexte au départ)
   void _setupInitialView(Size screenSize) {
     final double fitScale = math.max(
       screenSize.width / baseWidth,
       screenSize.height / baseHeight,
     );
     
-    // On part volontairement plus dézoomé que le "fit" strict
     _fitScale = fitScale * 1;
 
     final double scaledWidth = baseWidth * _fitScale;
@@ -126,15 +146,24 @@ class _MapScreenState extends State<MapScreen> {
       ..scale(_fitScale);
   }
 
-  void _resetZoom(Size screenSize) {
-    setState(() {
-      _setupInitialView(screenSize);
-    });
+  // ✨ Coordonnées approximatives au centre de chaque région sur la map globale
+  Offset? _getRegionCenter(String? regionId) {
+    switch (regionId) {
+      case 'desert': return const Offset(260, 480);
+      case 'lac': return const Offset(310, 720);
+      case 'montagnes': return const Offset(550, 900);
+      case 'nuit': return const Offset(710, 700);
+      case 'nuages': return const Offset(760, 290);
+      default: return null;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
+    const focusOrange = Color(0xFFFF8C00);
+
+    final playerPosition = _getRegionCenter(_currentRegionId);
 
     return Scaffold(
       backgroundColor: const Color(0xFF1E1E1E),
@@ -199,6 +228,21 @@ class _MapScreenState extends State<MapScreen> {
                                 hoveredRegionId: _hoveredRegionId,
                               ),
                             ),
+
+                            // ✨ Joli marqueur élégant pour indiquer la position du joueur
+if (playerPosition != null)
+  Positioned(
+    left: playerPosition.dx - 25,
+    top: playerPosition.dy - 50,
+    child: IgnorePointer(
+      child: AnimatedCharacter(
+  size: 300,
+  isWalking: true, // true pour lancer le cycle en boucle de TON animation idle
+  frames: List.generate(21, (i) => 'assets/PersonnageAnimation/Nuit/Arret/${i + 1}.png'),
+  frameDuration: const Duration(milliseconds: 2000), // ajuste selon le nombre de frames
+),
+    ),
+  ),
                           ],
                         ),
                       ),
@@ -234,42 +278,6 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
-          ),
-
-          // Bouton reset zoom
-          Builder(
-            builder: (context) {
-              return SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Align(
-                    alignment: Alignment.bottomRight,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.zoom_out_map, color: darkBlue),
-                            onPressed: () {
-                              final RenderBox? box = context.findRenderObject() as RenderBox?;
-                              if (box != null) {
-                                _resetZoom(box.size);
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
           ),
 
           // Label
@@ -320,6 +328,7 @@ class MapPainter extends CustomPainter {
       final bool isHovered = region.id == hoveredRegionId;
       final bool isSelected = region.id == selectedRegionId;
 
+      // On garde uniquement l'effet discret quand on survole ou sélectionne une région pour l'explorer
       if (isHovered || isSelected) {
         final highlightFill = Paint()
           ..color = Colors.white.withValues(alpha: isSelected ? 0.35 : 0.22)

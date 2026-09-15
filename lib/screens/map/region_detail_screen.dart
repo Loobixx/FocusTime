@@ -152,13 +152,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
       ..scale(fitScale);
   }
 
-  void _resetZoom(Size screenSize) {
-    setState(() {
-      _setupInitialView(screenSize);
-      _selectedCrossId = null; // On cache l'image si on dézoome
-    });
-  }
-
   bool get _hasFocusPlanned => widget.selectedDurationMinutes > 0;
 
   ShortestPathResult? _routeFor(RegionCross cross) => _routes[cross.name];
@@ -455,28 +448,43 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                             ),
                           ),
 
-                          // Bouton reset zoom
+                          // ✨ BOUTON "Y ALLER !" ET RESET ZOOM EN BAS À DROITE
                           SafeArea(
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Align(
                                 alignment: Alignment.bottomRight,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(30),
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.4),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // 🚀 Le bouton "Y aller !" s'affiche UNIQUEMENT si un focus est planifié
+                                    if (_hasFocusPlanned) ...[
+                                      Builder(
+                                        builder: (context) {
+                                          final selectedCross = regionCrosses.where((c) => c.id == _selectedCrossId).firstOrNull;
+                                          final bool canGo = selectedCross != null && _isReachable(selectedCross);
+
+                                          return AnimatedOpacity(
+                                            opacity: canGo ? 1.0 : 0.5, // Grisé visuellement tant qu'on clique pas sur une ville accessible
+                                            duration: const Duration(milliseconds: 200),
+                                            child: ElevatedButton.icon(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: canGo ? const Color(0xFFFF8C00) : Colors.grey,
+                                                foregroundColor: Colors.white,
+                                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                                elevation: canGo ? 6 : 0,
+                                              ),
+                                              icon: const Icon(Icons.navigation, size: 18),
+                                              label: const Text('Y aller !', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                              onPressed: canGo ? () => _navigateToCross(selectedCross) : null,
+                                            ),
+                                          );
+                                        },
                                       ),
-                                      child: IconButton(
-                                        icon: const Icon(Icons.zoom_out_map, color: darkBlue),
-                                        onPressed: () => _resetZoom(screenSize),
-                                      ),
-                                    ),
-                                  ),
+                                      const SizedBox(width: 12),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ),

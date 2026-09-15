@@ -26,7 +26,7 @@ class _FocusScreenState extends State<FocusScreen> {
     HapticFeedback.lightImpact();
     setState(() {
       _focusMinutes -= minutesToRemove;
-      if (_focusMinutes < 30) _focusMinutes = 1; // Minimum 30 min
+      if (_focusMinutes < 30) _focusMinutes = 2; // Minimum 30 min
     });
   }
 

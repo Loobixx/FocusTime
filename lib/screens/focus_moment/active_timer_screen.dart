@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:ui';
-import 'package:FocusTime/screens/focus_moment/animated_character.dart';
 import 'package:FocusTime/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,146 +9,12 @@ import '../../models/city_network.dart';
 import '../../services/travel_service.dart';
 import '../../utils/time_formatter.dart';
 import '../home_screen.dart';
-import 'package:flutter/scheduler.dart';
 import 'dart:io' show Platform;
 
-class ParallaxBackground extends StatefulWidget {
-  final bool isRunning;
+import '../widgets/parallax_background.dart';
+import 'active_timer_dialogs.dart';
 
-  const ParallaxBackground({super.key, required this.isRunning});
 
-  @override
-  State<ParallaxBackground> createState() => _ParallaxBackgroundState();
-}
-
-class _ParallaxBackgroundState extends State<ParallaxBackground>
-    with SingleTickerProviderStateMixin {
-  late final Ticker _ticker;
-  Duration _elapsed = Duration.zero;
-  Duration _lastTick = Duration.zero;
-  bool _isRunning = false;
-
-  static const double _groundSpeed = 60.0; // px/seconde
-  static const double _bgSpeedFactor = 1 / 3;
-
-  @override
-  void initState() {
-    super.initState();
-    _isRunning = widget.isRunning;
-    _ticker = createTicker(_onTick)..start();
-  }
-
-  void _onTick(Duration elapsed) {
-    final delta = elapsed - _lastTick;
-    _lastTick = elapsed;
-    if (_isRunning) {
-      setState(() => _elapsed += delta);
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant ParallaxBackground oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _isRunning = widget.isRunning;
-  }
-
-  @override
-  void dispose() {
-    _ticker.dispose();
-    super.dispose();
-  }
-
-  Widget _buildInfiniteLayer({
-    required String asset,
-    required double screenWidth,
-    required double screenHeight,
-    required double offset,
-  }) {
-    final tileIndex = (offset / screenWidth).floor();
-    final localOffset = offset - tileIndex * screenWidth;
-
-    Widget tile(int index) {
-      Widget img = Image.asset(
-        asset,
-        fit: BoxFit.cover,
-        width: screenWidth,
-        height: screenHeight,
-      );
-      if (index.isOdd) {
-        img = Transform(
-          alignment: Alignment.center,
-          transform: Matrix4.diagonal3Values(-1, 1, 1),
-          child: img,
-        );
-      }
-      return img;
-    }
-
-    return Stack(
-      children: [
-        Positioned(
-          left: -localOffset,
-          top: 0,
-          width: screenWidth,
-          height: screenHeight,
-          child: tile(tileIndex),
-        ),
-        Positioned(
-          left: screenWidth - localOffset,
-          top: 0,
-          width: screenWidth,
-          height: screenHeight,
-          child: tile(tileIndex + 1),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final seconds = _elapsed.inMilliseconds / 1000.0;
-
-    final groundOffset = seconds * _groundSpeed;
-    final bgOffset = groundOffset * _bgSpeedFactor;
-
-    return SizedBox.expand(
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: _buildInfiniteLayer(
-              asset: 'assets/fond_lointain.png',
-              screenWidth: size.width,
-              screenHeight: size.height,
-              offset: bgOffset,
-            ),
-          ),
-          Positioned.fill(
-            child: _buildInfiniteLayer(
-              asset: 'assets/sol_proche.png',
-              screenWidth: size.width,
-              screenHeight: size.height,
-              offset: groundOffset,
-            ),
-          ),
-          // --- LE PERSONNAGE AU PREMIER PLAN ---
-          Positioned(
-            bottom: 80, 
-            left: (size.width / 2) - 280, 
-            child: AnimatedCharacter(
-              size: 420, 
-              isWalking: widget.isRunning, 
-            ),            
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ==========================================
-// ÉCRAN DU MINUTEUR ACTIF
-// ==========================================
 class ActiveTimerScreen extends StatefulWidget {
   final List<String> plannedRoute;
   final int durationMinutes;
@@ -189,6 +54,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   int _pauseOvertimeSeconds = 0; 
   DateTime? _pauseEndTime;
   Timer? _pauseTimer;
+
+  bool _isDialogActive = false;
 
   @override
   void initState() {
@@ -254,8 +121,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      
-      // ✨ 1. LE JOUEUR QUITTE PENDANT LA MARCHE = TRICHE 🚫
       if (!_isCompleted && !_hasCheated && !_isPaused) {
         _hasCheated = true; 
         _timer?.cancel();
@@ -267,22 +132,18 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
         await _travelService.setFocusActive(false);
       } 
-      // ✨ 2. LE JOUEUR QUITTE PENDANT LA PAUSE = AUTORISÉ ✅
-      else if (_isPaused) {
-        // Pendant la pause, si on est sur Android, le chrono tourne déjà dans la notif persistante.
-        // Sur iOS, l'alarme de 2 minutes avant la fin a déjà été programmée au démarrage de la pause.
-      }
-
     } else if (state == AppLifecycleState.resumed) {
-      // ✨ 3. LE JOUEUR REVIENT SUR L'APPLICATION
-      
-      // S'il avait triché, on affiche l'écran de défaite et on arrête tout
       if (_hasCheated) {
-        _showLostDialogAndPop();
+        ActiveTimerDialogs.showLostDialog(context, () {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            (route) => false,
+          );
+        });
         return;
       }
 
-      // S'il revient d'une pause légale, on recalcule le temps
       if (_isPaused && _pauseEndTime != null) {
         final now = DateTime.now();
         final diffSeconds = _pauseEndTime!.difference(now).inSeconds;
@@ -300,31 +161,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     }
   }
 
-  void _showLostDialogAndPop() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('🧭 Tu t\'es perdu !'),
-        content: const Text('Tu as quitté l\'application hors d\'un moment de pause autorisé. Ton trajet a été annulé.'),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-                (route) => false,
-              );
-            },
-            child: const Text('Compris', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -335,7 +171,9 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
           int elapsed = (widget.durationMinutes * 60) - _remainingSeconds;
           for (int i = 0; i < _routeMilestones.length; i++) {
-            if (elapsed >= _routeMilestones[i].cumulativeSeconds && !_triggeredMilestoneIndexes.contains(i)) {
+            if (elapsed >= _routeMilestones[i].cumulativeSeconds && 
+                !_triggeredMilestoneIndexes.contains(i) && 
+                !_isDialogActive) {
               _triggeredMilestoneIndexes.add(i);
               _openArrivalPauseDialog(_routeMilestones[i].destination);
               break;
@@ -350,99 +188,54 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   }
 
   void _openArrivalPauseDialog(String cityName) {
-    const darkBlue = Color(0xFF143063);
-    const focusOrange = Color(0xFFFF8C00);
+    setState(() => _isDialogActive = true);
 
-    // Notifier l'arrivée à l'étape
     NotificationService().showNotification(
       id: 1,
       title: '🔥 Étape atteinte !',
       body: 'Tu es arrivé à $cityName. Installe ton bivouac !',
     );
 
-    showDialog(
+    ActiveTimerDialogs.showArrivalDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text('🔥 Étape atteinte à $cityName !', style: const TextStyle(fontWeight: FontWeight.bold, color: darkBlue, fontSize: 18)),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.grey),
-              onPressed: () => Navigator.pop(dialogContext),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Tu as planté ta tente pour souffler un peu au coin du feu. Veux-tu faire une pause pour recharger ton énergie avant de repartir à pied ?',
-              style: TextStyle(fontSize: 13, color: Colors.black87),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildPauseOptionButton(dialogContext, '5 min', 5, focusOrange),
-                _buildPauseOptionButton(dialogContext, '10 min', 10, focusOrange),
-                _buildPauseOptionButton(dialogContext, '15 min', 15, focusOrange),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPauseOptionButton(BuildContext dialogCtx, String label, int minutes, Color color) {
-    return InkWell(
-      onTap: () {
-        Navigator.pop(dialogCtx);
-        _startPauseTimer(minutes); 
+      cityName: cityName,
+      onClosed: () => setState(() => _isDialogActive = false),
+      onSelectPause: (minutes) {
+        setState(() => _isDialogActive = false);
+        _startPauseTimer(minutes);
       },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color, width: 1.5),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 13),
-        ),
-      ),
     );
   }
 
-  void _startPauseTimer(int minutes) {
-    _timer?.cancel(); 
-    
-    final durationSec = minutes * 60;
-    setState(() {
-      _isPaused = true;
-      _pauseRemainingSeconds = durationSec;
-      _pauseOvertimeSeconds = 0; 
-      _pauseEndTime = DateTime.now().add(Duration(seconds: durationSec));
-    });
+  void _startPauseTimer(int minutes) async {
+  _timer?.cancel(); 
+  
+  final durationSec = minutes * 60;
+  setState(() {
+    _isPaused = true;
+    _pauseRemainingSeconds = durationSec;
+    _pauseOvertimeSeconds = 0; 
+    _pauseEndTime = DateTime.now().add(Duration(seconds: durationSec));
+  });
 
-    // ✨ GESTION DES NOTIFICATIONS DE PAUSE SELON L'OS
-    if (Platform.isAndroid) {
-      NotificationService().showPauseChronometer(durationSec);
-    } else if (Platform.isIOS) {
-      NotificationService().schedulePauseEndNotification(
-        durationSec, 
+  if (Platform.isAndroid) {
+    try {
+      await NotificationService().requestExactAlarmPermission();
+      await NotificationService().showPauseChronometer(durationSec);
+      await NotificationService().schedulePauseEndNotification(
+        durationSec,
         "Ta pause au feu de camp se termine dans 2 minutes, prépare-toi à repartir !"
       );
+      debugPrint('✅ Notifs pause programmées avec succès');
+    } catch (e, st) {
+      debugPrint('❌ Erreur notif pause: $e\n$st');
     }
-
+  } else if (Platform.isIOS) {
+    NotificationService().schedulePauseEndNotification(
+      durationSec, 
+      "Ta pause au feu de camp se termine dans 2 minutes, prépare-toi à repartir !"
+    );
+  }
     _pauseTimer?.cancel();
     _pauseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
@@ -459,8 +252,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   void _endPauseNormal() {
     _pauseTimer?.cancel();
     
-    // ✨ Annuler les notifications de pause en cours (ID 200)
     NotificationService().cancelNotification(200);
+    NotificationService().cancelNotification(201);
 
     int penalty = _pauseOvertimeSeconds;
 
@@ -493,6 +286,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     _timer?.cancel();
     _pauseTimer?.cancel();
     NotificationService().cancelNotification(200);
+    NotificationService().cancelNotification(201);
 
     await _travelService.recordFailedTrip(
       durationMinutes: widget.durationMinutes,
@@ -510,36 +304,10 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     }
   }
 
-  void _showAbandonConfirmationDialog() {
-    const darkBlue = Color(0xFF143063);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Abandonner le voyage ?', style: TextStyle(fontWeight: FontWeight.bold, color: darkBlue)),
-        content: const Text('Si tu quittes maintenant, toute ta progression sur cette session sera perdue.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Continuer', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () {
-              Navigator.pop(context);
-              _cancelTrip();
-            },
-            child: const Text('Oui, abandonner', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _finishTrip() async {
     setState(() => _isCompleted = true);
     NotificationService().cancelNotification(200);
+    NotificationService().cancelNotification(201);
 
     NotificationService().showNotification(
       id: 3,
@@ -554,28 +322,13 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
     if (!mounted) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('🎉 Fin de session !'),
-        content: const Text('Ton trajet et ton temps de focus ont bien été enregistrés.'),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-                (route) => false,
-              );
-            },
-            child: const Text('Continuer', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+    ActiveTimerDialogs.showFinishDialog(context, () {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
+      );
+    });
   }
 
   @override
@@ -642,7 +395,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (didPop) return;
-        _showAbandonConfirmationDialog();
+        ActiveTimerDialogs.showAbandonDialog(context, _cancelTrip);
       },
       child: Scaffold(
         body: Stack(
@@ -670,7 +423,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                               Align(
                                 alignment: Alignment.topLeft,
                                 child: InkWell(
-                                  onTap: _showAbandonConfirmationDialog,
+                                  onTap: () => ActiveTimerDialogs.showAbandonDialog(context, _cancelTrip),
                                   borderRadius: BorderRadius.circular(16),
                                   child: Container(
                                     padding: const EdgeInsets.all(10),

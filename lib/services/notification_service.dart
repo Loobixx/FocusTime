@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:permission_handler/permission_handler.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -28,9 +30,22 @@ class NotificationService {
     );
 
     await _notificationsPlugin.initialize(settings: initializationSettings);
+
+    // ✨ Demande explicite de la permission notification (Android 13+)
+    final androidPlugin = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.requestNotificationsPermission();
   }
 
-  // Notif classique (pour les arrivées, fin de pause...)
+  Future<bool> requestExactAlarmPermission() async {
+    final status = await Permission.scheduleExactAlarm.status;
+    if (status.isGranted) return true;
+
+    final result = await Permission.scheduleExactAlarm.request();
+    return result.isGranted;
+  }
+
+  // Notif classique (pour les arrivées)
   Future<void> showNotification({required int id, required String title, required String body}) async {
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'focus_channel_id', 
@@ -53,7 +68,7 @@ class NotificationService {
     );
   }
 
-  // CHRONO DE PAUSE EN DIRECT (UNIQUEMENT ANDROID)
+  // ✨ CHRONO DE PAUSE EN DIRECT (ANDROID)
   Future<void> showPauseChronometer(int remainingSeconds) async {
     final int endTime = DateTime.now().millisecondsSinceEpoch + (remainingSeconds * 1000);
 
@@ -81,36 +96,44 @@ class NotificationService {
     );
   }
 
-  // ✨ NOTIFICATION PROGRAMMÉE 2 MINUTES AVANT LA FIN (POUR IOS ET ANDROID SI BESOIN)
+  // ✨ NOTIFICATION PROGRAMMÉE 2 MINUTES AVANT LA FIN (IOS ET ANDROID)
   Future<void> schedulePauseEndNotification(int remainingSeconds, String message) async {
-    // Si la pause est trop courte (moins de 2 minutes), on ne programme rien
-    if (remainingSeconds <= 120) return; 
-
-    // On calcule le délai : temps total moins 120 secondes (2 minutes)
-    final int delayInSeconds = remainingSeconds - 120;
-
-    await _notificationsPlugin.zonedSchedule(
-      id: 200, 
-      title: '⏰ Bientôt la fin de la pause !',
-      body: message,
-      scheduledDate: tz.TZDateTime.now(tz.local).add(Duration(seconds: delayInSeconds)),
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'pause_channel_id',
-          'Fin de pause',
-          importance: Importance.max,
-          priority: Priority.high,
-          playSound: true,
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
+  if (remainingSeconds <= 120) {
+    debugPrint('⏭️ Pause trop courte, notif 2min non programmée');
+    return;
   }
+
+  final int delayInSeconds = remainingSeconds - 120;
+  final canScheduleExact = await Permission.scheduleExactAlarm.isGranted;
+  final scheduledDate = tz.TZDateTime.now(tz.local).add(Duration(seconds: delayInSeconds));
+
+  debugPrint('🔔 Notif 201 programmée pour: $scheduledDate (exact: $canScheduleExact, délai: ${delayInSeconds}s)');
+
+  await _notificationsPlugin.zonedSchedule(
+    id: 201,
+    title: '⏰ Bientôt la fin de la pause !',
+    body: message,
+    scheduledDate: scheduledDate,
+    notificationDetails: const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'pause_channel_id',
+        'Fin de pause',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    ),
+    androidScheduleMode: canScheduleExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle,
+  );
+}
+
 
   Future<void> cancelNotification(int id) async {
     await _notificationsPlugin.cancel(id: id);
