@@ -1,13 +1,27 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 👈 Importe Firebase Auth
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const darkBlue = Color(0xFF143063);
-    const focusOrange = Color(0xFFFF8C00);
+    // 📧 Récupère l'email de l'utilisateur connecté
+    final String email = FirebaseAuth.instance.currentUser?.email ?? '';
+
+    // ✨ Personnalisation en fonction de l'email
+    // (Remplace 'ton.email@gmail.com' et 'lise.email@gmail.com' par vos vraies adresses)
+    bool isLise = email == 'lise.adam.va@gmail.com'; 
+
+    // Couleurs adaptées selon la personne
+    final Color darkBlue = isLise ? const Color(0xFF4A148C) : const Color(0xFF143063); // Violet pour Lise, Bleu pour toi
+    final Color focusOrange = isLise ? Colors.pinkAccent : const Color(0xFFFF8C00); // Rose pour Lise, Orange pour toi
+
+    // Textes adaptés selon la personne
+    final String appSubtitle = isLise 
+        ? 'Créé avec amour pour accompagner tes sessions de productivité et tes aventures magiques ❤️!'
+        : 'Créé pour optimiser ton quotidien et lier productivité et aventure.';
 
     return Scaffold(
       body: Stack(
@@ -49,10 +63,10 @@ class AboutScreen extends StatelessWidget {
                           Row(
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.arrow_back_ios, color: darkBlue),
+                                icon: Icon(Icons.arrow_back_ios, color: darkBlue),
                                 onPressed: () => Navigator.pop(context),
                               ),
-                              const Expanded(
+                              Expanded(
                                 child: Text(
                                   'À propos',
                                   textAlign: TextAlign.center,
@@ -63,7 +77,7 @@ class AboutScreen extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 48), // Équilibre visuel par rapport au bouton retour
+                              const SizedBox(width: 48),
                             ],
                           ),
                           const SizedBox(height: 24),
@@ -77,13 +91,13 @@ class AboutScreen extends StatelessWidget {
                               shape: BoxShape.circle,
                               border: Border.all(color: focusOrange, width: 2),
                             ),
-                            child: const Icon(Icons.hourglass_empty, color: darkBlue, size: 40),
+                            child: Icon(Icons.hourglass_empty, color: darkBlue, size: 40),
                           ),
                           const SizedBox(height: 16),
 
                           // --- NOM ET VERSION ---
-                          const Text(
-                            'FocusTime',
+                          Text(
+                            isLise ? 'FocusTime (Version Lise)' : 'FocusTime',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -103,7 +117,7 @@ class AboutScreen extends StatelessWidget {
 
                           // --- DESCRIPTION ---
                           Text(
-                            'FocusTime est une application conçue pour t\'aider à rester productif, gérer ton temps de concentration efficacement et explorer des univers interactifs au fil de tes sessions.',
+                            isLise ? 'FocusTime est une application conçue pour t\'aider à rester productif, gérer ton temps de concentration efficacement et explorer des univers interactifs au fil de tes sessions. Je t\'aime du plus profond de mon cœur ❤️! Et je veux que grâce a cette application, tu reussisse à travailler et à te concentrer.' : 'FocusTime est une application conçue pour t\'aider à rester productif, gérer ton temps de concentration efficacement et explorer des univers interactifs au fil de tes sessions.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 15,
@@ -123,8 +137,8 @@ class AboutScreen extends StatelessWidget {
                             ),
                             child: Column(
                               children: [
-                                const Text(
-                                  'Développé avec passion 💻',
+                                Text(
+                                  isLise ? 'Version Personnalisée ✨' : 'Développé avec passion 💻',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: darkBlue,
@@ -133,7 +147,7 @@ class AboutScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Créé pour optimiser ton quotidien et lier productivité et aventure.',
+                                  appSubtitle,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 13,

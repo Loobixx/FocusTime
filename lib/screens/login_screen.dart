@@ -114,13 +114,14 @@ class _LoginScreenState extends State<LoginScreen> {
           password: password,
         );
 
-        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-          'email': email,
-          'createdAt': Timestamp.now(),
-          'characterColor': 'blue',
-          'hat': 'Aucun',
-          'pseudo': '',
-        });
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        'email': email,
+        'createdAt': Timestamp.now(),
+        'characterId': 'nuit', // 👈 On met la Nuit par défaut
+        'characterColor': Colors.deepPurple.toARGB32(), // 👈 Directement le violet !
+        'hat': 'Aucun',
+        'pseudo': '',
+      });
       }
 
       if (mounted) {
@@ -286,7 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: null, 
+                              onPressed: _showForgotPasswordDialog, 
                               style: TextButton.styleFrom(
                                 padding: const EdgeInsets.only(top: 8, bottom: 8, right: 0),
                               ),
@@ -295,7 +296,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(
                                   color: darkBlue.withValues(alpha: 0.5),
                                   fontWeight: FontWeight.w600,
-                                  decoration: TextDecoration.lineThrough,
                                 ),
                               ),
                             ),
@@ -413,6 +413,94 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: onToggleVisibility, // Lance le changement d'état (ouvert/fermé)
               )
             : null,
+      ),
+    );
+  }
+
+  Future<void> _resetPassword(String email) async {
+    if (email.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez entrer votre adresse e-mail d\'abord.')),
+      );
+      return;
+    }
+
+    try {
+      // ✉️ Envoie l'e-mail de réinitialisation via Firebase
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('E-mail envoyé !'),
+            content: Text('Un lien de réinitialisation a été envoyé à l\'adresse $email. Vérifie tes spam si tu ne le vois pas.'),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Compris', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = 'Une erreur est survenue.';
+      if (e.code == 'user-not-found') {
+        message = 'Aucun utilisateur ne correspond à cet e-mail.';
+      } else if (e.code == 'invalid-email') {
+        message = 'L\'adresse e-mail n\'est pas valide.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
+  void _showForgotPasswordDialog() {
+    final TextEditingController emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Mot de passe oublié'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Entre ton adresse e-mail pour recevoir un lien de réinitialisation :'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: 'Adresse e-mail',
+                filled: true,
+                fillColor: Colors.grey.withValues(alpha: 0.1),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
+            onPressed: () {
+              Navigator.pop(context);
+              _resetPassword(emailController.text);
+            },
+            child: const Text('Envoyer', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

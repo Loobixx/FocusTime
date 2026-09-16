@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:FocusTime/screens/profil/about_screen.dart';
-import 'package:FocusTime/screens/profil/character_customize_screen.dart';
+import 'package:FocusTime/screens/profil/character/character_customize_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../login_screen.dart';
 import 'package:FocusTime/screens/profil/history_screen.dart';
@@ -17,8 +17,11 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _pseudo = '';
-  Color? _borderColor;  bool _loading = true;
+  // Dans tes variables d'état _ProfileScreenState :
+String _pseudo = '';
+Color _borderColor = Colors.deepPurple; // Violet par défaut (Nuit)
+String _characterId = 'nuit';
+bool _loading = true;
 
   @override
   void initState() {
@@ -26,25 +29,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadPseudo();
   }
 
-  Future<void> _loadPseudo() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final data = doc.data();
 
-    Color loadedColor = const Color(0xFFFF8C00);
-    final colorValue = data?['characterColor'];
-    if (colorValue is int) {
-      loadedColor = Color(colorValue);
-    }
+// Dans _loadPseudo() :
+Future<void> _loadPseudo() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
 
-    setState(() {
-      _pseudo = (data?['pseudo'] as String?) ?? '';
-      _borderColor = loadedColor;
-      _loading = false;
-    });
+  final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+  final data = doc.data();
+
+  // On récupère l'ID du personnage (ex: 'nuit', 'desert', 'montagnes'...)
+  String charId = (data?['characterId'] as String?) ?? 'nuit';
+  
+  // On détermine la couleur de bordure selon le personnage choisi
+  Color themeColor = Colors.deepPurple;
+  switch (charId) {
+    case 'desert': themeColor = Colors.orange; break;
+    case 'montagnes': themeColor = Colors.green; break;
+    case 'lac': themeColor = Colors.blue; break;
+    case 'nuages': themeColor = Colors.pinkAccent; break;
+    case 'nuit': default: themeColor = Colors.deepPurple; break;
   }
+
+  setState(() {
+    _pseudo = (data?['pseudo'] as String?) ?? '';
+    _characterId = charId;
+    _borderColor = themeColor;
+    _loading = false;
+  });
+}
 
   void _showChangePseudoDialog() {
     final TextEditingController pseudoController = TextEditingController(text: _pseudo);
@@ -140,16 +154,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               Column(
                                 children: [
+                                  // ✨ Avatar agrandi et mis en valeur
                                   Container(
-                                    padding: const EdgeInsets.all(3),
+                                    padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: _borderColor ?? Colors.transparent, width: 3),
+                                      border: Border.all(color: _borderColor, width: 3.5), // 👈 Utilise la vraie couleur du perso
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: _borderColor.withValues(alpha: 0.4),
+                                          blurRadius: 12,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
                                     ),
-                                    child: const CircleAvatar(
-                                      radius: 40,
-                                      backgroundColor: Colors.white70,
-                                      child: Icon(Icons.person, size: 50, color: Colors.grey),
+                                    child: ClipOval(
+                                      child: SizedBox(
+                                        width: 110,
+                                        height: 110,
+                                        // On essaie d'afficher l'image du personnage, si elle n'existe pas encore (silhouette), on met un fond noir avec une icône
+                                        child: Image.asset(
+                                          'assets/TeteProfil/$_characterId.jpg',
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              color: Colors.black, // 👈 Silhouette noire en attendant le dessin
+                                              child: const Icon(Icons.person, color: Colors.white70, size: 50),
+                                            );
+                                          },
+                                        ),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 12),

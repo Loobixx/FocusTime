@@ -12,18 +12,20 @@ import 'package:FocusTime/starter/character_selection_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+  
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Color? _borderColor;
+  Color _borderColor = Colors.deepPurple;
+  String _characterId = 'nuit';
 
   @override
   void initState() {
     super.initState();
-    _loadCharacterColor();
+    _loadCharacterData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // ✨ On lance d'abord notre nouvelle vérification
       _checkCharacterSelection(); 
@@ -103,15 +105,27 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _loadCharacterColor() async {
+  Future<void> _loadCharacterData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final colorValue = doc.data()?['characterColor'];
+    String charId = doc.data()?['characterId'] as String? ?? 'nuit';
 
-    if (colorValue is int && mounted) {
-      setState(() => _borderColor = Color(colorValue));
+    Color themeColor = Colors.deepPurple;
+    switch (charId) {
+      case 'desert': themeColor = Colors.orange; break;
+      case 'montagnes': themeColor = Colors.green; break;
+      case 'lac': themeColor = Colors.blue; break;
+      case 'nuages': themeColor = Colors.pinkAccent; break;
+      case 'nuit': default: themeColor = Colors.deepPurple; break;
+    }
+
+    if (mounted) {
+      setState(() {
+        _characterId = charId;
+        _borderColor = themeColor;
+      });
     }
   }
 
@@ -199,22 +213,40 @@ class _HomeScreenState extends State<HomeScreen> {
                           context,
                           MaterialPageRoute(builder: (context) => const ProfileScreen()),
                         );
-                        _loadCharacterColor();
+                        _loadCharacterData();
                       },
                       child: Container(
-                        decoration: BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: _borderColor ?? Colors.transparent,
+                          color: _borderColor, // 👈 La couleur dynamique du personnage
                           width: 3,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _borderColor.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
-                        child: const CircleAvatar(
-                          backgroundColor: Colors.white70,
-                          radius: 26,
-                          child: Icon(Icons.person, color: Colors.grey, size: 36),
+                      child: ClipOval(
+                        child: SizedBox(
+                          width: 52,
+                          height: 52,
+                          child: Image.asset(
+                            'assets/TeteProfil/$_characterId.jpg',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.black, // 👈 Silhouette noire si le dessin manque
+                                child: const Icon(Icons.person, color: Colors.white, size: 28),
+                              );
+                            },
+                          ),
                         ),
                       ),
+                    ),
                     ),
                   ),
                 ),

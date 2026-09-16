@@ -76,90 +76,18 @@ flutter:
     - assets/lac.png
     - assets/desert.png
     - assets/fond_de_zoom.png
-    - assets/NomCitiesDesert/d1.png
-    - assets/NomCitiesDesert/d2.png
-    - assets/NomCitiesDesert/d3.png
-    - assets/NomCitiesDesert/d4.png
-    - assets/NomCitiesDesert/d5.png
-    - assets/NomCitiesDesert/d6.png
-    - assets/NomCitiesDesert/d7.png
-    - assets/NomCitiesDesert/d8.png
-    - assets/NomCitiesDesert/d9.png
-    - assets/NomCitiesDesert/d10.png
-    - assets/NomCitiesDesert/d11.png
-    - assets/NomCitiesDesert/d12.png
-    - assets/NomCitiesDesert/d13.png
-    - assets/NomCitiesDesert/d14.png
-    - assets/NomCitiesDesert/d15.png
-    - assets/NomCitiesDesert/d16.png
+    - assets/NomCitiesDesert/
 
-    - assets/NomCitiesMontagnes/m1.png
-    - assets/NomCitiesMontagnes/m2.png
-    - assets/NomCitiesMontagnes/m3.png
-    - assets/NomCitiesMontagnes/m4.png
-    - assets/NomCitiesMontagnes/m5.png 
-    - assets/NomCitiesMontagnes/m6.png
-    - assets/NomCitiesMontagnes/m7.png
-    # - assets/NomCitiesMontagnes/m8.png
-    - assets/NomCitiesMontagnes/m9.png
-    - assets/NomCitiesMontagnes/m10.png
-    - assets/NomCitiesMontagnes/m11.png
-    - assets/NomCitiesMontagnes/m12.png
-    - assets/NomCitiesMontagnes/m13.png
-    - assets/NomCitiesMontagnes/m14.png
-    # - assets/NomCitiesMontagnes/m15.png
-    - assets/NomCitiesMontagnes/m16.png
-    - assets/NomCitiesMontagnes/m17.png
-    - assets/NomCitiesMontagnes/m18.png
-    - assets/NomCitiesMontagnes/m19.png
-    - assets/NomCitiesMontagnes/m20.png
-    - assets/NomCitiesMontagnes/m21.png
-    - assets/NomCitiesMontagnes/m22.png
-    - assets/NomCitiesMontagnes/m23.png
-    - assets/NomCitiesMontagnes/m24.png
+    - assets/NomCitiesMontagnes/
 
     - assets/sol_proche.png
     - assets/fond_lointain.png
 
-    - assets/PersonnageAnimation/Nuit/Marche/1.png
-    - assets/PersonnageAnimation/Nuit/Marche/2.png
-    - assets/PersonnageAnimation/Nuit/Marche/3.png
-    - assets/PersonnageAnimation/Nuit/Marche/4.png
-    - assets/PersonnageAnimation/Nuit/Marche/5.png
-    - assets/PersonnageAnimation/Nuit/Marche/6.png
-    - assets/PersonnageAnimation/Nuit/Marche/7.png
-    - assets/PersonnageAnimation/Nuit/Marche/8.png
-    - assets/PersonnageAnimation/Nuit/Marche/9.png
-    - assets/PersonnageAnimation/Nuit/Marche/10.png
-    - assets/PersonnageAnimation/Nuit/Marche/11.png
-    - assets/PersonnageAnimation/Nuit/Marche/12.png
-    - assets/PersonnageAnimation/Nuit/Marche/13.png
-    - assets/PersonnageAnimation/Nuit/Marche/14.png
-    - assets/PersonnageAnimation/Nuit/Marche/15.png
-    - assets/PersonnageAnimation/Nuit/Marche/16.png
+    - assets/PersonnageAnimation/Nuit/Marche/
 
-    - assets/PersonnageAnimation/Nuit/Arret/1.png
-    - assets/PersonnageAnimation/Nuit/Arret/2.png
-    - assets/PersonnageAnimation/Nuit/Arret/3.png
-    - assets/PersonnageAnimation/Nuit/Arret/4.png
-    - assets/PersonnageAnimation/Nuit/Arret/5.png
-    - assets/PersonnageAnimation/Nuit/Arret/6.png
-    - assets/PersonnageAnimation/Nuit/Arret/7.png
-    - assets/PersonnageAnimation/Nuit/Arret/8.png
-    - assets/PersonnageAnimation/Nuit/Arret/9.png
-    - assets/PersonnageAnimation/Nuit/Arret/10.png
-    - assets/PersonnageAnimation/Nuit/Arret/11.png
-    - assets/PersonnageAnimation/Nuit/Arret/12.png
-    - assets/PersonnageAnimation/Nuit/Arret/13.png
-    - assets/PersonnageAnimation/Nuit/Arret/14.png
-    - assets/PersonnageAnimation/Nuit/Arret/15.png
-    - assets/PersonnageAnimation/Nuit/Arret/16.png
-    - assets/PersonnageAnimation/Nuit/Arret/17.png
-    - assets/PersonnageAnimation/Nuit/Arret/18.png
-    - assets/PersonnageAnimation/Nuit/Arret/19.png
-    - assets/PersonnageAnimation/Nuit/Arret/20.png
-    - assets/PersonnageAnimation/Nuit/Arret/21.png
-
+    - assets/PersonnageAnimation/Nuit/Arret/
+  
+    - assets/TeteProfil/
 
 
 

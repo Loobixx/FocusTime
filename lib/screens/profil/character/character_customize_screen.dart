@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'character_options.dart';
 
 class CharacterCustomizerScreen extends StatefulWidget {
   const CharacterCustomizerScreen({super.key});
@@ -12,20 +13,10 @@ class CharacterCustomizerScreen extends StatefulWidget {
 }
 
 class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
-  Color _selectedOutfitColor = Colors.blue;
+  String _selectedCharacterId = 'nuit';
   String _selectedHat = 'Aucun';
   bool _loading = true;
   bool _saving = false;
-
-  // ✨ NOUVEAU : J'ai ajouté les couleurs spécifiques de tes 5 régions à la palette
-  final List<Color> _colors = [
-    Colors.orange,          // Désert
-    Colors.green,           // Montagnes
-    Colors.blue,            // Eau
-    Colors.deepPurple,      // Nocturne
-    Colors.lightBlueAccent, // Nuages
-    Colors.red,             // Extra
-  ];
   
   final List<String> _hats = ['Aucun', 'Casquette', 'Chapeau magique', 'Couronne'];
 
@@ -45,28 +36,10 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
     final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
     final data = doc.data();
 
-    Color loadedColor = Colors.blue;
-    final colorValue = data?['characterColor'];
-    
-    // 1. On regarde si le joueur a DÉJÀ sauvegardé une couleur personnalisée
-    if (colorValue is int) {
-      loadedColor = Color(colorValue);
-    } 
-    // ✨ 2. NOUVEAU : Sinon (première fois), on prend la couleur de sa région de départ !
-    else {
-      final profileRegion = data?['profileRegion'] as String?;
-      switch (profileRegion) {
-        case 'desert': loadedColor = Colors.orange; break;
-        case 'montagnes': loadedColor = Colors.green; break;
-        case 'eau': loadedColor = Colors.blue; break;
-        case 'nocturne': loadedColor = Colors.deepPurple; break;
-        case 'nuages': loadedColor = Colors.lightBlueAccent; break;
-        default: loadedColor = Colors.blue;
-      }
-    }
+    String loadedCharacterId = (data?['characterId'] as String?) ?? 'nuit';
 
     setState(() {
-      _selectedOutfitColor = loadedColor;
+      _selectedCharacterId = loadedCharacterId;
       _selectedHat = (data?['hat'] as String?) ?? 'Aucun';
       _loading = false;
     });
@@ -76,16 +49,30 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    final selectedChar = CharacterOptionsList.characters.firstWhere(
+      (c) => c.id == _selectedCharacterId,
+      orElse: () => CharacterOptionsList.characters.first,
+    );
+
+    // Sécurité : on empêche d'enregistrer un personnage non débloqué
+    if (!selectedChar.isUnlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ce personnage n\'est pas encore débloqué !')),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
 
     await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-      'characterColor': _selectedOutfitColor.toARGB32(),
+      'characterId': _selectedCharacterId,
+      'characterColor': selectedChar.themeColor.toARGB32(),
       'hat': _selectedHat,
     });
 
     if (mounted) {
       setState(() => _saving = false);
-      Navigator.pop(context, true); // on renvoie "true" pour dire "ça a changé"
+      Navigator.pop(context, true);
     }
   }
 
@@ -93,6 +80,11 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
+
+    final currentChar = CharacterOptionsList.characters.firstWhere(
+      (c) => c.id == _selectedCharacterId,
+      orElse: () => CharacterOptionsList.characters.first,
+    );
 
     return Scaffold(
       body: Stack(
@@ -128,55 +120,107 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                         style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: darkBlue),
                       ),
                       const SizedBox(height: 20),
+                      
+                      // Aperçu du personnage (Silhouette noire si verrouillé, image normale si débloqué)
                       Container(
-                        width: 150,
-                        height: 150,
+                        width: 130,
+                        height: 130,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.5),
-                          border: Border.all(color: _selectedOutfitColor, width: 3),
+                          border: Border.all(color: currentChar.themeColor, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: currentChar.themeColor.withValues(alpha: 0.4),
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
-                        child: Center(
-                          child: Icon(Icons.person, size: 80, color: _selectedOutfitColor),
+                        child: ClipOval(
+                          child: currentChar.isUnlocked
+                              ? Image.asset(currentChar.imagePath, fit: BoxFit.cover, errorBuilder: (c, o, s) => const Icon(Icons.person, size: 70, color: Colors.grey))
+                              : Container(
+                                  color: Colors.black, // 👈 Silhouette noire
+                                  child: const Icon(Icons.lock, color: Colors.white, size: 40),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 30),
+
                       Expanded(
                         child: ListView(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           children: [
-                            const Text('Couleur de la tenue', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkBlue)),
+                            const Text('Choix du personnage', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkBlue)),
                             const SizedBox(height: 10),
+                            
+                            // Liste horizontale des 5 personnages
                             SizedBox(
-                              height: 50,
+                              height: 100,
                               child: ListView.builder(
                                 scrollDirection: Axis.horizontal,
-                                itemCount: _colors.length,
+                                itemCount: CharacterOptionsList.characters.length,
                                 itemBuilder: (context, index) {
-                                  final color = _colors[index];
+                                  final character = CharacterOptionsList.characters[index];
+                                  final bool isSelected = _selectedCharacterId == character.id;
+
                                   return GestureDetector(
                                     onTap: () {
                                       HapticFeedback.lightImpact();
-                                      setState(() => _selectedOutfitColor = color);
+                                      if (character.isUnlocked) {
+                                        setState(() => _selectedCharacterId = character.id);
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('🔒 ${character.name} est verrouillé !')),
+                                        );
+                                      }
                                     },
                                     child: Container(
-                                      width: 50,
-                                      height: 50,
-                                      margin: const EdgeInsets.only(right: 12),
-                                      decoration: BoxDecoration(
-                                        color: color,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: _selectedOutfitColor == color ? Colors.white : Colors.transparent,
-                                          width: 3,
-                                        ),
+                                      margin: const EdgeInsets.only(right: 16),
+                                      child: Column(
+                                        children: [
+                                          Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              Container(
+                                            width: 65,
+                                            height: 65,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                // 🎨 ICI : On utilise la couleur du personnage si il est sélectionné, sinon transparent
+                                                color: isSelected ? character.themeColor : Colors.transparent,
+                                                width: 3.5,
+                                              ),
+                                            ),
+                                            child: ClipOval(
+                                              child: character.isUnlocked
+                                                  ? Image.asset(character.imagePath, fit: BoxFit.cover, errorBuilder: (c, o, s) => const Icon(Icons.person))
+                                                  : Container(
+                                                      color: Colors.black,
+                                                      child: const Icon(Icons.lock, color: Colors.white, size: 24),
+                                                    ),
+                                            ),
+                                          ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            character.name.split(' ')[0], // Affiche juste le premier mot pour que ce soit court
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                              color: character.isUnlocked ? darkBlue : Colors.grey,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   );
                                 },
                               ),
                             ),
-                            const SizedBox(height: 30),
+                            const SizedBox(height: 20),
                             const Text('Accessoire / Chapeau', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkBlue)),
                             const SizedBox(height: 10),
                             DropdownButtonFormField<String>(
@@ -206,12 +250,12 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                           width: double.infinity,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: focusOrange,
+                              backgroundColor: currentChar.isUnlocked ? focusOrange : Colors.grey,
                               padding: const EdgeInsets.symmetric(vertical: 18),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                               elevation: 0,
                             ),
-                            onPressed: _saving
+                            onPressed: (_saving || !currentChar.isUnlocked)
                                 ? null
                                 : () {
                                     HapticFeedback.mediumImpact();
@@ -223,9 +267,9 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                                     width: 20,
                                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                   )
-                                : const Text(
-                                    'Enregistrer',
-                                    style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                                : Text(
+                                    currentChar.isUnlocked ? 'Enregistrer' : '🔒 Personnage verrouillé',
+                                    style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
                                   ),
                           ),
                         ),
