@@ -141,11 +141,10 @@ class _MapScreenState extends State<MapScreen> {
     final double dy = (screenSize.height - scaledHeight) / 2;
 
     _transformationController.value = Matrix4.identity()
-      ..translateByDouble(dx, dy, 0.0, 0.0)
-      ..scaleByDouble(_fitScale, _fitScale, 1.0, 1.0);
+      ..translate(dx, dy)
+      ..scale(_fitScale);
   }
 
-  // ✨ Coordonnées approximatives au centre de chaque région sur la map globale
   Offset? _getRegionCenter(String? regionId) {
     switch (regionId) {
       case 'desert': return const Offset(260, 480);
@@ -212,7 +211,6 @@ class _MapScreenState extends State<MapScreen> {
                         onTapUp: (details) => _handleTapUp(details, scaledRegions),
                         child: Stack(
                           children: [
-                            // On isole l'image de fond
                             const RepaintBoundary(
                               child: Image(
                                 image: AssetImage('assets/map_global.png'),
@@ -222,7 +220,6 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                             ),
                             
-                            // On isole le survol des territoires
                             RepaintBoundary(
                               child: CustomPaint(
                                 size: const Size(baseWidth, baseHeight),
@@ -234,47 +231,44 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                             ),
 
-                            // Le personnage reste tout devant
                             if (playerPosition != null)
                               Positioned(
                                 left: playerPosition.dx - 25,
                                 top: playerPosition.dy - 50,
                                 child: const IgnorePointer(
-                                  child: RepaintBoundary( // On isole aussi le personnage
+                                  child: RepaintBoundary(
                                     child: PersistentAnimatedCharacter(
                                       size: 120,
-
-                                    frames: [
-                                      'assets/PersonnageAnimation/Nuit/Arret/1.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/2.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/3.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/4.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/5.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/6.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/7.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/8.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/9.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/10.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/11.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/12.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/13.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/14.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/15.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/16.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/17.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/18.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/19.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/20.png',
-                                      'assets/PersonnageAnimation/Nuit/Arret/21.png',
-                                    ],
-                                   frameDuration: Duration(milliseconds: 2000),
+                                      frames: [
+                                        'assets/PersonnageAnimation/Nuit/Arret/1.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/2.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/3.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/4.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/5.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/6.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/7.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/8.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/9.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/10.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/11.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/12.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/13.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/14.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/15.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/16.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/17.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/18.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/19.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/20.png',
+                                        'assets/PersonnageAnimation/Nuit/Arret/21.png',
+                                      ],
+                                      frameDuration: Duration(milliseconds: 2000),
                                     ),
                                   ),
                                 ),
                               ),
                           ],
-                        )
-                                                
+                        ),
                       ),
                     ),
                   ),
@@ -283,7 +277,6 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          // Bouton retour
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -310,7 +303,6 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          // Label
           if (_displayedName != null)
             Positioned(
               bottom: 40,
@@ -358,7 +350,6 @@ class MapPainter extends CustomPainter {
       final bool isHovered = region.id == hoveredRegionId;
       final bool isSelected = region.id == selectedRegionId;
 
-      // On garde uniquement l'effet discret quand on survole ou sélectionne une région pour l'explorer
       if (isHovered || isSelected) {
         final highlightFill = Paint()
           ..color = Colors.white.withValues(alpha: isSelected ? 0.35 : 0.22)

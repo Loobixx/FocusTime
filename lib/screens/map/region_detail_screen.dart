@@ -30,8 +30,8 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
   bool _viewInitialized = false;
 
   double _fitScale = 1.0;
-  String? _hoveredCrossId;  // Survol de la souris (PC)
-  String? _selectedCrossId; // Sélection définitive par clic
+  String? _hoveredCrossId;
+  String? _selectedCrossId;
 
   Map<String, ShortestPathResult> _routes = {};
 
@@ -140,8 +140,8 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     final double dy = (screenSize.height - scaledHeight) / 2;
 
     _controller.value = Matrix4.identity()
-      ..translateByDouble(dx, dy, 0.0, 0.0)
-      ..scaleByDouble(fitScale, fitScale, 1.0, 1.0);
+      ..translate(dx, dy)
+      ..scale(fitScale);
   }
 
   bool get _hasFocusPlanned => widget.selectedDurationMinutes > 0;
@@ -157,7 +157,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
   }
 
   void _handleHoverPosition(Offset localPosition, List<RegionCross> crosses) {
-    // Si une ville est déjà sélectionnée par clic, on ignore le survol pour ne pas l'écraser
     if (_selectedCrossId != null) return;
 
     String? closestId;
@@ -223,7 +222,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     const darkBlue = Color(0xFF143063);
     final List<RegionCross> regionCrosses = RegionCrossesData.crossesByRegion[widget.regionName] ?? [];
 
-    // Priorité à la sélection par clic, sinon on prend le survol de la souris
     final String? activeCrossId = _selectedCrossId ?? _hoveredCrossId;
 
     return Scaffold(
@@ -260,7 +258,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                       final double verticalMargin = math.max(0.0, (screenSize.height - (imgHeight * minScale)) / (2 * minScale));
 
                       final List<Widget> mapStackChildren = [
-                        // COUCHE 1 : La carte de fond
                         RepaintBoundary(
                           child: Image.asset(
                             _getImageAsset(widget.regionName),
@@ -270,7 +267,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                           ),
                         ),
 
-                        // COUCHE 2 : L'image de la ville active (basée sur activeCrossId)
                         if (activeCrossId != null)
                           ...regionCrosses
                               .where((c) => c.id == activeCrossId && c.imagePath != null && c.imageX != null && c.imageY != null)
@@ -290,7 +286,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                                     ),
                                   )),
 
-                        // COUCHE 3 : Les zones cliquables des croix
                         ...regionCrosses.map((cross) {
                           final double visualSize = cross.size;
                           final double clickAreaSize = math.max(visualSize, 80.0);
@@ -304,9 +299,9 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                                 onTap: () {
                                   setState(() {
                                     if (_selectedCrossId == cross.id) {
-                                      _selectedCrossId = null; // Désélectionne au second clic
+                                      _selectedCrossId = null;
                                     } else {
-                                      _selectedCrossId = cross.id; // Sélectionne par clic
+                                      _selectedCrossId = cross.id;
                                       _hoveredCrossId = null;
                                     }
                                   });
@@ -345,18 +340,17 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                             ),
                           );
                         }),
-                         // ✨ LE PERSONNAGE
                         if (_currentCity != null)
                           ...regionCrosses
                               .where((c) => c.name == _currentCity)
                               .map((cross) => Positioned(
-                                  key: const ValueKey('player_position'), // ✨ Ajoute une clé ici
+                                  key: const ValueKey('player_position'),
                                   left: cross.x - 60,
                                   top: cross.y - 80,
                                   child: IgnorePointer(
                                     child: RepaintBoundary(
                                       child: PersistentAnimatedCharacter(
-                                        key: const ValueKey('player_character'), // ✨ ET LA CLÉ MAGIQUE ICI
+                                        key: const ValueKey('player_character'),
                                         size: 200,
                                         frames: List.generate(21, (i) => 'assets/PersonnageAnimation/Nuit/Arret/${i + 1}.png'),
                                         frameDuration: const Duration(milliseconds: 2000),
@@ -391,7 +385,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                             ),
                           ),
 
-                          // Bouton retour en haut à gauche
                           SafeArea(
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
@@ -418,7 +411,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                             ),
                           ),
 
-                          // Bouton "Y aller !" en bas à droite
                           SafeArea(
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
