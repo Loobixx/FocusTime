@@ -1,13 +1,16 @@
 import 'dart:ui';
+import 'package:FocusTime/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:FocusTime/screens/profil/about_screen.dart';
+import 'package:FocusTime/screens/profil/about_profil/about_screen.dart';
 import 'package:FocusTime/screens/profil/character/character_customize_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../login_screen.dart';
-import 'package:FocusTime/screens/profil/history_screen.dart';
-import 'package:FocusTime/screens/profil/stats_screen.dart';
+import 'package:FocusTime/screens/profil/historique/history_screen.dart';
+import 'package:FocusTime/screens/profil/stat/stats_screen.dart';
+import 'package:FocusTime/screens/profil/change_password/auth_helper.dart';
+import 'package:FocusTime/screens/profil/notification/notification_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -59,6 +62,16 @@ Future<void> _loadPseudo() async {
     _loading = false;
   });
 }
+
+// 🧪 Fonction pour tester la notification avec image instantanément
+  Future<void> _testerNotificationTest() async {
+    await NotificationService().showNotification(
+      id: 999,
+      title: '🔥 Test de notification riche',
+      body: 'Regarde cette magnifique image de région dans la notification !',
+      imageAssetPath: 'assets/desert.png', // Tu peux tester avec 'assets/lac.png', etc.
+    );
+  }
 
   void _showChangePseudoDialog() {
     final TextEditingController pseudoController = TextEditingController(text: _pseudo);
@@ -225,6 +238,28 @@ Future<void> _loadPseudo() async {
                           ),
                           const SizedBox(height: 32),
                           _buildMenuItem(
+                          Icons.info_outline,
+                          'À propos de l\'application',
+                          isAvailable: true,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const AboutScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // 🧪 BOUTON DE TEST TEMPORAIRE POUR LES NOTIFS & IMAGES
+                        _buildMenuItem(
+                          Icons.bug_report_outlined,
+                          'Tester la notification (Image)',
+                          isAvailable: true,
+                          onTap: _testerNotificationTest,
+                        ),
+
+                        const SizedBox(height: 32),
+                          _buildMenuItem(
                             Icons.edit,
                             'Modifier mon personnage',
                             isAvailable: true,
@@ -267,9 +302,16 @@ Future<void> _loadPseudo() async {
                             },
                           ),
                           const SizedBox(height: 16),
-                          _buildMenuItem(Icons.lock_outline, 'Changer le mot de passe', isAvailable: false),
+                          _buildMenuItem(Icons.lock_outline, 'Changer le mot de passe', isAvailable: true, onTap: () {
+                            AuthHelper.resetPassword(context);
+                          }),
                           _buildMenuItem(Icons.volume_up_outlined, 'Son et vibration', isAvailable: false),
-                          _buildMenuItem(Icons.notifications_none, 'Son des notifications', isAvailable: false),
+                          _buildMenuItem(Icons.notifications_none, 'Son des notifications', isAvailable: true, onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+                            );
+                          }),
                           _buildMenuItem(Icons.dark_mode_outlined, 'Changer de thème', isAvailable: false),
                           const SizedBox(height: 16),
                           _buildMenuItem(
@@ -284,6 +326,7 @@ Future<void> _loadPseudo() async {
                             },
                           ),
                           const SizedBox(height: 32),
+                          
                           TextButton(
                             onPressed: () {},
                             style: TextButton.styleFrom(

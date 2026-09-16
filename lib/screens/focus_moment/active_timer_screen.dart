@@ -193,7 +193,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     NotificationService().showNotification(
       id: 1,
       title: '🔥 Étape atteinte !',
-      body: 'Tu es arrivé à $cityName. Installe ton bivouac !',
+      body: 'Tu es arrivé à $cityName. Installe ton campement !',
     );
 
     ActiveTimerDialogs.showArrivalDialog(
@@ -376,7 +376,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
         }
       }
       if (!isStillTravelling) {
-        currentLegTitle = "⛺ Bivouac installé à ${_routeMilestones.last.destination}";
+        currentLegTitle = "⛺ Campement installé à ${_routeMilestones.last.destination}";
         currentLegIndex = _routeMilestones.length;
       }
     } else if (widget.plannedRoute.isNotEmpty) {
@@ -519,7 +519,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                           ),
                           child: Text(
                             _isPaused 
-                                ? (_pauseOvertimeSeconds > 0 ? '⚠️ Pause dépassée !' : '☕ Bivouac au feu de camp') 
+                                ? (_pauseOvertimeSeconds > 0 ? '⚠️ Pause dépassée !' : '☕ Campement au feu de camp') 
                                 : currentLegTitle,
                             style: const TextStyle(
                               fontSize: 22,

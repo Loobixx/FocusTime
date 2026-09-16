@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:FocusTime/screens/map/map_region_data.dart';
+import 'package:FocusTime/screens/map/data/map_region_data.dart';
 import 'package:FocusTime/screens/map/region_detail_screen.dart';
-import 'package:FocusTime/screens/map/region_cross_data.dart';
+import 'package:FocusTime/screens/map/data/region_cross_data.dart';
 
 class MapScreen extends StatefulWidget {
   final int selectedDurationMinutes;

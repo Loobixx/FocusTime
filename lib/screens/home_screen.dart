@@ -7,8 +7,8 @@ import 'package:FocusTime/screens/focus_screen.dart';
 import 'package:FocusTime/screens/map/map_screen.dart';
 import 'package:FocusTime/screens/profil/profile_screen.dart';
 import '../models/city_network.dart';
-// ✨ NOUVEL IMPORT À AJOUTER :
 import 'package:FocusTime/starter/character_selection_screen.dart'; 
+import 'package:FocusTime/services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadCharacterData();
+    NotificationService().scheduleDailySummaryAt20H();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // ✨ On lance d'abord notre nouvelle vérification
       _checkCharacterSelection(); 

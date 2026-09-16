@@ -1,14 +1,14 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:FocusTime/screens/widgets/persistent_animated_character.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:FocusTime/screens/map/region_cross_data.dart';
+import 'package:FocusTime/screens/map/data/region_cross_data.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import '../../models/city_network.dart';
 import '../focus_moment/active_timer_screen.dart';
-import 'package:FocusTime/screens/widgets/persistent_animated_character.dart';
 
 class RegionDetailScreen extends StatefulWidget {
   final String regionName;
@@ -30,21 +30,16 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
   bool _viewInitialized = false;
 
   double _fitScale = 1.0;
-  String? _hoveredCrossId;
+  String? _hoveredCrossId;  // Survol de la souris (PC)
+  String? _selectedCrossId; // Sélection définitive par clic
 
   Map<String, ShortestPathResult> _routes = {};
-
-  // ✨ On retient l'ID de la croix qui est cliquée/survolée pour afficher son image
-  String? _selectedCrossId;
 
   String? _currentCity;
   Set<String> _visitedCities = {};
 
   static const double _zoomInFactor = 4.0;
   static const double _zoomOutFactor = 1;
-
-  // Rayon (en pixels, dans le référentiel de l'image) utilisé pour détecter
-  // la croix la plus proche du curseur lors du hover global sur desktop/web.
   static const double _maxHoverDistance = 40.0;
 
   @override
@@ -71,13 +66,11 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // 1. On récupère le document de l'utilisateur pour connaître sa ville actuelle
     final userDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .get();
 
-    // 2. On récupère la liste de ses villes visitées
     final visitedDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
@@ -86,7 +79,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
 
     if (mounted) {
       setState(() {
-        // On suppose que le champ s'appelle 'currentCity' dans ton document utilisateur
         _currentCity = userDoc.data()?['currentCity'] as String?;
         _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
 
@@ -99,7 +91,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
       });
     }
   }
-
 
   @override
   void dispose() {
@@ -165,14 +156,10 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     return route.totalTravelMinutes <= widget.selectedDurationMinutes;
   }
 
-  // ------------------------------------------------------------------
-  // Hover global (desktop/web uniquement) : on calcule, à chaque
-  // mouvement de souris, quelle croix est la plus proche du curseur.
-  // Ça évite les faux positifs dus au chevauchement de zones
-  // cliquables individuelles quand les croix sont proches les unes
-  // des autres sur la carte.
-  // ------------------------------------------------------------------
   void _handleHoverPosition(Offset localPosition, List<RegionCross> crosses) {
+    // Si une ville est déjà sélectionnée par clic, on ignore le survol pour ne pas l'écraser
+    if (_selectedCrossId != null) return;
+
     String? closestId;
     double closestDistance = double.infinity;
 
@@ -190,16 +177,14 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     if (closestId != _hoveredCrossId) {
       setState(() {
         _hoveredCrossId = closestId;
-        _selectedCrossId = closestId;
       });
     }
   }
 
   void _clearHover() {
-    if (_hoveredCrossId != null || _selectedCrossId != null) {
+    if (_hoveredCrossId != null) {
       setState(() {
         _hoveredCrossId = null;
-        _selectedCrossId = null;
       });
     }
   }
@@ -220,29 +205,27 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     );
   }
 
-Color _getAuraColor(RegionCross c) {
-    // Si c'est la ville où se trouve le joueur, pas besoin d'aura spéciale sur la croix (le perso est dessus)
+  Color _getAuraColor(RegionCross c) {
     if (_currentCity != null && c.name == _currentCity) {
       return Colors.transparent;
     }
-
-    // ✨ Si la ville a déjà été visitée, on met une lueur dorée/jaune
     if (_visitedCities.contains(c.name)) {
-      return const Color(0xFFFFD700).withValues(alpha: 0.8); // Doré brillant
+      return const Color(0xFFFFD700).withValues(alpha: 0.8);
     }
-
-    // Si elle est accessible pour le voyage en cours
     if (_isReachable(c)) {
       return const Color.fromARGB(255, 245, 4, 4).withValues(alpha: 0.7);
     }
-
     return Colors.transparent;
   }
-  
+
   @override
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
     final List<RegionCross> regionCrosses = RegionCrossesData.crossesByRegion[widget.regionName] ?? [];
+
+    // Priorité à la sélection par clic, sinon on prend le survol de la souris
+    final String? activeCrossId = _selectedCrossId ?? _hoveredCrossId;
+    RegionCross? activeCross = regionCrosses.where((c) => c.id == activeCrossId).firstOrNull;
 
     return Scaffold(
       backgroundColor: const Color(0xFF12121C),
@@ -277,9 +260,6 @@ Color _getAuraColor(RegionCross c) {
                       final double horizontalMargin = math.max(0.0, (screenSize.width - (imgWidth * minScale)) / (2 * minScale));
                       final double verticalMargin = math.max(0.0, (screenSize.height - (imgHeight * minScale)) / (2 * minScale));
 
-                      // Contenu du Stack interne (carte + marqueurs + croix).
-                      // Construit une seule fois et réutilisé, que le hover
-                      // global (desktop/web) soit actif ou non (mobile).
                       final List<Widget> mapStackChildren = [
                         // COUCHE 1 : La carte de fond
                         RepaintBoundary(
@@ -291,27 +271,27 @@ Color _getAuraColor(RegionCross c) {
                           ),
                         ),
 
-                        // COUCHE 2 : L'image de la ville (Affichée DERRIÈRE les croix)
-                        if (_selectedCrossId != null)
+                        // COUCHE 2 : L'image de la ville active (basée sur activeCrossId)
+                        if (activeCrossId != null)
                           ...regionCrosses
-                              .where((c) => c.id == _selectedCrossId && c.imagePath != null && c.imageX != null && c.imageY != null)
+                              .where((c) => c.id == activeCrossId && c.imagePath != null && c.imageX != null && c.imageY != null)
                               .map((cross) => Positioned(
                                     left: cross.imageX,
                                     top: cross.imageY,
-                                    child: RepaintBoundary( // ✨ Isolation de l'image de la ville
+                                    child: RepaintBoundary(
                                       child: GestureDetector(
                                         onTap: () => _navigateToCross(cross),
                                         child: Image.asset(
                                           cross.imagePath!,
                                           width: imgWidth,
                                           height: imgHeight,
-                                          gaplessPlayback: true, // Évite le clignotement au chargement
+                                          gaplessPlayback: true,
                                         ),
                                       ),
                                     ),
                                   )),
 
-                        // COUCHE 3 : Toutes les croix (Affichées TOUT DEVANT)
+                        // COUCHE 3 : Les zones cliquables des croix
                         ...regionCrosses.map((cross) {
                           final double visualSize = cross.size;
                           final double clickAreaSize = math.max(visualSize, 80.0);
@@ -319,27 +299,18 @@ Color _getAuraColor(RegionCross c) {
                           return Positioned(
                             left: cross.x - (clickAreaSize / 2),
                             top: cross.y - (clickAreaSize / 2),
-                            child: RepaintBoundary( // ✨ Isolation de chaque croix
+                            child: RepaintBoundary(
                               child: GestureDetector(
                                 behavior: HitTestBehavior.opaque,
-                                onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
-                                onTapCancel: () => setState(() => _hoveredCrossId = null),
                                 onTap: () {
                                   setState(() {
-                                    _hoveredCrossId = null;
-                                    if (!_isDesktopOrWeb) {
-                                      if (_selectedCrossId == cross.id) {
-                                        _selectedCrossId = null;
-                                      } else {
-                                        _selectedCrossId = cross.id;
-                                      }
+                                    if (_selectedCrossId == cross.id) {
+                                      _selectedCrossId = null; // Désélectionne au second clic
+                                    } else {
+                                      _selectedCrossId = cross.id; // Sélectionne par clic
+                                      _hoveredCrossId = null;
                                     }
                                   });
-                                },
-                                onDoubleTap: () {
-                                  if (_isDesktopOrWeb) {
-                                    _navigateToCross(cross);
-                                  }
                                 },
                                 child: SizedBox(
                                   width: clickAreaSize,
@@ -375,26 +346,25 @@ Color _getAuraColor(RegionCross c) {
                             ),
                           );
                         }),
-                        
-// ✨ LE PERSONNAGE
+                         // ✨ LE PERSONNAGE
                         if (_currentCity != null)
                           ...regionCrosses
                               .where((c) => c.name == _currentCity)
                               .map((cross) => Positioned(
-                                    key: const ValueKey('player_position'), // ✨ Ajoute une clé ici
-                                    left: cross.x - 60, 
-                                    top: cross.y - 80,
-                                    child: IgnorePointer(
-                                      child: RepaintBoundary(
-                                        child: PersistentAnimatedCharacter(
-                                          key: const ValueKey('player_character'), // ✨ ET LA CLÉ MAGIQUE ICI
-                                          size: 200, 
-                                          frames: List.generate(21, (i) => 'assets/PersonnageAnimation/Nuit/Arret/${i + 1}.png'),
-                                          frameDuration: const Duration(milliseconds: 2000),
-                                        ),
+                                  key: const ValueKey('player_position'), // ✨ Ajoute une clé ici
+                                  left: cross.x - 60,
+                                  top: cross.y - 80,
+                                  child: IgnorePointer(
+                                    child: RepaintBoundary(
+                                      child: PersistentAnimatedCharacter(
+                                        key: const ValueKey('player_character'), // ✨ ET LA CLÉ MAGIQUE ICI
+                                        size: 200,
+                                        frames: List.generate(21, (i) => 'assets/PersonnageAnimation/Nuit/Arret/${i + 1}.png'),
+                                        frameDuration: const Duration(milliseconds: 2000),
                                       ),
                                     ),
-                                  )),
+                                  ),
+                                )), 
                       ];
 
                       return Stack(
@@ -422,7 +392,7 @@ Color _getAuraColor(RegionCross c) {
                             ),
                           ),
 
-                          // Bouton retour
+                          // Bouton retour en haut à gauche
                           SafeArea(
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
@@ -449,7 +419,7 @@ Color _getAuraColor(RegionCross c) {
                             ),
                           ),
 
-                          // ✨ BOUTON "Y ALLER !" ET RESET ZOOM EN BAS À DROITE
+                          // Bouton "Y aller !" en bas à droite
                           SafeArea(
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
@@ -458,15 +428,14 @@ Color _getAuraColor(RegionCross c) {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // 🚀 Le bouton "Y aller !" s'affiche UNIQUEMENT si un focus est planifié
                                     if (_hasFocusPlanned) ...[
                                       Builder(
                                         builder: (context) {
-                                          final selectedCross = regionCrosses.where((c) => c.id == _selectedCrossId).firstOrNull;
-                                          final bool canGo = selectedCross != null && _isReachable(selectedCross);
+                                          final selectedCrossObj = regionCrosses.where((c) => c.id == _selectedCrossId).firstOrNull;
+                                          final bool canGo = selectedCrossObj != null && _isReachable(selectedCrossObj);
 
                                           return AnimatedOpacity(
-                                            opacity: canGo ? 1.0 : 0.5, // Grisé visuellement tant qu'on clique pas sur une ville accessible
+                                            opacity: canGo ? 1.0 : 0.5,
                                             duration: const Duration(milliseconds: 200),
                                             child: ElevatedButton.icon(
                                               style: ElevatedButton.styleFrom(
@@ -478,12 +447,11 @@ Color _getAuraColor(RegionCross c) {
                                               ),
                                               icon: const Icon(Icons.navigation, size: 18),
                                               label: const Text('Y aller !', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                              onPressed: canGo ? () => _navigateToCross(selectedCross) : null,
+                                              onPressed: canGo && selectedCrossObj != null ? () => _navigateToCross(selectedCrossObj) : null,
                                             ),
                                           );
                                         },
                                       ),
-                                      const SizedBox(width: 12),
                                     ],
                                   ],
                                 ),
