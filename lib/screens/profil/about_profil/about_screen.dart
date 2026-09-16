@@ -20,7 +20,7 @@ class AboutScreen extends StatelessWidget {
 
     // Textes adaptés selon la personne
     final String appSubtitle = isLise 
-        ? 'Créé avec amour pour accompagner tes sessions de productivité et tes aventures magiques ❤️!'
+        ? 'Créé avec amour pour accompagner tes sessions de productivité et tes aventures magiques ❤️! \nBon courage mon coeur !!!'
         : 'Créé pour optimiser ton quotidien et lier productivité et aventure.';
 
     return Scaffold(
@@ -117,7 +117,7 @@ class AboutScreen extends StatelessWidget {
 
                           // --- DESCRIPTION ---
                           Text(
-                            isLise ? 'FocusTime est une application conçue pour t\'aider à rester productif, gérer ton temps de concentration efficacement et explorer des univers interactifs au fil de tes sessions. Je t\'aime du plus profond de mon cœur ❤️! Et je veux que grâce a cette application, tu reussisse à travailler et à te concentrer.' : 'FocusTime est une application conçue pour t\'aider à rester productif, gérer ton temps de concentration efficacement et explorer des univers interactifs au fil de tes sessions.',
+                            isLise ? 'Je t\'aime du plus profond de mon cœur ❤️! Et je veux que grâce a cette application, tu reussisse à travailler et à te concentrer.' : 'FocusTime est une application conçue pour t\'aider à rester productif, gérer ton temps de concentration efficacement et explorer des univers interactifs au fil de tes sessions.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 15,

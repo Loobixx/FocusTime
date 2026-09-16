@@ -1,14 +1,13 @@
 import 'dart:math' as math;
 import 'dart:ui';
-import 'package:FocusTime/screens/focus_moment/animated_character.dart';
-import 'package:FocusTime/screens/widgets/persistent_animated_character.dart';
+import 'package:focus_time/screens/widgets/persistent_animated_character.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:FocusTime/screens/map/data/map_region_data.dart';
-import 'package:FocusTime/screens/map/region_detail_screen.dart';
-import 'package:FocusTime/screens/map/data/region_cross_data.dart';
+import 'package:focus_time/screens/map/data/map_region_data.dart';
+import 'package:focus_time/screens/map/region_detail_screen.dart';
+import 'package:focus_time/screens/map/data/region_cross_data.dart';
 
 class MapScreen extends StatefulWidget {
   final int selectedDurationMinutes;
@@ -142,8 +141,8 @@ class _MapScreenState extends State<MapScreen> {
     final double dy = (screenSize.height - scaledHeight) / 2;
 
     _transformationController.value = Matrix4.identity()
-      ..translate(dx, dy)
-      ..scale(_fitScale);
+      ..translateByDouble(dx, dy, 0.0, 0.0)
+      ..scaleByDouble(_fitScale, _fitScale, 1.0, 1.0);
   }
 
   // ✨ Coordonnées approximatives au centre de chaque région sur la map globale
@@ -161,7 +160,6 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
-    const focusOrange = Color(0xFFFF8C00);
 
     final playerPosition = _getRegionCenter(_currentRegionId);
 

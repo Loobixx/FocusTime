@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -49,49 +50,42 @@ class NotificationService {
   // ✨ PLANIFIER OU DÉCLENCHER LE BILAN QUOTIDIEN DE 20H
   Future<void> checkAndSendDailySummary() async {
     final prefs = await _getUserPreferences();
-    // On peut utiliser la préférence de pause ou d'arrivée, ou créer un réglage dédié. 
-    // Ici on s'assure que les notifications ne sont pas entièrement coupées.
     if (prefs['arrival'] == false && prefs['pauseReminder'] == false) return;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
-      // 1. Calculer le début et la fin de la journée d'aujourd'hui
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
       
-      // 2. Récupérer les sessions de focus du jour dans Firestore
       final querySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
-          .collection('history') // Assurez-vous que c'est bien le nom de votre collection d'historique
+          .collection('history')
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
           .get();
 
       int totalMinutesToday = 0;
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
-        // On additionne les minutes de focus de la session
         totalMinutesToday += (data['durationMinutes'] as int?) ?? 0;
       }
 
       String title;
       String body;
 
-      // 3. Déterminer le message selon les seuils (3h = 180 min, 30 min)
       if (totalMinutesToday >= 180) {
         title = '🌟 Journée légendaire !';
         body = 'Tu as validé plus de 3h de focus aujourd\'hui, ton voyage avance à grand pas !';
       } else if (totalMinutesToday >= 30) {
         title = '👍 Belle régularité !';
-        body = 'Tu as planté de belles bases aujourd\'hui (${totalMinutesToday} min). Encore un effort demain !';
+        body = 'Tu as planté de belles bases aujourd\'hui ($totalMinutesToday min). Encore un effort demain !';
       } else {
         title = '🌧️ Ton personnage s\'ennuie...';
         body = 'L\'application n\'a pas été beaucoup utilisée aujourd\'hui. Viens faire un petit tour sur les sentiers !';
       }
 
-      // 4. Envoyer la notification
       await showNotification(
         id: 300,
         title: title,
@@ -109,7 +103,6 @@ class NotificationService {
     final now = tz.TZDateTime.now(tz.local);
     var scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 20, 0);
 
-    // Si 20h est déjà passé aujourd'hui, on le programme pour demain 20h
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
@@ -132,7 +125,7 @@ class NotificationService {
         iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time, // 👈 Répète tous les jours à la même heure (20h)
+      matchDateTimeComponents: DateTimeComponents.time,
     );
     
     debugPrint('⏰ Bilan quotidien programmé pour 20h00.');
@@ -156,48 +149,59 @@ class NotificationService {
     }
   }
 
+  // Fonction utilitaire pour les détails Android par défaut
+  AndroidNotificationDetails _defaultAndroidDetails(bool playSound) {
+    return AndroidNotificationDetails(
+      'focus_channel_id', 
+      'Voyages et Pauses',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: playSound,
+    );
+  }
+
   // ✨ Notification classique (avec option d'image grande taille)
   Future<void> showNotification({
     required int id, 
     required String title, 
     required String body,
-    String? imageAssetPath, // 👈 Paramètre optionnel pour passer l'image (ex: 'assets/desert.png')
+    String? imageAssetPath, 
   }) async {
     final prefs = await _getUserPreferences();
     if (prefs['arrival'] == false) return;
 
     final bool playSound = prefs['sound'] ?? true;
-
     AndroidNotificationDetails androidDetails;
 
     if (imageAssetPath != null) {
-      // 🖼️ Configuration Android avec une grande image
-      final BigPictureStyleInformation bigPictureStyleInformation = BigPictureStyleInformation(
-        DrawableResourceAndroidBitmap(imageAssetPath.replaceAll('assets/', '').replaceAll('.png', '').replaceAll('.jpg', '')),
-        contentTitle: title,
-        summaryText: body,
-      );
+      try {
+        final ByteArrayAndroidBitmap? bigImage = await _loadAssetImageForAndroid(imageAssetPath);
+        
+        if (bigImage != null) {
+          final BigPictureStyleInformation bigPictureStyleInformation = BigPictureStyleInformation(
+            bigImage,
+            contentTitle: title,
+            summaryText: body,
+          );
 
-      androidDetails = AndroidNotificationDetails(
-        'focus_channel_id', 
-        'Voyages et Pauses',
-        importance: Importance.max,
-        priority: Priority.high,
-        playSound: playSound,
-        styleInformation: bigPictureStyleInformation,
-      );
+          androidDetails = AndroidNotificationDetails(
+            'focus_channel_id', 
+            'Voyages et Pauses',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: playSound,
+            styleInformation: bigPictureStyleInformation,
+          );
+        } else {
+          androidDetails = _defaultAndroidDetails(playSound);
+        }
+      } catch (e) {
+        androidDetails = _defaultAndroidDetails(playSound);
+      }
     } else {
-      androidDetails = AndroidNotificationDetails(
-        'focus_channel_id', 
-        'Voyages et Pauses',
-        importance: Importance.max,
-        priority: Priority.high,
-        playSound: playSound,
-      );
+      androidDetails = _defaultAndroidDetails(playSound);
     }
 
-    // 🍏 Configuration iOS (les pièces jointes d'images se font idéalement via des fichiers locaux temporaires, 
-    // mais pour une icône ou une alerte standard, on active le support multimédia)
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
@@ -217,6 +221,18 @@ class NotificationService {
     );
   }
 
+  // ✨ Charge l'asset directement en mémoire sous forme de Bytes pour Android
+  Future<ByteArrayAndroidBitmap?> _loadAssetImageForAndroid(String assetPath) async {
+    try {
+      final ByteData data = await rootBundle.load(assetPath);
+      final Uint8List bytes = data.buffer.asUint8List();
+      return ByteArrayAndroidBitmap(bytes);
+    } catch (e) {
+      debugPrint('❌ Erreur conversion asset en bytes pour notification: $e');
+      return null;
+    }
+  }
+  
   Future<void> showPauseChronometer(int remainingSeconds) async {
     final prefs = await _getUserPreferences();
     if (prefs['pauseReminder'] == false) return;

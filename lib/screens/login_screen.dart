@@ -76,6 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
+      if (!mounted) return;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

@@ -1,5 +1,5 @@
-import 'package:FocusTime/screens/home_screen.dart';
-import 'package:FocusTime/services/notification_service.dart';
+import 'package:focus_time/screens/home_screen.dart';
+import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'firebase_options.dart'; // Importe le fichier qui vient d'être généré

@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 import 'dart:ui';
-import 'package:FocusTime/screens/widgets/persistent_animated_character.dart';
+import 'package:focus_time/screens/widgets/persistent_animated_character.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:FocusTime/screens/map/data/region_cross_data.dart';
+import 'package:focus_time/screens/map/data/region_cross_data.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import '../../models/city_network.dart';
 import '../focus_moment/active_timer_screen.dart';
@@ -140,8 +140,8 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     final double dy = (screenSize.height - scaledHeight) / 2;
 
     _controller.value = Matrix4.identity()
-      ..translate(dx, dy)
-      ..scale(fitScale);
+      ..translateByDouble(dx, dy, 0.0, 0.0)
+      ..scaleByDouble(fitScale, fitScale, 1.0, 1.0);
   }
 
   bool get _hasFocusPlanned => widget.selectedDurationMinutes > 0;
@@ -225,7 +225,6 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
 
     // Priorité à la sélection par clic, sinon on prend le survol de la souris
     final String? activeCrossId = _selectedCrossId ?? _hoveredCrossId;
-    RegionCross? activeCross = regionCrosses.where((c) => c.id == activeCrossId).firstOrNull;
 
     return Scaffold(
       backgroundColor: const Color(0xFF12121C),
@@ -447,7 +446,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                                               ),
                                               icon: const Icon(Icons.navigation, size: 18),
                                               label: const Text('Y aller !', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                              onPressed: canGo && selectedCrossObj != null ? () => _navigateToCross(selectedCrossObj) : null,
+                                              onPressed: canGo ? () => _navigateToCross(selectedCrossObj) : null,
                                             ),
                                           );
                                         },

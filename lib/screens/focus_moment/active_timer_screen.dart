@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
-import 'package:FocusTime/services/notification_service.dart';
+import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -75,33 +75,29 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     _startTimer();
   }
 
-  Future<void> _prepareMilestones() async {
+ Future<void> _prepareMilestones() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
     final userDoc = await userRef.get();
-    final statusDoc = await userRef.collection('travel').doc('status').get();
 
     String currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
-    String? midRouteDestination = statusDoc.data()?['midRouteDestination'];
-    int midRouteProgress = statusDoc.data()?['midRouteProgress'] ?? 0;
 
     List<_LegTimeline> milestones = [];
     int totalCumulativeSeconds = 0;
 
+    int totalRouteSteps = widget.plannedRoute.length;
+    int totalAllowedSeconds = CityNetwork.isDevMode ? 60 : (widget.durationMinutes * 60);
+    int secondsPerStep = totalAllowedSeconds ~/ totalRouteSteps;
+    if (secondsPerStep < 2) secondsPerStep = 2;
+
     for (String city in widget.plannedRoute) {
-      int fullTime = CityNetwork.getAvailableDestinations(currentCity)[city] ?? 0;
+      int effectiveSeconds = CityNetwork.isDevMode 
+          ? secondsPerStep 
+          : (CityNetwork.getAvailableDestinations(currentCity)[city] ?? 60) * 60;
 
-      int effectiveMinutes;
-      if (city == midRouteDestination) {
-        effectiveMinutes = fullTime - midRouteProgress;
-      } else {
-        effectiveMinutes = fullTime;
-      }
-      if (effectiveMinutes < 0) effectiveMinutes = 0;
-
-      totalCumulativeSeconds += effectiveMinutes * 60;
+      totalCumulativeSeconds += effectiveSeconds;
       milestones.add(_LegTimeline(
         destination: city,
         cumulativeSeconds: totalCumulativeSeconds,
@@ -206,42 +202,43 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       },
     );
   }
-
-  void _startPauseTimer(int minutes) async {
-  _timer?.cancel(); 
   
-  final durationSec = minutes * 60;
-  setState(() {
-    _isPaused = true;
-    _pauseRemainingSeconds = durationSec;
-    _pauseOvertimeSeconds = 0; 
-    _pauseEndTime = DateTime.now().add(Duration(seconds: durationSec));
-  });
+void _startPauseTimer(int minutes) async {
+    _timer?.cancel(); 
+    
+    final durationSec = minutes * 60;
+    setState(() {
+      _isPaused = true;
+      _pauseRemainingSeconds = durationSec;
+      _pauseOvertimeSeconds = 0; 
+      _pauseEndTime = DateTime.now().add(Duration(seconds: durationSec));
+    });
 
-  if (Platform.isAndroid) {
-    try {
-      await NotificationService().requestExactAlarmPermission();
-      await NotificationService().showPauseChronometer(durationSec);
-      await NotificationService().schedulePauseEndNotification(
-        durationSec,
-        "Ta pause au feu de camp se termine dans 2 minutes, prépare-toi à repartir !"
-      );
-      debugPrint('✅ Notifs pause programmées avec succès');
-    } catch (e, st) {
-      debugPrint('❌ Erreur notif pause: $e\n$st');
+    // On garde juste le chronomètre permanent (ID 200) dans la barre d'état
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        await NotificationService().showPauseChronometer(durationSec);
+      } catch (e) {
+        debugPrint('❌ Erreur affichage chrono pause: $e');
+      }
     }
-  } else if (Platform.isIOS) {
-    NotificationService().schedulePauseEndNotification(
-      durationSec, 
-      "Ta pause au feu de camp se termine dans 2 minutes, prépare-toi à repartir !"
-    );
-  }
+
     _pauseTimer?.cancel();
     _pauseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       setState(() {
         if (_pauseRemainingSeconds > 0) {
           _pauseRemainingSeconds--;
+
+          // ✨ ICI : Dès qu'il reste exactement 120 secondes (2 minutes), on envoie la notification !
+          if (_pauseRemainingSeconds == 120) {
+            NotificationService().showNotification(
+              id: 201,
+              title: '⏰ Bientôt la fin de la pause !',
+              body: 'Ta pause au feu de camp se termine dans 2 minutes, prépare-toi à repartir !',
+            );
+          }
+
         } else {
           _pauseOvertimeSeconds++;
         }

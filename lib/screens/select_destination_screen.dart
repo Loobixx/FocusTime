@@ -213,7 +213,7 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                                               children: [
                                                 const SizedBox(height: 4),
                                                 Text(
-                                                  'Trajet : ${_currentCity} ➔ ${routeResult.path.join(" ➔ ")}',
+                                                  'Trajet : $_currentCity ➔ ${routeResult.path.join(" ➔ ")}',
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                     color: isReachable ? Colors.black87 : Colors.black45,

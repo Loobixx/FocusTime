@@ -224,7 +224,7 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                             const Text('Accessoire / Chapeau', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkBlue)),
                             const SizedBox(height: 10),
                             DropdownButtonFormField<String>(
-                              value: _hats.contains(_selectedHat) ? _selectedHat : 'Aucun',
+                              initialValue: _hats.contains(_selectedHat) ? _selectedHat : 'Aucun',
                               dropdownColor: Colors.white.withValues(alpha: 0.9),
                               decoration: InputDecoration(
                                 filled: true,

@@ -159,7 +159,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 ),
                 Switch(
                   value: value,
-                  activeColor: focusOrange,
+                  activeThumbColor: focusOrange,
                   onChanged: onChanged,
                 ),
               ],

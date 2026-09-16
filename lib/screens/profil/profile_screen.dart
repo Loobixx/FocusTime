@@ -1,16 +1,16 @@
 import 'dart:ui';
-import 'package:FocusTime/services/notification_service.dart';
+import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:FocusTime/screens/profil/about_profil/about_screen.dart';
-import 'package:FocusTime/screens/profil/character/character_customize_screen.dart';
+import 'package:focus_time/screens/profil/about_profil/about_screen.dart';
+import 'package:focus_time/screens/profil/character/character_customize_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../login_screen.dart';
-import 'package:FocusTime/screens/profil/historique/history_screen.dart';
-import 'package:FocusTime/screens/profil/stat/stats_screen.dart';
-import 'package:FocusTime/screens/profil/change_password/auth_helper.dart';
-import 'package:FocusTime/screens/profil/notification/notification_settings_screen.dart';
+import 'package:focus_time/screens/profil/historique/history_screen.dart';
+import 'package:focus_time/screens/profil/stat/stats_screen.dart';
+import 'package:focus_time/screens/profil/change_password/auth_helper.dart';
+import 'package:focus_time/screens/profil/notification/notification_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -69,7 +69,7 @@ Future<void> _loadPseudo() async {
       id: 999,
       title: '🔥 Test de notification riche',
       body: 'Regarde cette magnifique image de région dans la notification !',
-      imageAssetPath: 'assets/desert.png', // Tu peux tester avec 'assets/lac.png', etc.
+      imageAssetPath: 'assets/Notif/Notification_1.jpg', // Tu peux tester avec 'assets/lac.png', etc.
     );
   }
 
@@ -236,27 +236,6 @@ Future<void> _loadPseudo() async {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 32),
-                          _buildMenuItem(
-                          Icons.info_outline,
-                          'À propos de l\'application',
-                          isAvailable: true,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const AboutScreen()),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        // 🧪 BOUTON DE TEST TEMPORAIRE POUR LES NOTIFS & IMAGES
-                        _buildMenuItem(
-                          Icons.bug_report_outlined,
-                          'Tester la notification (Image)',
-                          isAvailable: true,
-                          onTap: _testerNotificationTest,
-                        ),
 
                         const SizedBox(height: 32),
                           _buildMenuItem(
@@ -326,6 +305,13 @@ Future<void> _loadPseudo() async {
                             },
                           ),
                           const SizedBox(height: 32),
+                        // 🧪 BOUTON DE TEST TEMPORAIRE POUR LES NOTIFS & IMAGES
+                        _buildMenuItem(
+                          Icons.bug_report_outlined,
+                          'Tester la notification (Image)',
+                          isAvailable: true,
+                          onTap: _testerNotificationTest,
+                        ),
                           
                           TextButton(
                             onPressed: () {},
@@ -365,6 +351,7 @@ Future<void> _loadPseudo() async {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: ListTile(
+        tileColor: Colors.transparent, 
         leading: Icon(icon, color: isAvailable ? darkBlue : darkBlue.withValues(alpha: 0.4), size: 26),
         title: Text(
           title,

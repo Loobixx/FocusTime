@@ -1,14 +1,14 @@
 import 'dart:ui';
-import 'package:FocusTime/utils/time_formatter.dart';
+import 'package:focus_time/utils/time_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:FocusTime/screens/focus_screen.dart';
-import 'package:FocusTime/screens/map/map_screen.dart';
-import 'package:FocusTime/screens/profil/profile_screen.dart';
+import 'package:focus_time/screens/focus_screen.dart';
+import 'package:focus_time/screens/map/map_screen.dart';
+import 'package:focus_time/screens/profil/profile_screen.dart';
 import '../models/city_network.dart';
-import 'package:FocusTime/starter/character_selection_screen.dart'; 
-import 'package:FocusTime/services/notification_service.dart';
+import 'package:focus_time/starter/character_selection_screen.dart'; 
+import 'package:focus_time/services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
