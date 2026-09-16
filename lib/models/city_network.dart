@@ -17,23 +17,23 @@ class CityNode {
 
 class CityNetwork {
 
-  static const bool isDevMode = false;
+  static const bool isDevMode = true;
 
   static final Map<String, CityNode> network = {
     // ==========================================
     // --- ZONE DÉSERT (Sahur) ---
     // ==========================================
-    'La port de commerce de Solaris': const CityNode(
-      name: 'La port de commerce de Solaris',
-      connectedCities: {'La cité Solaris': 60, 'Le puits des Mirages': 60},
+    'Le port de commerce de Solaris': const CityNode(
+      name: 'Le port de commerce de Solaris',
+      connectedCities: {'La cité Solaris': 60, 'Le puits des Mirages': 120},
     ),
     'La cité Solaris': const CityNode(
       name: 'La cité Solaris',
-      connectedCities: {'La port de commerce de Solaris': 60, 'Le piège des sables': 60, 'La stelle du desert de Sahur': 60},
+      connectedCities: {'Le port de commerce de Solaris': 60, 'Le piège des sables': 60, 'La stelle du desert de Sahur': 60},
     ),
     'Le puits des Mirages': const CityNode(
       name: 'Le puits des Mirages',
-      connectedCities: {'La port de commerce de Solaris': 60, 'Le piège des sables': 60},
+      connectedCities: {'Le port de commerce de Solaris': 60, 'Le piège des sables': 60},
     ),
     'Le piège des sables': const CityNode(
       name: 'Le piège des sables',

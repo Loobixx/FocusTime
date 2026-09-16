@@ -53,7 +53,7 @@ class RegionCrossesData {
       RegionCross(id:'m24', name:'La forêt d\'Orane', x:216.0, y:919.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesMontagnes/m24.png', imageX:0.0, imageY:0.0),
     ],
     'desert': [
-      RegionCross(id: 'd1', name: 'La port de commerce de Solaris', x: 435.0, y: 483.0, angle: 0.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d1.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id: 'd1', name: 'Le port de commerce de Solaris', x: 435.0, y: 483.0, angle: 0.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d1.png', imageX: 0.0, imageY: 0.0),
       RegionCross(id: 'd2', name: 'La cité Solaris', x: 561.0, y: 431.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d2.png', imageX: 0.0, imageY: 0.0),
       RegionCross(id: 'd3', name: 'Le coeur du désert', x: 669.0, y: 705.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d3.png', imageX: 0.0, imageY: 0.0),
       RegionCross(id: 'd4', name: 'La piste des marchands', x: 645.0, y: 820.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesDesert/d4.png', imageX: 0.0, imageY: 0.0),

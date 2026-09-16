@@ -220,15 +220,25 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
     );
   }
 
-  Color _getAuraColor(RegionCross c) {
+Color _getAuraColor(RegionCross c) {
+    // Si c'est la ville où se trouve le joueur, pas besoin d'aura spéciale sur la croix (le perso est dessus)
+    if (_currentCity != null && c.name == _currentCity) {
+      return Colors.transparent;
+    }
+
+    // ✨ Si la ville a déjà été visitée, on met une lueur dorée/jaune
+    if (_visitedCities.contains(c.name)) {
+      return const Color(0xFFFFD700).withValues(alpha: 0.8); // Doré brillant
+    }
+
+    // Si elle est accessible pour le voyage en cours
     if (_isReachable(c)) {
       return const Color.fromARGB(255, 245, 4, 4).withValues(alpha: 0.7);
     }
-    switch (c.id) {
-      default: return Colors.transparent;
-    }
-  }
 
+    return Colors.transparent;
+  }
+  
   @override
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
