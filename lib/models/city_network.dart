@@ -129,7 +129,7 @@ class CityNetwork {
     ),
     'Le village de Néris': const CityNode(
       name: 'Le village de Néris',
-      connectedCities: {'L\'Halte blanche': 60, 'Le bosquet enchanté': 60, 'Le Ruisseau des murmures': 60, 'Île Céleste': 60}, // Vers les nuages
+      connectedCities: {'L\'Halte blanche': 30, 'Le bosquet enchanté': 30, 'Le Ruisseau des murmures': 30, 'Île Céleste': 30}, // Vers les nuages
     ),
     'L\'Halte blanche': const CityNode(
       name: 'L\'Halte blanche',
