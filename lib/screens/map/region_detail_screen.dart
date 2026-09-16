@@ -8,6 +8,7 @@ import 'package:FocusTime/screens/map/region_cross_data.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import '../../models/city_network.dart';
 import '../focus_moment/active_timer_screen.dart';
+import 'package:FocusTime/screens/widgets/persistent_animated_character.dart';
 
 class RegionDetailScreen extends StatefulWidget {
   final String regionName;
@@ -221,12 +222,9 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
 
   Color _getAuraColor(RegionCross c) {
     if (_isReachable(c)) {
-      return Colors.green.withValues(alpha: 0.7);
+      return const Color.fromARGB(255, 245, 4, 4).withValues(alpha: 0.7);
     }
     switch (c.id) {
-      case 'm1': return Colors.blue.withValues(alpha: 0.6);
-      case 'm2': return Colors.orange.withValues(alpha: 0.6);
-      case 'm3': return Colors.cyan.withValues(alpha: 0.6);
       default: return Colors.transparent;
     }
   }
@@ -274,40 +272,14 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                       // global (desktop/web) soit actif ou non (mobile).
                       final List<Widget> mapStackChildren = [
                         // COUCHE 1 : La carte de fond
-                        Image.asset(
-                          _getImageAsset(widget.regionName),
-                          width: imgWidth,
-                          height: imgHeight,
-                          fit: BoxFit.fill,
+                        RepaintBoundary(
+                          child: Image.asset(
+                            _getImageAsset(widget.regionName),
+                            width: imgWidth,
+                            height: imgHeight,
+                            fit: BoxFit.fill,
+                          ),
                         ),
-
-                        // COUCHE 1.5 : Marqueur FIXE de la position du personnage.
-                        // Ne dépend d'AUCUN état de hover/sélection -> ne bouge jamais.
-                        if (_currentCity != null)
-                          ...regionCrosses
-                              .where((c) => c.name == _currentCity)
-                              .map((cross) => Positioned(
-                                    left: cross.x - (cross.size / 2),
-                                    top: cross.y - (cross.size / 2),
-                                    child: IgnorePointer(
-                                      // IgnorePointer : ce halo n'intercepte jamais les clics/hover,
-                                      // la zone cliquable de la COUCHE 3 reste seule responsable de l'interaction.
-                                      child: Container(
-                                        width: cross.size,
-                                        height: cross.size,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: const Color(0xFF143063).withValues(alpha: 0.85),
-                                              blurRadius: 15.0,
-                                              spreadRadius: 4.0,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  )),
 
                         // COUCHE 2 : L'image de la ville (Affichée DERRIÈRE les croix)
                         if (_selectedCrossId != null)
@@ -316,76 +288,75 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                               .map((cross) => Positioned(
                                     left: cross.imageX,
                                     top: cross.imageY,
-                                    child: GestureDetector(
-                                      onTap: () => _navigateToCross(cross),
-                                      child: Image.asset(
-                                        cross.imagePath!,
-                                        width: imgWidth,
-                                        height: imgHeight,
+                                    child: RepaintBoundary( // ✨ Isolation de l'image de la ville
+                                      child: GestureDetector(
+                                        onTap: () => _navigateToCross(cross),
+                                        child: Image.asset(
+                                          cross.imagePath!,
+                                          width: imgWidth,
+                                          height: imgHeight,
+                                          gaplessPlayback: true, // Évite le clignotement au chargement
+                                        ),
                                       ),
                                     ),
                                   )),
 
                         // COUCHE 3 : Toutes les croix (Affichées TOUT DEVANT)
                         ...regionCrosses.map((cross) {
-                          // Taille fixe, ne grossit plus au survol
                           final double visualSize = cross.size;
-
-                          // Même taille sur pc comme sur mobile, mais on augmente
-                          // la zone cliquable pour faciliter l'interaction (surtout au tap).
                           final double clickAreaSize = math.max(visualSize, 80.0);
 
                           return Positioned(
                             left: cross.x - (clickAreaSize / 2),
                             top: cross.y - (clickAreaSize / 2),
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
-                              onTapCancel: () => setState(() => _hoveredCrossId = null),
-                              // 1. Un simple clic pour afficher l'image de la ville (surtout utile sur mobile ou pour découvrir)
-                              onTap: () {
-                                setState(() {
-                                  _hoveredCrossId = null;
-                                  if (!_isDesktopOrWeb) {
-                                    if (_selectedCrossId == cross.id) {
-                                      _selectedCrossId = null;
-                                    } else {
-                                      _selectedCrossId = cross.id;
+                            child: RepaintBoundary( // ✨ Isolation de chaque croix
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTapDown: (_) => setState(() => _hoveredCrossId = cross.id),
+                                onTapCancel: () => setState(() => _hoveredCrossId = null),
+                                onTap: () {
+                                  setState(() {
+                                    _hoveredCrossId = null;
+                                    if (!_isDesktopOrWeb) {
+                                      if (_selectedCrossId == cross.id) {
+                                        _selectedCrossId = null;
+                                      } else {
+                                        _selectedCrossId = cross.id;
+                                      }
                                     }
+                                  });
+                                },
+                                onDoubleTap: () {
+                                  if (_isDesktopOrWeb) {
+                                    _navigateToCross(cross);
                                   }
-                                });
-                              },
-                              // 2. ✨ Le double-clic sur PC lance directement le voyage si c'est accessible !
-                              onDoubleTap: () {
-                                if (_isDesktopOrWeb) {
-                                  _navigateToCross(cross);
-                                }
-                              },
-                              child: SizedBox(
-                                width: clickAreaSize,
-                                height: clickAreaSize,
-                                child: Center(
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 150),
-                                    width: visualSize,
-                                    height: visualSize,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _getAuraColor(cross),
-                                          blurRadius: 15.0,
-                                          spreadRadius: 4.0,
+                                },
+                                child: SizedBox(
+                                  width: clickAreaSize,
+                                  height: clickAreaSize,
+                                  child: Center(
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 150),
+                                      width: visualSize,
+                                      height: visualSize,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: _getAuraColor(cross),
+                                            blurRadius: 15.0,
+                                            spreadRadius: 4.0,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Transform.rotate(
+                                        angle: cross.angle * (math.pi / 180),
+                                        child: Icon(
+                                          Icons.close,
+                                          size: visualSize,
+                                          color: Colors.transparent,
                                         ),
-                                      ],
-                                    ),
-                                    child: Transform.rotate(
-                                      angle: cross.angle * (math.pi / 180),
-                                      child: Icon(
-                                        Icons.close,
-                                        size: visualSize,
-                                        color: Colors.transparent,
                                       ),
                                     ),
                                   ),
@@ -394,6 +365,26 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
                             ),
                           );
                         }),
+                        
+// ✨ LE PERSONNAGE
+                        if (_currentCity != null)
+                          ...regionCrosses
+                              .where((c) => c.name == _currentCity)
+                              .map((cross) => Positioned(
+                                    key: const ValueKey('player_position'), // ✨ Ajoute une clé ici
+                                    left: cross.x - 60, 
+                                    top: cross.y - 80,
+                                    child: IgnorePointer(
+                                      child: RepaintBoundary(
+                                        child: PersistentAnimatedCharacter(
+                                          key: const ValueKey('player_character'), // ✨ ET LA CLÉ MAGIQUE ICI
+                                          size: 200, 
+                                          frames: List.generate(21, (i) => 'assets/PersonnageAnimation/Nuit/Arret/${i + 1}.png'),
+                                          frameDuration: const Duration(milliseconds: 2000),
+                                        ),
+                                      ),
+                                    ),
+                                  )),
                       ];
 
                       return Stack(

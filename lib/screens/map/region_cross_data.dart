@@ -31,7 +31,7 @@ class RegionCrossesData {
       RegionCross(id:'m2', name: 'Le ponton des brunes', x: 368.0, y: 1050.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesMontagnes/m2.png', imageX: 0.0, imageY: 0.0),
       RegionCross(id:'m3', name: 'Le Ruisseau des murmures', x: 628.0, y: 1091.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesMontagnes/m3.png', imageX: 0.0, imageY: 0.0),
       RegionCross(id:'m4', name: 'La grange au vent', x: 426.0, y: 1213.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesMontagnes/m4.png', imageX: 0.0, imageY: 0.0),
-      RegionCross(id:'m5', name: 'Le campement de l\île Sud', x: 455.0, y: 1423.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesMontagnes/m5.png', imageX: 0.0, imageY: 0.0),
+      RegionCross(id:'m5', name: 'Le campement de l\'île Sud', x: 455.0, y: 1423.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesMontagnes/m5.png', imageX: 0.0, imageY: 0.0),
       RegionCross(id:'m6', name: 'Le phare d\'Orane', x: 585.0, y: 1322.0, angle: 30.0, size: 20.0, imagePath:'assets/NomCitiesMontagnes/m6.png', imageX:0.0, imageY:0.0),
       RegionCross(id:'m7', name: 'Le bosquet enchanté', x: 772.0, y: 1199.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesMontagnes/m7.png', imageX: 0.0, imageY: 0.0),
       // A ne pas afficher RegionCross(id:'m8', name: 'Le plateau d\'Orane', x: 664.0, y: 105.0, angle: 30.0, size: 20.0, imagePath: 'assets/NomCitiesMontagnes/m8.png', imageX: 0.0, imageY: 0.0),

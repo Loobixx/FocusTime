@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:FocusTime/screens/focus_moment/animated_character.dart';
-import 'package:FocusTime/screens/map/player_marker.dart';
+import 'package:FocusTime/screens/widgets/persistent_animated_character.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -214,37 +214,69 @@ class _MapScreenState extends State<MapScreen> {
                         onTapUp: (details) => _handleTapUp(details, scaledRegions),
                         child: Stack(
                           children: [
-                            Image.asset(
-                              'assets/map_global.png',
-                              width: baseWidth,
-                              height: baseHeight,
-                              fit: BoxFit.fill,
+                            // On isole l'image de fond
+                            const RepaintBoundary(
+                              child: Image(
+                                image: AssetImage('assets/map_global.png'),
+                                width: baseWidth,
+                                height: baseHeight,
+                                fit: BoxFit.fill,
+                              ),
                             ),
-                            CustomPaint(
-                              size: Size(baseWidth, baseHeight),
-                              painter: MapPainter(
-                                regions: scaledRegions,
-                                selectedRegionId: _selectedRegionId,
-                                hoveredRegionId: _hoveredRegionId,
+                            
+                            // On isole le survol des territoires
+                            RepaintBoundary(
+                              child: CustomPaint(
+                                size: const Size(baseWidth, baseHeight),
+                                painter: MapPainter(
+                                  regions: scaledRegions,
+                                  selectedRegionId: _selectedRegionId,
+                                  hoveredRegionId: _hoveredRegionId,
+                                ),
                               ),
                             ),
 
-                            // ✨ Joli marqueur élégant pour indiquer la position du joueur
-if (playerPosition != null)
-  Positioned(
-    left: playerPosition.dx - 25,
-    top: playerPosition.dy - 50,
-    child: IgnorePointer(
-      child: AnimatedCharacter(
-  size: 300,
-  isWalking: true, // true pour lancer le cycle en boucle de TON animation idle
-  frames: List.generate(21, (i) => 'assets/PersonnageAnimation/Nuit/Arret/${i + 1}.png'),
-  frameDuration: const Duration(milliseconds: 2000), // ajuste selon le nombre de frames
-),
-    ),
-  ),
+                            // Le personnage reste tout devant
+                            if (playerPosition != null)
+                              Positioned(
+                                left: playerPosition.dx - 25,
+                                top: playerPosition.dy - 50,
+                                child: const IgnorePointer(
+                                  child: RepaintBoundary( // On isole aussi le personnage
+                                    child: PersistentAnimatedCharacter(
+                                      size: 120,
+
+                                    frames: [
+                                      'assets/PersonnageAnimation/Nuit/Arret/1.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/2.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/3.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/4.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/5.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/6.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/7.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/8.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/9.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/10.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/11.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/12.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/13.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/14.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/15.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/16.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/17.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/18.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/19.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/20.png',
+                                      'assets/PersonnageAnimation/Nuit/Arret/21.png',
+                                    ],
+                                   frameDuration: Duration(milliseconds: 2000),
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
-                        ),
+                        )
+                                                
                       ),
                     ),
                   ),

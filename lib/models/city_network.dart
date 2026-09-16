@@ -16,6 +16,9 @@ class CityNode {
 }
 
 class CityNetwork {
+
+  static const bool isDevMode = true;
+
   static final Map<String, CityNode> network = {
     // ==========================================
     // --- ZONE DÉSERT (Sahur) ---
@@ -232,9 +235,11 @@ class CityNetwork {
         final neighbor = entry.key;
         if (!unvisited.contains(neighbor)) continue;
 
-        int weight = entry.value;
+        // Si on est en mode dev, on force le trajet à 1 minute, sinon on prend la vraie valeur (60)
+        int weight = isDevMode ? 1 : entry.value;
+
         if (visitedCities.contains(neighbor)) {
-          weight = (weight ~/ 5).clamp(60, 999999);
+          weight = (weight ~/ 5).clamp(1, 999999);
         }
 
         int alt = distances[current]! + weight;
