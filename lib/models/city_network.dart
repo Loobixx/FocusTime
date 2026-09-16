@@ -17,7 +17,7 @@ class CityNode {
 
 class CityNetwork {
 
-  static const bool isDevMode = true;
+  static const bool isDevMode = false;
 
   static final Map<String, CityNode> network = {
     // ==========================================
