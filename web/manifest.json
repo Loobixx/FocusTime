@@ -3,7 +3,7 @@
     "short_name": "FocusTime",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#143063",
+    "background_color": "#12121C",
     "theme_color": "#143063",
     "description": "FocusTime",
     "orientation": "portrait-primary",

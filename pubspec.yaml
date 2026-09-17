@@ -53,17 +53,21 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-
+  
 flutter_launcher_icons:
-  image_path: "assets/appli_front_image/icon_app.png"  # utilisé pour iOS et fallback
+  image_path: "assets/appli_front_image/icon_app.png"
   android: true
   ios: true
-  image_path_ios: "assets/appli_front_image/icon_app.png"
+  
+  # 👇 On met "null" pour éviter qu'Android n'ajoute un fond et ne réduise ton image
+  adaptive_icon_background: null
 
-  # ✨ Icône adaptative Android (recommandé)
-  adaptive_icon_background: "#FF8C00"  # ta couleur de fond, ou "assets/.../background.png"
-  adaptive_icon_foreground: "assets/appli_front_image/icon_app.png"
-
+  # 👇 Ta configuration web
+  web:
+    generate: true
+    image_path: "assets/appli_front_image/icon_app.png"
+    background_color: "#12121C"
+    theme_color: "#143063"
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
