@@ -93,91 +93,91 @@ class CityNetwork {
     // ==========================================
     'La tombe oubliée': const CityNode(
       name: 'La tombe oubliée',
-      connectedCities: {'La forêt d\'Orane': 60, 'Le ponton des brunes': 60},
+      connectedCities: {'Le ponton des brunes': 60},
     ),
     'Le ponton des brunes': const CityNode(
       name: 'Le ponton des brunes',
-      connectedCities: {'La tombe oubliée': 60, 'La grange au vent': 60},
+      connectedCities: {'La tombe oubliée': 60, 'La forêt d\'Orane': 60, 'Les ruines de garde-roc': 60},
+    ),
+    'Les ruines de garde-roc': const CityNode(
+      name: 'Les ruines de garde-roc',
+      connectedCities: {'Le ponton des brunes': 60, 'Le Ruisseau des murmures': 60},
     ),
     'Le Ruisseau des murmures': const CityNode(
       name: 'Le Ruisseau des murmures',
-      connectedCities: {'Le village de Néris': 60, 'Le miroir d\'Emeraude': 60, 'Le bosquet enchanté': 60},
+      connectedCities: {'Les ruines de garde-roc': 60, 'La grange au vent': 60, 'Le bosquet enchanté': 60, 'Le village de Néris': 60},
     ),
     'La grange au vent': const CityNode(
       name: 'La grange au vent',
-      connectedCities: {'Le ponton des brunes': 60, 'Le campement de l\'île Sud': 60}, 
-    ),
-    'Le campement de l\'île Sud': const CityNode(
-      name: 'Le campement de l\'île Sud',
-      connectedCities: {'La grange au vent': 60, 'Le phare d\'Orane': 60},
+      connectedCities: {'Le Ruisseau des murmures': 60, 'Le phare d\'Orane': 60}, 
     ),
     'Le phare d\'Orane': const CityNode(
       name: 'Le phare d\'Orane',
-      connectedCities: {'Le campement de l\'île Sud': 60},
+      connectedCities: {'La grange au vent': 60, 'Le campement de l\'île Sud': 60},
+    ),
+    'Le campement de l\'île Sud': const CityNode(
+      name: 'Le campement de l\'île Sud',
+      connectedCities: {'Le phare d\'Orane': 60},
     ),
     'Le bosquet enchanté': const CityNode(
       name: 'Le bosquet enchanté',
-      connectedCities: {'Le Ruisseau des murmures': 60, 'Le village de Néris': 60},
+      connectedCities: {'Le Ruisseau des murmures': 60},
+    ),
+    'Le village de Néris': const CityNode(
+      name: 'Le village de Néris',
+      connectedCities: {'Le Ruisseau des murmures': 60, 'Le cercle des anciens': 60, 'L\'Halte blanche': 120, 'L\'île Aos Sé': 60},
+    ),
+    'L\'île Aos Sé': const CityNode(
+      name: 'L\'île Aos Sé',
+      connectedCities: {'Le village de Néris': 60, 'L\'épée Maudite': 120},
     ),
     'L\'épée Maudite': const CityNode(
       name: 'L\'épée Maudite',
       connectedCities: {'L\'île Aos Sé': 60},
     ),
-    'L\'île Aos Sé': const CityNode(
-      name: 'L\'île Aos Sé',
-      connectedCities: {'Les nacelles du Pics': 60, 'L\'épée Maudite': 60},
-    ),
-    'Le village de Néris': const CityNode(
-      name: 'Le village de Néris',
-      connectedCities: {'L\'Halte blanche': 30, 'Le bosquet enchanté': 30, 'Le Ruisseau des murmures': 30, 'Île Céleste': 30}, // Vers les nuages
-    ),
-    'L\'Halte blanche': const CityNode(
-      name: 'L\'Halte blanche',
-      connectedCities: {'Le village de Néris': 60, 'Le refuge des neiges': 60},
-    ),
-    'Les nacelles du Pics': const CityNode(
-      name: 'Les nacelles du Pics',
-      connectedCities: {'Le refuge des neiges': 60, 'L\'île Aos Sé': 60},
-    ),
-    'Le refuge des neiges': const CityNode(
-      name: 'Le refuge des neiges',
-      connectedCities: {'L\'Halte blanche': 60, 'Les nacelles du Pics': 60, 'Le chateau d\'azur': 60},
-    ),
-    'Le chateau d\'azur': const CityNode(
-      name: 'Le chateau d\'azur',
-      connectedCities: {'Le refuge des neiges': 60, 'Le sommet d\'azur': 60, 'L\'observatoire d\'Ouest': 60},
-    ),
-    'Le sommet d\'azur': const CityNode(
-      name: 'Le sommet d\'azur',
-      connectedCities: {'Le chateau d\'azur': 60},
-    ),
-    'La stelle des montagnes d\'Orane': const CityNode(
-      name: 'La stelle des montagnes d\'Orane',
-      connectedCities: {'L\'observatoire d\'Ouest': 60},
-    ),
-    'L\'observatoire d\'Ouest': const CityNode(
-      name: 'L\'observatoire d\'Ouest',
-      connectedCities: {'Le chateau d\'azur': 60, 'La stelle des montagnes d\'Orane': 60},
-    ),
-    'L\'Antre d\'émeraude': const CityNode(
-      name: 'L\'Antre d\'émeraude',
-      connectedCities: {'Le miroir d\'Emeraude': 60, 'Le cercle des anciens': 60},
-    ),
     'Le cercle des anciens': const CityNode(
       name: 'Le cercle des anciens',
-      connectedCities: {'L\'Antre d\'émeraude': 60, 'Les ruines de garde-roc': 60},
-    ),
-    'Les ruines de garde-roc': const CityNode(
-      name: 'Les ruines de garde-roc',
-      connectedCities: {'Le cercle des anciens': 60, 'La forêt d\'Orane': 60},
+      connectedCities: {'Le village de Néris': 60, 'Le miroir d\'Emeraude': 60},
     ),
     'Le miroir d\'Emeraude': const CityNode(
       name: 'Le miroir d\'Emeraude',
-      connectedCities: {'Le Ruisseau des murmures': 60, 'L\'Antre d\'émeraude': 60},
+      connectedCities: {'Le cercle des anciens': 60, 'L\'Antre d\'émeraude': 60},
+    ),
+    'L\'Antre d\'émeraude': const CityNode(
+      name: 'L\'Antre d\'émeraude',
+      connectedCities: {'Le miroir d\'Emeraude': 60},
+    ),
+    'L\'Halte blanche': const CityNode(
+      name: 'L\'Halte blanche',
+      connectedCities: {'Le village de Néris': 60, 'Les nacelles du Pics': 60},
+    ),
+    'Les nacelles du Pics': const CityNode(
+      name: 'Les nacelles du Pics',
+      connectedCities: {'Le refuge des neiges': 120, 'L\'Halte blanche': 60},
+    ),
+    'Le refuge des neiges': const CityNode(
+      name: 'Le refuge des neiges',
+      connectedCities: {'Les nacelles du Pics': 60, 'Le chateau d\'azur': 120},
+    ),
+    'Le chateau d\'azur': const CityNode(
+      name: 'Le chateau d\'azur',
+      connectedCities: {'Le refuge des neiges': 60, 'Le sommet d\'azur': 120},
+    ),
+    'Le sommet d\'azur': const CityNode(
+      name: 'Le sommet d\'azur',
+      connectedCities: {'Le chateau d\'azur': 60, 'La stelle des montagnes d\'Orane': 60},
+    ),
+    'La stelle des montagnes d\'Orane': const CityNode(
+      name: 'La stelle des montagnes d\'Orane',
+      connectedCities: {'L\'observatoire d\'Ouest': 60, 'Le sommet d\'azur': 60},
+    ),
+    'L\'observatoire d\'Ouest': const CityNode(
+      name: 'L\'observatoire d\'Ouest',
+      connectedCities: {'La stelle des montagnes d\'Orane': 60, 'La forêt d\'Orane': 120},
     ),
     'La forêt d\'Orane': const CityNode(
       name: 'La forêt d\'Orane',
-      connectedCities: {'Les ruines de garde-roc': 60, 'La tombe oubliée': 60},
+      connectedCities: {'L\'observatoire d\'Ouest': 60, 'Le ponton des brunes': 60},
     ),
 
     // ==========================================
