@@ -2,36 +2,35 @@ import 'package:focus_time/screens/home_screen.dart';
 import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'firebase_options.dart'; // Importe le fichier qui vient d'être généré
-import 'package:firebase_core/firebase_core.dart'; // Import Firebase
+import 'firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/login_screen.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-
-void main() async{
-  // On s'assure que les widgets sont bien initialisés
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Mode bord à bord
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
+
   await NotificationService().init();
   
-    await Firebase.initializeApp(
+  await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Force Firebase Auth à stocker la session en local sur l'appareil
   if (kIsWeb) {
     await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
   }
-  
-  // On rend la barre de statut transparente
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent, // Rend la barre transparente
-      statusBarIconBrightness: Brightness.light, // Icônes blanches (heure/batterie)
-      systemNavigationBarColor: Colors.transparent,
-    ),
-  );
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   runApp(const MyApp());
 }
@@ -41,28 +40,39 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'FocusTime',
-      // On écoute l'état de l'utilisateur en direct
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          // Pendant que Firebase vérifie le stockage local
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator(color: Color(0xFFFF8C00))),
-            );
-          }
-          
-          // Si un utilisateur est déjà connecté en cache, on va direct sur l'accueil
-          if (snapshot.hasData) {
-            return const HomeScreen();
-          }
-          
-          // Sinon, on affiche l'écran de connexion / inscription
-          return const LoginScreen(); 
-        },
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'FocusTime',
+        theme: ThemeData(
+          useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFF12121C), // Fond uniforme
+        ),
+        home: StreamBuilder<User?>(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                backgroundColor: Color(0xFF12121C),
+                body: Center(
+                  child: CircularProgressIndicator(color: Color(0xFFFF8C00)),
+                ),
+              );
+            }
+            
+            if (snapshot.hasData) {
+              return const HomeScreen();
+            }
+            
+            return const LoginScreen(); 
+          },
+        ),
       ),
     );
   }
