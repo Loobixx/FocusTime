@@ -53,7 +53,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-  
+
 flutter_launcher_icons:
   image_path: "assets/appli_front_image/icon_app.png"
   android: true
@@ -90,9 +90,12 @@ flutter:
     - assets/lac.png
     - assets/desert.png
     - assets/fond_de_zoom.png
-    - assets/NomCitiesDesert/
 
+    - assets/NomCitiesDesert/
     - assets/NomCitiesMontagnes/
+    - assets/NomCitiesLac/
+    - assets/NomCitiesNuages/
+    - assets/NomCitiesNuit/
 
     - assets/sol_proche.png
     - assets/fond_lointain.png

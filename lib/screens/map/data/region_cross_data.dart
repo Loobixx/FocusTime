@@ -71,7 +71,16 @@ class RegionCrossesData {
       RegionCross(id:'d16', name:'L\'oasis de l\'exil', x:194.0, y:1497.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesDesert/d16.png', imageX:0.0, imageY:0.0),
     ],
     'lac': [
-      RegionCross(id: 'l1', name: 'Rive Calme', x: 400.0, y: 600.0, angle: 10.0, size: 28.0),
+      RegionCross(id:'l1', name:'La cascade de nayris', x:790.0, y:97.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesLac/LaCascadeDeNayris.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'l2', name:'La pointe fleurie', x:416.0, y:1460.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesLac/LaPointeFleurie.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'l3', name:'La Source Magique', x:754.0, y:1115.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesLac/LaSourceMagique.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'l4', name:'La stelle de Nayris', x:194.0, y:1460.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesLac/LaStelleDeNayris.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'l5', name:'La village Keltia', x:282.0, y:755.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesLac/LaVillageKeltia.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'l6', name:'Le voilier du lac', x:489.0, y:885.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesLac/LeVoilierDuLac.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'l7', name:'La zone de plongée', x:330.0, y:637.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesLac/LaZoneDePlongee.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'l8', name:'Le bateau fantôme', x:667.0, y:633.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesLac/LeBateauFantome.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'l9', name:'Les 4 tours de la forêt', x:780.0, y:830.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesLac/Les4Tours.png', imageX:0.0, imageY:0.0),
+      RegionCross(id:'l10', name:'Les vestiges d\'Aelion', x:388.0, y:1304.0, angle:30.0, size:20.0, imagePath:'assets/NomCitiesLac/LesVestigesAelion.png', imageX:0.0, imageY:0.0),
     ],
     'nuit': [
       RegionCross(id: 'n1', name: 'Sanctuaire Obscur', x: 500.0, y: 700.0, angle: 60.0, size: 28.0),
