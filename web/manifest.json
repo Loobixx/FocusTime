@@ -2,7 +2,7 @@
     "name": "FocusTime",
     "short_name": "FocusTime",
     "start_url": ".",
-    "display": "fullscreen",
+    "display": "standalone",
     "theme_color": "#000000",
     "background_color": "#000000",
     "description": "FocusTime",
