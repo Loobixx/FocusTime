@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // 👈 Importe Firebase Auth
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:focus_time/utils/app_constants.dart'; // 👈 Importe Firebase Auth
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -106,7 +107,7 @@ class AboutScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Version 1.0.0',
+                            AppConstants.appVersion,
                             style: TextStyle(
                               fontSize: 14,
                               color: darkBlue.withValues(alpha: 0.7),
