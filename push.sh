@@ -5,14 +5,22 @@ COMMIT_MSG=${1:-"Mise à jour"}
 
 echo "🚀 Préparation du push..."
 
-# 1. Désactive le devMode
-sed -i 's/static const bool isDevMode = true;/static const bool isDevMode = false;/' "$TARGET_FILE"
+# Remplacement ciblant le mot-clé indépendamment des espaces ou caractères invisibles
+perl -i -pe 's/isDevMode\s*=\s*true/isDevMode = false/g' "$TARGET_FILE"
 
-# 2. Stage, commit et push
+# Vérification
+if grep -q "isDevMode = false;" "$TARGET_FILE"; then
+  echo "✅ isDevMode est bien passé à false."
+else
+  echo "❌ Échec du remplacement dans $TARGET_FILE !"
+  exit 1
+fi
+
+# Git workflow
 git add .
 git commit -m "$COMMIT_MSG"
 git push
 
-# 3. Réactive le devMode localement après le push pour continuer à travailler
-sed -i 's/static const bool isDevMode = false;/static const bool isDevMode = true;/' "$TARGET_FILE"
-echo "✅ Push terminé et isDevMode réactivé localement !"
+# Rétablissement pour le travail local
+perl -i -pe 's/isDevMode\s*=\s*false/isDevMode = true/g' "$TARGET_FILE"
+echo "✅ isDevMode réactivé localement !"
