@@ -12,7 +12,6 @@ import 'package:focus_time/services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-  
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -28,12 +27,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadCharacterData();
     NotificationService().scheduleDailySummaryAt20H();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✨ On lance d'abord notre nouvelle vérification
       _checkCharacterSelection(); 
     });
   }
 
-  // ✨ LA NOUVELLE FONCTION QUI GÈRE LA REDIRECTION
   Future<void> _checkCharacterSelection() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -42,13 +39,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final currentCity = doc.data()?['currentCity'] as String?;
 
     if ((currentCity == null || currentCity.trim().isEmpty) && mounted) {
-      // 🚨 Le joueur n'a pas de ville : on remplace l'écran d'accueil par le choix du personnage
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const CharacterSelectionScreen()),
       );
     } else {
-      // ✅ Le joueur a déjà un personnage : on peut lancer les autres vérifications (pseudo, perte de trajet)
       _checkPseudo();
       _checkInterruptedTrip();
     }
@@ -66,7 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
       final destination = data['activeDestination'] as String? ?? 'Inconnue';
       final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Valenciennes';
 
-      // 1. Enregistre la session interrompue comme échec dans l'historique
       await userRef.collection('travel_history').add({
         'date': FieldValue.serverTimestamp(),
         'startCity': currentCity,
@@ -78,14 +72,12 @@ class _HomeScreenState extends State<HomeScreen> {
         'visitedDuringTripCount': 0,
       });
 
-      // 2. Nettoie l'état du voyage
       await userRef.collection('travel').doc('status').update({
         'isFocusActive': false,
         'activeDestination': FieldValue.delete(),
         'endTime': FieldValue.delete(),
       });
 
-      // 3. Affiche le message de perte
       if (mounted) {
         showDialog(
           context: context,
@@ -188,19 +180,23 @@ class _HomeScreenState extends State<HomeScreen> {
     const focusOrange = Color(0xFFFF8C00);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      extendBody: true,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/fond2.png'),
-                  fit: BoxFit.cover,
-                ),
+          // 1. Fond étendu sur 100 % de l'écran réel
+          Positioned.fill(
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+              child: Image.asset(
+                'assets/fond2.png',
+                fit: BoxFit.cover,
               ),
             ),
           ),
+
+          // 2. Contenu calé dans la zone visible
           SafeArea(
             child: Column(
               children: [
@@ -217,37 +213,37 @@ class _HomeScreenState extends State<HomeScreen> {
                         _loadCharacterData();
                       },
                       child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _borderColor, // 👈 La couleur dynamique du personnage
-                          width: 3,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _borderColor.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            spreadRadius: 1,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _borderColor,
+                            width: 3,
                           ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: SizedBox(
-                          width: 52,
-                          height: 52,
-                          child: Image.asset(
-                            'assets/TeteProfil/$_characterId.jpg',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.black, // 👈 Silhouette noire si le dessin manque
-                                child: const Icon(Icons.person, color: Colors.white, size: 28),
-                              );
-                            },
+                          boxShadow: [
+                            BoxShadow(
+                              color: _borderColor.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: SizedBox(
+                            width: 52,
+                            height: 52,
+                            child: Image.asset(
+                              'assets/TeteProfil/$_characterId.jpg',
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.black,
+                                  child: const Icon(Icons.person, color: Colors.white, size: 28),
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),
-                    ),
                     ),
                   ),
                 ),
@@ -340,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.75), // Fond plus opaque pour le contraste
+                          color: Colors.white.withValues(alpha: 0.75),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(color: Colors.white, width: 1.5),
                           boxShadow: [

@@ -1,4 +1,6 @@
 import 'dart:ui';
+import 'package:focus_time/screens/profil/delete_profil/delete_account_dialog.dart';
+import 'package:focus_time/screens/profil/politique_de_confidentialit%C3%A9/privacy_policy_screen.dart';
 import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -236,8 +238,9 @@ Future<void> _loadPseudo() async {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 32),
 
-                        const SizedBox(height: 32),
+
                           _buildMenuItem(
                             Icons.edit,
                             'Modifier mon personnage',
@@ -280,19 +283,33 @@ Future<void> _loadPseudo() async {
                               );
                             },
                           ),
-                          const SizedBox(height: 16),
-                          _buildMenuItem(Icons.lock_outline, 'Changer le mot de passe', isAvailable: true, onTap: () {
-                            AuthHelper.resetPassword(context);
+                          _buildMenuItem(
+                            Icons.lock_outline,
+                            'Changer le mot de passe',
+                            isAvailable: true,
+                            onTap: () {
+                              AuthHelper.resetPassword(context);
+                            }
+                          ),
+                          _buildMenuItem(
+                            Icons.volume_up_outlined, 
+                            'Son et vibration', 
+                            isAvailable: false),
+                          _buildMenuItem(
+                            Icons.notifications_none, 
+                            'Son des notifications', 
+                            isAvailable: true, 
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+                              );
                           }),
-                          _buildMenuItem(Icons.volume_up_outlined, 'Son et vibration', isAvailable: false),
-                          _buildMenuItem(Icons.notifications_none, 'Son des notifications', isAvailable: true, onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
-                            );
-                          }),
-                          _buildMenuItem(Icons.dark_mode_outlined, 'Changer de thème', isAvailable: false),
-                          const SizedBox(height: 16),
+                          _buildMenuItem(
+                            Icons.dark_mode_outlined, 
+                            'Changer de thème', 
+                            isAvailable: false
+                          ),
                           _buildMenuItem(
                             Icons.info_outline,
                             'À propos de l\'application',
@@ -304,33 +321,35 @@ Future<void> _loadPseudo() async {
                               );
                             },
                           ),
-                          const SizedBox(height: 32),
-                        // 🧪 BOUTON DE TEST TEMPORAIRE POUR LES NOTIFS & IMAGES
-                        _buildMenuItem(
-                          Icons.bug_report_outlined,
-                          'Tester la notification (Image)',
-                          isAvailable: true,
-                          onTap: _testerNotificationTest,
-                        ),
+                          _buildMenuItem(
+                            Icons.privacy_tip_outlined,
+                            'Politique de confidentialité',
+                            isAvailable: true,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
+                              );
+                            },
+                          ),
                           
-                          TextButton(
-                            onPressed: () {},
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
-                              ),
+                          const SizedBox(height: 32),
+
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE53935), // Rouge franc
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              side: const BorderSide(color: Colors.redAccent),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                             ),
-                            child: const Text(
+                            icon: const Icon(Icons.delete_forever, color: Color.fromARGB(255, 255, 255, 255)),
+                            label: const Text(
                               'Supprimer mon compte',
-                              style: TextStyle(
-                                color: Colors.redAccent,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                decoration: TextDecoration.lineThrough,
-                              ),
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                             ),
+                            onPressed: () => DeleteAccountDialog.show(context),
                           ),
                         ],
                       ),

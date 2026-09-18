@@ -83,7 +83,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                               Divider(height: 24),
                               _Section(
                                 title: '1. Responsable du traitement',
-                                content: 'FocusTime est développé de manière indépendante. Contact : ton-email@exemple.com',
+                                content: 'FocusTime est développé de manière indépendante. Contact : loobix1@gmail.com',
                               ),
                               _Section(
                                 title: '2. Données collectées',
@@ -102,7 +102,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                               ),
                               _Section(
                                 title: '5. Vos droits',
-                                content: 'Conformément au RGPD, vous disposez d\'un droit d\'accès, de modification et de suppression totale de votre compte sur simple demande à ton-email@exemple.com.',
+                                content: 'Conformément au RGPD, vous disposez d\'un droit d\'accès, de modification et de suppression totale de votre compte simplement en cliquant sur le bouton "Supprimer mon compte" dans les paramètres.',
                               ),
                             ],
                           ),
