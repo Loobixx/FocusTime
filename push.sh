@@ -1,7 +1,14 @@
 #!/bin/bash
 
 TARGET_FILE="lib/models/city_network.dart"
-COMMIT_MSG=${1:-"Mise à jour"}
+COMMIT_MSG="$1"
+
+# 🛑 Vérifie qu'un message de commit non vide a bien été fourni
+if [ -z "$COMMIT_MSG" ]; then
+  echo "❌ Erreur : Tu dois obligatoirement renseigner un message de commit !"
+  echo "👉 Exemple : ./push.sh \"Mon message de commit\""
+  exit 1
+fi
 
 echo "🚀 Préparation du push..."
 
