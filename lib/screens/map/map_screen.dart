@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
-import 'package:focus_time/screens/widgets/persistent_animated_character.dart';
+import 'package:focus_time/widgets/persistent_animated_character.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

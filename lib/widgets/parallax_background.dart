@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import '../focus_moment/animated_character.dart';
+import '../screens/focus_moment/animated_character.dart';
 
 class ParallaxBackground extends StatefulWidget {
   final bool isRunning;

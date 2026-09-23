@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:focus_time/screens/profil/companion/companion_selection_screen.dart';
 import 'package:focus_time/screens/profil/delete_profil/delete_account_dialog.dart';
 import 'package:focus_time/screens/profil/politique_de_confidentialit%C3%A9/privacy_policy_screen.dart';
 import 'package:focus_time/services/notification_service.dart';
@@ -28,6 +29,7 @@ String _pseudo = '';
 Color _borderColor = Colors.deepPurple; // Violet par défaut (Nuit)
 String _characterId = 'nuit';
 bool _loading = true;
+
 
   @override
   void initState() {
@@ -124,6 +126,11 @@ Future<void> _loadPseudo() async {
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
     final email = FirebaseAuth.instance.currentUser?.email ?? 'Email inconnu';
+
+    final currentUserEmail = FirebaseAuth.instance.currentUser?.email ?? '';
+
+    // Remplace par ton adresse mail exacte
+    final bool isMasterAdmin = currentUserEmail == 'yoprudhomme59@gmail.com';
 
     return Scaffold(
       body: Stack(
@@ -241,6 +248,62 @@ Future<void> _loadPseudo() async {
                           ),
                           const SizedBox(height: 32),
 
+                          // Ce bloc n'apparaîtra QUE si c'est ton adresse mail
+                          if (isMasterAdmin) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFFF8C00), Color(0xFFFF5722)],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.orange.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                ),
+                                icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
+                                label: const Text(
+                                  'Panneau Développeur / Débloquer tout',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  final uid = FirebaseAuth.instance.currentUser?.uid;
+                                  if (uid == null) return;
+
+                                  // Exemple d'action réservée : débloquer tous les compagnons d'un coup
+                                  await FirebaseFirestore.instance.collection('users').doc(uid).set({
+                                    'unlockedCompanions': ['axolotl', 'fennec', 'chamois'],
+                                    'activeCompanion': 'axolotl',
+                                  }, SetOptions(merge: true));
+
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('⚡ Données admin appliquées avec succès !'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
 
                           _buildMenuItem(
                             Icons.edit,
@@ -357,6 +420,17 @@ Future<void> _loadPseudo() async {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
+                              );
+                            },
+                          ),
+                          _buildMenuItem(
+                            Icons.pets,
+                            'Mes Compagnons',
+                            isAvailable: true,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const CompanionSelectionScreen()),
                               );
                             },
                           ),

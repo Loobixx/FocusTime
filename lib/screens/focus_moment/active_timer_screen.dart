@@ -11,8 +11,10 @@ import '../../utils/time_formatter.dart';
 import '../home_screen.dart';
 import 'dart:io' show Platform;
 
-import '../widgets/parallax_background.dart';
+import '../../widgets/parallax_background.dart';
 import 'active_timer_dialogs.dart';
+import '../../models/companion.dart';
+import '../../widgets/companion_widget.dart';
 
 
 class ActiveTimerScreen extends StatefulWidget {
@@ -44,6 +46,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   bool _isCompleted = false;
   bool _hasCheated = false;
   final TravelService _travelService = TravelService();
+  String? _activeCompanionId;
+  String _characterId = 'nuit';
 
   List<_LegTimeline> _routeMilestones = [];
   bool _isMilestonesReady = false;
@@ -83,6 +87,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     final userDoc = await userRef.get();
 
     String currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
+    _activeCompanionId = userDoc.data()?['activeCompanion'] as String?;
+    _characterId = userDoc.data()?['characterId'] as String? ?? 'nuit';
 
     List<_LegTimeline> milestones = [];
     int totalCumulativeSeconds = 0;
@@ -301,6 +307,50 @@ void _startPauseTimer(int minutes) async {
     }
   }
 
+
+  // Dans ta fonction qui valide la fin de voyage :
+Future<void> _checkAndUnlockCompanion(String arrivedCity) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
+
+  // On cherche si un animal est lié à cette ville
+  final companionToUnlock = CompanionData.allCompanions.cast<Companion?>().firstWhere(
+    (c) => c?.unlockCity == arrivedCity,
+    orElse: () => null,
+  );
+
+  if (companionToUnlock != null) {
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final doc = await userRef.get();
+    final List<dynamic> unlocked = doc.data()?['unlockedCompanions'] ?? [];
+
+    if (!unlocked.contains(companionToUnlock.id)) {
+      await userRef.update({
+        'unlockedCompanions': FieldValue.arrayUnion([companionToUnlock.id]),
+        'activeCompanion': companionToUnlock.id, // Équipé automatiquement !
+      });
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('🎉 Nouveau compagnon !'),
+            content: Text('Tu as rencontré ${companionToUnlock.name} à ${companionToUnlock.unlockCity} ! Il t\'accompagnera désormais lors de tes sessions.'),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Génial !', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+}
+
   Future<void> _finishTrip() async {
     setState(() => _isCompleted = true);
     NotificationService().cancelNotification(200);
@@ -317,6 +367,12 @@ void _startPauseTimer(int minutes) async {
       plannedRoute: widget.plannedRoute,
     );
 
+    // 🐾 Vérifie si la destination finale débloque un nouveau compagnon
+    if (widget.plannedRoute.isNotEmpty) {
+      final arrivedCity = widget.plannedRoute.last;
+      await _checkAndUnlockCompanion(arrivedCity);
+    }
+
     if (!mounted) return;
 
     ActiveTimerDialogs.showFinishDialog(context, () {
@@ -327,6 +383,8 @@ void _startPauseTimer(int minutes) async {
       );
     });
   }
+
+  
 
   @override
   void dispose() {
@@ -526,8 +584,26 @@ void _startPauseTimer(int minutes) async {
                             textAlign: TextAlign.center,
                           ),
                         ),
+                        const Spacer(flex: 1),
 
-                        const Spacer(flex: 5),
+                        // 🚶‍♂️ Personnage et son Compagnon qui voyagent ensemble
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            
+
+                            const SizedBox(width: 16),
+
+                            // Compagnon animé qui trottine
+                            if (_activeCompanionId != null)
+                              CompanionWidget(
+                                companionId: _activeCompanionId,
+                              ),
+                          ],
+                        ),
+
+                        const Spacer(flex: 2),
 
                         if (_isPaused)
                           ElevatedButton.icon(
