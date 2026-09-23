@@ -13,6 +13,7 @@ import 'package:focus_time/screens/profil/historique/history_screen.dart';
 import 'package:focus_time/screens/profil/stat/stats_screen.dart';
 import 'package:focus_time/screens/profil/change_password/auth_helper.dart';
 import 'package:focus_time/screens/profil/notification/notification_settings_screen.dart';
+import 'package:focus_time/services/audio_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -291,10 +292,37 @@ Future<void> _loadPseudo() async {
                               AuthHelper.resetPassword(context);
                             }
                           ),
-                          _buildMenuItem(
-                            Icons.volume_up_outlined, 
-                            'Son et vibration', 
-                            isAvailable: false),
+                         ValueListenableBuilder<bool>(
+                            valueListenable: AudioManager().isMutedNotifier,
+                            builder: (context, isMuted, child) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 2),
+                                child: ListTile(
+                                  tileColor: Colors.transparent,
+                                  leading: Icon(
+                                    isMuted ? Icons.volume_off : Icons.volume_up,
+                                    color: darkBlue,
+                                    size: 26,
+                                  ),
+                                  title: const Text(
+                                    'Musique d\'ambiance',
+                                    style: TextStyle(
+                                      color: darkBlue,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  trailing: Switch(
+                                    value: !isMuted,
+                                    activeThumbColor: const Color(0xFFFF8C00),
+                                    onChanged: (_) => AudioManager().toggleMute(),
+                                  ),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                  onTap: () => AudioManager().toggleMute(),
+                                ),
+                              );
+                            },
+                          ),
                           _buildMenuItem(
                             Icons.notifications_none, 
                             'Son des notifications', 

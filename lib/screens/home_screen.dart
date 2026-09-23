@@ -9,6 +9,7 @@ import 'package:focus_time/screens/profil/profile_screen.dart';
 import '../models/city_network.dart';
 import 'package:focus_time/starter/character_selection_screen.dart'; 
 import 'package:focus_time/services/notification_service.dart';
+import 'package:focus_time/services/audio_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +27,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadCharacterData();
     NotificationService().scheduleDailySummaryAt20H();
+
+    // 🎵 Lancement de la musique de fond
+    AudioManager().initAndPlay();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkCharacterSelection(); 
     });
