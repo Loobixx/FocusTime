@@ -1,4 +1,3 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 class DrawingPoint {
@@ -72,7 +71,7 @@ class _CustomTexturePainterScreenState extends State<CustomTexturePainterScreen>
                       child: GestureDetector(
                         onPanUpdate: (details) {
                           setState(() {
-                            RenderBox renderBox = context.findRenderObject() as RenderBox;
+                            context.findRenderObject();
                             points.add(
                               DrawingPoint(
                                 offset: details.localPosition,
