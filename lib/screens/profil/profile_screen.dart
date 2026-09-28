@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:focus_time/screens/profil/companion/companion_selection_screen.dart';
 import 'package:focus_time/screens/profil/delete_profil/delete_account_dialog.dart';
 import 'package:focus_time/screens/profil/politique_de_confidentialit%C3%A9/privacy_policy_screen.dart';
-import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -74,14 +73,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _testerNotificationTest() async {
-    await NotificationService().showNotification(
-      id: 999,
-      title: '🔥 Test de notification riche',
-      body: 'Regarde cette magnifique image de région dans la notification !',
-      imageAssetPath: 'assets/Notif/Notification_1.jpg',
-    );
-  }
 
   void _showChangePseudoDialog() {
     final TextEditingController pseudoController = TextEditingController(text: _pseudo);

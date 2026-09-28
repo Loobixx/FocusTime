@@ -47,7 +47,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   bool _hasCheated = false;
   final TravelService _travelService = TravelService();
   String? _activeCompanionId;
-  String _characterId = 'nuit';
 
   List<_LegTimeline> _routeMilestones = [];
   bool _isMilestonesReady = false;
@@ -88,9 +87,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
     String currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
     _activeCompanionId = userDoc.data()?['activeCompanion'] as String?;
-    _characterId = userDoc.data()?['selectedBiome'] as String? 
-        ?? userDoc.data()?['characterId'] as String? 
-        ?? 'nuit';
     List<_LegTimeline> milestones = [];
     int totalCumulativeSeconds = 0;
 
