@@ -6,6 +6,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -100,6 +101,8 @@ class NotificationService {
 
   // Programmer l'alerte quotidienne à 20h00
   Future<void> scheduleDailySummaryAt20H() async {
+    // Les notifications récurrentes ne sont pas supportées sur le Web
+    if (kIsWeb) return;
     final now = tz.TZDateTime.now(tz.local);
     var scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 20, 0);
 

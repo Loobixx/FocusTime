@@ -26,7 +26,7 @@ class CompanionData {
       name: 'Nami l\'Axolotl',
       unlockCity: 'La Source Magique', // Sur le lac
       region: 'lac',
-      assetPath: 'assets/compagnons/axolotl.png',
+      assetPath: 'compagnons/axolotl.png',
       defaultColor: Color(0xFF4FC3F7),
     ),
     Companion(
@@ -34,7 +34,7 @@ class CompanionData {
       name: 'Pikou le Fennec',
       unlockCity: 'L\'oasis de l\'exil', // Dans le désert
       region: 'desert',
-      assetPath: 'assets/compagnons/fennec.png',
+      assetPath: 'compagnons/fennec.png',
       defaultColor: Color(0xFFFFB74D),
     ),
     Companion(
@@ -42,8 +42,16 @@ class CompanionData {
       name: 'Floki le Chamois',
       unlockCity: 'Le sommet d\'azur', // Dans les montagnes
       region: 'montagnes',
-      assetPath: 'assets/compagnons/chamois.png',
+      assetPath: 'compagnons/chamois.png',
       defaultColor: Color(0xFF81C784),
+    ),
+    Companion(
+      id: 'dogito',
+      name: 'Dogito',
+      unlockCity: 'Le village de la clairière', // Dans la forêt
+      region: 'foret',
+      assetPath: 'compagnons/chien_marche.gif',
+      defaultColor: Color(0xFFFF8A80),
     ),
   ];
 

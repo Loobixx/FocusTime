@@ -64,7 +64,8 @@ class _LoginScreenState extends State<LoginScreen> {
         await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
           'email': userCredential.user!.email,
           'createdAt': Timestamp.now(),
-          'characterColor': 'blue',
+          'characterId': 'nuit',
+          'characterColor': Colors.deepPurple.toARGB32(),
           'hat': 'Aucun',
           'pseudo': '',
         });

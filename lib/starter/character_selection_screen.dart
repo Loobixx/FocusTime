@@ -13,13 +13,13 @@ class CharacterSelectionScreen extends StatefulWidget {
 class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
   bool _isLoading = false;
 
-  // Tes 5 régions avec leurs données temporaires
+ // 1. Les 5 régions avec les BONS IDs qui matchent tes assets et ton code
   final List<Map<String, dynamic>> _regions = [
     {
       'id': 'desert',
       'title': 'Le Désert',
       'color': Colors.orange,
-      'startCity': 'ville du desert',
+      'startCity': 'La cité Solaris',
     },
     {
       'id': 'montagnes',
@@ -28,13 +28,13 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
       'startCity': 'Le village de Néris',
     },
     {
-      'id': 'eau',
-      'title': 'L\'Eau',
+      'id': 'lac', // 👈 'lac' au lieu de 'eau'
+      'title': 'Le Lac',
       'color': Colors.blue,
-      'startCity': 'ville de l\'eau',
+      'startCity': 'Le village Keltia',
     },
     {
-      'id': 'nocturne',
+      'id': 'nuit', // 👈 'nuit' au lieu de 'nocturne'
       'title': 'La Nuit',
       'color': Colors.deepPurple,
       'startCity': 'ville nocturne',
@@ -42,28 +42,32 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
     {
       'id': 'nuages',
       'title': 'Les Nuages',
-      'color': Colors.lightBlueAccent,
+      'color': Colors.pinkAccent, // Assorti avec CharacterOptions
       'startCity': 'ville des nuages',
     },
   ];
 
   Future<void> _selectCharacter(Map<String, dynamic> region) async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        // On sauvegarde le choix dans Firebase
+        final Color themeColor = region['color'] as Color;
+
+        // 2. On enregistre directement les bonnes clés Firestore !
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'currentCity': region['startCity'], // "ville du desert", etc.
-          'profileRegion': region['id'],      // Pour afficher le bon avatar plus tard
-          'profileColor': region['color'].value, // Si tu veux utiliser la couleur en attendant les dessins
-        }, SetOptions(merge: true)); // merge: true évite d'écraser d'autres données s'il y en a
+          'currentCity': region['startCity'],
+          'characterId': region['id'], // 👈 C'est characterId qu'on met à jour !
+          'characterColor': themeColor.toARGB32(),
+        }, SetOptions(merge: true));
 
         if (!mounted) return;
-        
-        // Redirection vers ta carte principale
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
       }
     } catch (e) {
       debugPrint("Erreur lors de la sauvegarde : $e");

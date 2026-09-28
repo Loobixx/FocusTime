@@ -88,8 +88,9 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
     String currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
     _activeCompanionId = userDoc.data()?['activeCompanion'] as String?;
-    _characterId = userDoc.data()?['characterId'] as String? ?? 'nuit';
-
+    _characterId = userDoc.data()?['selectedBiome'] as String? 
+        ?? userDoc.data()?['characterId'] as String? 
+        ?? 'nuit';
     List<_LegTimeline> milestones = [];
     int totalCumulativeSeconds = 0;
 
@@ -384,6 +385,94 @@ Future<void> _checkAndUnlockCompanion(String arrivedCity) async {
     });
   }
 
+void _showRouteBottomSheet(BuildContext context, Color darkBlue, Color focusOrange, int currentLegIndex) {
+  int travelMinutes = widget.plannedTravelMinutes;
+  int restMinutes = widget.durationMinutes - travelMinutes;
+  if (restMinutes < 0) restMinutes = 0;
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Plan de route complet',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: darkBlue),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: widget.plannedRoute.asMap().entries.map((entry) {
+                int idx = entry.key;
+                String city = entry.value;
+
+                Color chipColor = (idx < currentLegIndex)
+                    ? Colors.green
+                    : (idx == currentLegIndex ? focusOrange : Colors.grey);
+                IconData chipIcon = (idx < currentLegIndex)
+                    ? Icons.check_circle
+                    : (idx == currentLegIndex ? Icons.navigation : Icons.radio_button_unchecked);
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: chipColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: chipColor, width: 1.0),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(chipIcon, size: 13, color: chipColor),
+                      const SizedBox(width: 4),
+                      Text(city, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: chipColor)),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            const Divider(height: 24),
+            Row(
+              children: [
+                Icon(Icons.timer_outlined, color: darkBlue, size: 16),
+                const SizedBox(width: 4),
+                Text('Voyage : ${formatMinutesToHours(travelMinutes)}',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkBlue)),
+                if (restMinutes > 0) ...[
+                  const SizedBox(width: 12),
+                  const Icon(Icons.hotel, color: Color(0xFF6A1B9A), size: 16),
+                  const SizedBox(width: 4),
+                  Text('Repos : ${formatMinutesToHours(restMinutes)}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A))),
+                ],
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      );
+    },
+  );
+}
   
 
   @override
@@ -559,51 +648,32 @@ Future<void> _checkAndUnlockCompanion(String arrivedCity) async {
 
                         const Spacer(flex: 1),
 
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.75), 
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            _isPaused 
-                                ? (_pauseOvertimeSeconds > 0 ? '⚠️ Pause dépassée !' : '☕ Campement au feu de camp') 
-                                : currentLegTitle,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: darkBlue, 
+                       Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        const Spacer(flex: 1),
-
-                        // 🚶‍♂️ Personnage et son Compagnon qui voyagent ensemble
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            
-
-                            const SizedBox(width: 16),
-
-                            // Compagnon animé qui trottine
-                            if (_activeCompanionId != null)
-                              CompanionWidget(
-                                companionId: _activeCompanionId,
-                              ),
                           ],
                         ),
-
-                        const Spacer(flex: 2),
+                        child: Text(
+                          _isPaused
+                              ? (_pauseOvertimeSeconds > 0 ? '⚠️ Pause dépassée !' : '☕ Campement au feu de camp')
+                              : currentLegTitle,
+                          style: const TextStyle(
+                            fontSize: 15, // Plus petit et discret
+                            fontWeight: FontWeight.bold,
+                            color: darkBlue,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                        const Spacer(flex: 3),
 
                         if (_isPaused)
                           ElevatedButton.icon(
@@ -618,79 +688,38 @@ Future<void> _checkAndUnlockCompanion(String arrivedCity) async {
                             onPressed: _endPauseNormal,
                           ),
 
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16), 
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), 
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white, width: 1.5),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text('Plan de route :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: darkBlue)), 
-                                  const SizedBox(height: 4), 
-                                  Wrap(
-                                    spacing: 6, 
-                                    runSpacing: 4,
-                                    children: widget.plannedRoute.asMap().entries.map((entry) {
-                                      int idx = entry.key;
-                                      String city = entry.value;
-
-                                      Color chipColor = (idx < currentLegIndex)
-                                          ? Colors.green
-                                          : (idx == currentLegIndex ? focusOrange : Colors.grey);
-                                      IconData chipIcon = (idx < currentLegIndex)
-                                          ? Icons.check_circle
-                                          : (idx == currentLegIndex ? Icons.navigation : Icons.radio_button_unchecked);
-
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), 
-                                        decoration: BoxDecoration(
-                                          color: chipColor.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: chipColor, width: 1.0),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(chipIcon, size: 11, color: chipColor), 
-                                            const SizedBox(width: 3),
-                                            Text(city, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: chipColor)), 
-                                          ],
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                  const Divider(height: 8, thickness: 0.5), 
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.timer_outlined, color: darkBlue, size: 14), 
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text('Voyage : ${formatMinutesToHours(travelMinutes)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: darkBlue), overflow: TextOverflow.ellipsis),
-                                      ),
-                                      if (restMinutes > 0) ...[
-                                        const SizedBox(width: 6),
-                                        const Icon(Icons.hotel, color: Color(0xFF6A1B9A), size: 14),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text('Repos : ${formatMinutesToHours(restMinutes)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A)), overflow: TextOverflow.ellipsis),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                        // Petite barre discrète qui n'empiète pas sur le sol
+GestureDetector(
+  onTap: () => _showRouteBottomSheet(context, darkBlue, focusOrange, currentLegIndex),
+  child: Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.85),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.white, width: 1.2),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.1),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.route, color: darkBlue, size: 16),
+        const SizedBox(width: 8),
+        Text(
+          'Itinéraire (${currentLegIndex + 1}/${widget.plannedRoute.length})',
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkBlue),
+        ),
+        const SizedBox(width: 6),
+        const Icon(Icons.keyboard_arrow_up, color: darkBlue, size: 18),
+      ],
+    ),
+  ),
+),
 
                         const SizedBox(height: 16),
 
@@ -725,6 +754,15 @@ Future<void> _checkAndUnlockCompanion(String arrivedCity) async {
                 ),
               ),
             ),
+            // 🐶 Compagnon calé sur le sol du paysage
+            if (_activeCompanionId != null)
+              Positioned(
+                bottom: 168, // Règle la hauteur au niveau du sol
+                left: MediaQuery.of(context).size.width * 0.58, // Légèrement devant le personnage
+                child: CompanionWidget(
+                  companionId: _activeCompanionId,
+                ),
+              ),
           ],
         ),
       ),

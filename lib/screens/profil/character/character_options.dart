@@ -30,28 +30,28 @@ class CharacterOptionsList {
       name: 'Sahur (Désert)',
       themeColor: Colors.orange,
       imagePath: 'assets/TeteProfil/desert.jpg', // Remplace par ton image quand tu l'auras
-      isUnlocked: false, // À débloquer
+      isUnlocked: true, // À débloquer
     ),
     CharacterOption(
       id: 'montagnes',
       name: 'Orane (Montagnes)',
       themeColor: Colors.green,
       imagePath: 'assets/TeteProfil/montagnes.jpg',
-      isUnlocked: false,
+      isUnlocked: true,
     ),
     CharacterOption(
       id: 'lac',
       name: 'Nayris (Lac)',
       themeColor: Colors.blue,
       imagePath: 'assets/TeteProfil/lac.jpg',
-      isUnlocked: false,
+      isUnlocked: true,
     ),
     CharacterOption(
       id: 'nuages',
       name: 'Valoris (Nuages)',
       themeColor: Colors.pinkAccent,
       imagePath: 'assets/TeteProfil/nuages.jpg',
-      isUnlocked: false,
+      isUnlocked: true,
     ),
   ];
 }

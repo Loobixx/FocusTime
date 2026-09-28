@@ -24,6 +24,9 @@ class AudioManager {
     await _player.setReleaseMode(ReleaseMode.loop);
     await _player.setVolume(savedMute ? 0.0 : 0.4);
 
+    // 🔇 Sur le Web, on ne lance pas la musique tant que l'utilisateur n'a pas interagi
+    if (kIsWeb) return;
+
     if (!savedMute) {
       try {
         await _player.play(AssetSource('audio/ambiance_focus.mp3'));

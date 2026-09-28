@@ -40,28 +40,36 @@ class _CompanionWidgetState extends State<CompanionWidget> with SingleTickerProv
     super.dispose();
   }
 
+ // Dans lib/widgets/companion_widget.dart
   @override
   Widget build(BuildContext context) {
     final companion = CompanionData.getById(widget.companionId);
     if (companion == null) return const SizedBox.shrink();
 
+    // Si c'est un GIF, pas besoin de le faire sauter de haut en bas artificiellement :
+    final isGif = companion.assetPath.endsWith('.gif');
+
+    Widget content = SizedBox(
+      width: 80, // Ajuste la taille du petit chien ici (60 ou 70 c'est parfait)
+      height: 80,
+      child: Image.asset(
+        companion.assetPath,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const Icon(Icons.pets, color: Colors.white, size: 40),
+      ),
+    );
+
+    if (isGif) {
+      return content; // L'animation du gif suffit amplement !
+    }
+
+    // Si c'est une image PNG fixe, on garde le rebond doux :
     return AnimatedBuilder(
       animation: _bounceAnimation,
       builder: (context, child) {
         return Transform.translate(
           offset: Offset(0, _bounceAnimation.value),
-          child: SizedBox(
-            width: 70,
-            height: 70,
-            child: Image.asset(
-              companion.assetPath,
-              fit: BoxFit.contain,
-              // Permet d'appliquer la couleur choisie par le joueur
-              color: widget.tintColor ?? companion.defaultColor,
-              colorBlendMode: BlendMode.modulate,
-              errorBuilder: (_, __, ___) => const Icon(Icons.pets, color: Colors.white, size: 40),
-            ),
-          ),
+          child: content,
         );
       },
     );

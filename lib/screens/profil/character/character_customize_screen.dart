@@ -49,17 +49,17 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    // Dans CharacterCustomizerScreen :
     final selectedChar = CharacterOptionsList.characters.firstWhere(
       (c) => c.id == _selectedCharacterId,
       orElse: () => CharacterOptionsList.characters.first,
     );
 
-    // Sécurité : on empêche d'enregistrer un personnage non débloqué
     if (!selectedChar.isUnlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ce personnage n\'est pas encore débloqué !')),
       );
-      return;
+      return; // 👈 Si isUnlocked vaut false, ça ne sauvegarde JAMAIS dans Firestore !
     }
 
     setState(() => _saving = true);
