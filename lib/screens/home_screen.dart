@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:focus_time/models/companion.dart';
 import 'package:focus_time/utils/time_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -27,15 +28,110 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadCharacterData();
     NotificationService().scheduleDailySummaryAt20H();
-
-    // 🎵 Lancement de la musique de fond
     AudioManager().initAndPlay();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkCharacterSelection(); 
+      _checkPendingCompanionReward(); // 👈 On vérifie si un compagnon attend d'être fêté
     });
   }
 
+  Future<void> _checkPendingCompanionReward() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final doc = await userRef.get();
+    
+    String? pendingId = doc.data()?['pendingCompanionReward'] as String?;
+    if (pendingId != null && pendingId.isNotEmpty) {
+      // On supprime tout de suite le champ pour ne pas réafficher la pop-up en boucle
+      await userRef.update({'pendingCompanionReward': FieldValue.delete()});
+
+      // On retrouve les infos du compagnon
+      final companion = CompanionData.allCompanions.firstWhere(
+        (c) => c.id == pendingId,
+        orElse: () => CompanionData.allCompanions.first,
+      );
+
+      if (mounted) {
+        // Affichage de la pop-up de récompense sur la Home
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        '🎉 Nouveau Compagnon !',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF143063)),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFFF8C00), width: 3),
+                        ),
+                        child: ClipOval(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Image.asset(
+                              'assets/compagnons/${companion.id}_arret.gif',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(Icons.pets, size: 50, color: Color(0xFFFF8C00));
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Tu as rencontré ${companion.name} à ${companion.unlockCity} !',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF143063)),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF8C00),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            elevation: 0,
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Génial !', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+  }
+  
   Future<void> _checkCharacterSelection() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;

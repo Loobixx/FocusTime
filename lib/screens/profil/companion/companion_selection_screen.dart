@@ -58,10 +58,13 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
     if (user == null) return;
 
     await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-      'activeCompanion': FieldValue.delete(), // Retire le compagnon actif
+      'activeCompanion': FieldValue.delete(),
     });
 
-    setState(() {}); // Rafraîchit l'affichage
+    setState(() {
+      _activeCompanion = null;
+    });
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('🐾 Compagnon déséquipé !')),
@@ -122,32 +125,37 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
                   ),
                 ),
 
-                // Aperçu du compagnon actif
-                if (_activeCompanion != null) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 90,
-                    child: CompanionWidget(companionId: _activeCompanion),
-                  ),
-                  Text(
-                    'Compagnon équipé : ${CompanionData.getById(_activeCompanion)?.name ?? ""}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: darkBlue),
-                  ),
-                ],
+                // Aperçu du compagnon actif en haut (en mode marche)
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 90,
+                  child: _activeCompanion != null
+                      ? CompanionWidget(companionId: _activeCompanion)
+                      : const Center(
+                          child: Icon(Icons.pets_outlined, size: 40, color: Colors.black26),
+                        ),
+                ),
+                Text(
+                  _activeCompanion != null
+                      ? 'Compagnon équipé : ${CompanionData.getById(_activeCompanion)?.name ?? ""}'
+                      : 'Aucun compagnon équipé',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: darkBlue),
+                ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  ),
-                  icon: const Icon(Icons.remove_circle_outline),
-                  label: const Text('Déséquiper le compagnon actuel'),
-                  onPressed: _unequipCompanion,
-                ), 
-                
+                if (_activeCompanion != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      side: const BorderSide(color: Colors.redAccent),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                    icon: const Icon(Icons.remove_circle_outline),
+                    label: const Text('Déséquiper le compagnon actuel'),
+                    onPressed: _unequipCompanion,
+                  ), 
+
                 const SizedBox(height: 16),
 
                 // Grille des animaux disponibles et verrouillés
@@ -168,13 +176,21 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
                             final isUnlocked = _unlockedCompanions.contains(companion.id);
                             final isEquipped = _activeCompanion == companion.id;
 
+                            // ✨ Sélection dynamique du GIF selon les 3 états :
+                            // 1. Équipé -> Marche (_marche.gif)
+                            // 2. Débloqué mais non choisi -> Arrêt non choisi (_arret_non_choisi.gif)
+                            // 3. Verrouillé -> Cadenas
+                            final String imageAsset = isEquipped
+                                ? 'assets/compagnons/${companion.id}_arret.gif'
+                                : 'assets/compagnons/${companion.id}_arret_non_choisi.gif';
+
                             return ClipRRect(
                               borderRadius: BorderRadius.circular(20),
                               child: BackdropFilter(
                                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: isUnlocked ? 0.7 : 0.35),
+                                    color: Colors.white.withValues(alpha: isUnlocked ? (isEquipped ? 0.9 : 0.7) : 0.35),
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
                                       color: isEquipped ? focusOrange : Colors.white.withValues(alpha: 0.6),
@@ -188,7 +204,7 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
                                       Expanded(
                                         child: isUnlocked
                                             ? Image.asset(
-                                                companion.assetPath,
+                                                imageAsset,
                                                 fit: BoxFit.contain,
                                                 errorBuilder: (_, __, ___) =>
                                                     const Icon(Icons.pets, size: 50, color: darkBlue),
@@ -208,7 +224,7 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
                                       const SizedBox(height: 4),
                                       Text(
                                         isUnlocked
-                                            ? (isEquipped ? 'Équipé ✨' : 'Débloqué')
+                                            ? (isEquipped ? 'En vadrouille ✨' : 'Au campement 💤')
                                             : 'Trouve-le à :\n${companion.unlockCity}',
                                         style: TextStyle(
                                           fontSize: 11,

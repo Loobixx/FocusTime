@@ -40,7 +40,6 @@ class _LegTimeline {
 }
 
 class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindingObserver {
-  // ✨ NOUVEAU : On stocke le temps total réel de la session (en secondes)
   late int _totalSeconds;
   late int _remainingSeconds;
   
@@ -68,7 +67,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
 
-    // ✨ NOUVEAU : Si Mode Admin (-1), on donne 1 seconde par ville pour que ça aille très vite
+    // Si Mode Admin (-1), on donne 1 seconde par ville
     if (widget.durationMinutes == -1) {
       _totalSeconds = widget.plannedRoute.isNotEmpty ? widget.plannedRoute.length : 1;
     } else {
@@ -86,11 +85,20 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     _startTimer();
   }
 
- Future<void> _prepareMilestones() async {
+  Future<void> _prepareMilestones() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    
+    // ✨ MODE ADMIN : Déverrouille automatiquement TOUS les compagnons dynamiquement
+    if (widget.durationMinutes == -1) {
+      List<String> allCompanionIds = CompanionData.allCompanions.map((c) => c.id).toList();
+      await userRef.update({
+        'unlockedCompanions': allCompanionIds,
+      });
+    }
+
     final userDoc = await userRef.get();
 
     String currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
@@ -100,7 +108,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
     int totalRouteSteps = widget.plannedRoute.length;
     
-    // ✨ NOUVEAU : Calcul correct du temps par étape basé sur _totalSeconds
     int secondsPerStep = widget.durationMinutes == -1 
         ? 1 
         : (_totalSeconds ~/ (totalRouteSteps > 0 ? totalRouteSteps : 1));
@@ -179,7 +186,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
         if (_remainingSeconds > 0) {
           _remainingSeconds--;
 
-          // ✨ NOUVEAU : On calcule avec _totalSeconds pour éviter les valeurs négatives
           int elapsed = _totalSeconds - _remainingSeconds;
           
           for (int i = 0; i < _routeMilestones.length; i++) {
@@ -222,7 +228,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
   void _startPauseTimer(int minutes) async {
     _timer?.cancel(); 
     
-    // ✨ NOUVEAU : En mode admin, la pause ne dure que 2 secondes !
     final durationSec = widget.durationMinutes == -1 ? 2 : minutes * 60;
     
     setState(() {
@@ -247,7 +252,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
         if (_pauseRemainingSeconds > 0) {
           _pauseRemainingSeconds--;
 
-          // Notifier à 2 min de la fin (uniquement en jeu normal)
           if (_pauseRemainingSeconds == 120 && widget.durationMinutes != -1) {
             NotificationService().showNotification(
               id: 201,
@@ -322,7 +326,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // On cherche si un animal est lié à cette ville
     final companionToUnlock = CompanionData.allCompanions.cast<Companion?>().firstWhere(
       (c) => c?.unlockCity == arrivedCity,
       orElse: () => null,
@@ -336,125 +339,9 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       if (!unlocked.contains(companionToUnlock.id)) {
         await userRef.update({
           'unlockedCompanions': FieldValue.arrayUnion([companionToUnlock.id]),
-          'activeCompanion': companionToUnlock.id, // Équipé automatiquement !
+          'activeCompanion': companionToUnlock.id,
+          'pendingCompanionReward': companionToUnlock.id,
         });
-
-        if (mounted) {
-          // ✨ SUPERBE POP-UP DE DÉBLOCAGE DEVANT LE RESTE
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => Dialog(
-              backgroundColor: Colors.transparent,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 20,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          '🎉 Nouveau Compagnon !',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF143063),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // 📦 Case contenant l'animation de l'animal au repos
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFFFF8C00), width: 3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFFF8C00).withValues(alpha: 0.3),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              // Assure-toi d'avoir ton GIF ou image statique dans tes assets
-                              child: Image.asset(
-                                'assets/compagnons/${companionToUnlock.id}_arret.gif', 
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  // Fallback sur l'image normale si le gif n'existe pas encore
-                                  return Image.asset(companionToUnlock.assetPath, fit: BoxFit.cover);
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        Text(
-                          'Tu as rencontré ${companionToUnlock.name} à ${companionToUnlock.unlockCity} !',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF143063),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Il est maintenant débloqué et t\'accompagne dans tes aventures.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.black.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF8C00),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              elevation: 0,
-                            ),
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text(
-                              'Génial !',
-                              style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
       }
     }
   }
@@ -470,22 +357,19 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
       body: 'Ton trajet et ton temps de focus ont bien été enregistrés.',
     );
 
-    // ✨ NOUVEAU : On met à jour la position du joueur dans Firebase tout de suite !
     if (widget.plannedRoute.isNotEmpty) {
       final arrivedCity = widget.plannedRoute.last;
       final user = FirebaseAuth.instance.currentUser;
       
       if (user != null) {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-          'currentCity': arrivedCity, // 📍 Déplace le joueur sur la carte
+          'currentCity': arrivedCity,
         });
       }
       
-      // 🐾 Débloque le compagnon si besoin
       await _checkAndUnlockCompanion(arrivedCity);
     }
 
-    // ✨ NOUVEAU : On transforme le -1 (Admin) en 0 pour ne pas faire planter tes statistiques/XP dans TravelService
     int safeDuration = widget.durationMinutes == -1 ? 0 : widget.durationMinutes;
     
     await _travelService.processTripResults(
@@ -622,7 +506,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
 
-    // ✨ NOUVEAU : On utilise _totalSeconds ici
     int elapsedSeconds = _totalSeconds - _remainingSeconds;
 
     String currentLegTitle = "Préparation...";
@@ -650,7 +533,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     int restMinutes = widget.durationMinutes - travelMinutes;
     if (restMinutes < 0) restMinutes = 0;
 
-    // ✨ NOUVEAU : La progression se base sur _totalSeconds
     double progress = (_totalSeconds > 0) ? (_remainingSeconds / _totalSeconds) : 0.0;
 
     return PopScope(
@@ -766,31 +648,31 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
                         const Spacer(flex: 1),
 
-                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          _isPaused
-                              ? (_pauseOvertimeSeconds > 0 ? '⚠️ Pause dépassée !' : '☕ Campement au feu de camp')
-                              : currentLegTitle,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: darkBlue,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          textAlign: TextAlign.center,
+                          child: Text(
+                            _isPaused
+                                ? (_pauseOvertimeSeconds > 0 ? '⚠️ Pause dépassée !' : '☕ Campement au feu de camp')
+                                : currentLegTitle,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: darkBlue,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                      ),
                         const Spacer(flex: 3),
 
                         if (_isPaused)
@@ -828,7 +710,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                                 const Icon(Icons.route, color: darkBlue, size: 16),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Itinéraire (${currentLegIndex + 1}/${widget.plannedRoute.length})',
+                                  'Itinéraire ($currentLegIndex/${widget.plannedRoute.length})',
                                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkBlue),
                                 ),
                                 const SizedBox(width: 6),

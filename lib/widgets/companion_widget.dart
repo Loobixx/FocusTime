@@ -47,13 +47,13 @@ class _CompanionWidgetState extends State<CompanionWidget> with SingleTickerProv
     if (companion == null) return const SizedBox.shrink();
 
     // Si c'est un GIF, pas besoin de le faire sauter de haut en bas artificiellement :
-    final isGif = companion.assetPath.endsWith('.gif');
+    final isGif = companion.assetPathMarche.endsWith('.gif');
 
     Widget content = SizedBox(
       width: 80, // Ajuste la taille du petit chien ici (60 ou 70 c'est parfait)
       height: 80,
       child: Image.asset(
-        companion.assetPath,
+        companion.assetPathMarche,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => const Icon(Icons.pets, color: Colors.white, size: 40),
       ),

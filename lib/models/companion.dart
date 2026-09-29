@@ -6,7 +6,8 @@ class Companion {
   final String name;
   final String unlockCity;      // La ville précise qui débloque ce compagnon
   final String region;          // 'lac', 'desert', 'montagnes', etc.
-  final String assetPath;
+  final String assetPathMarche;
+  final String assetPathArret;
   final Color defaultColor;
 
   const Companion({
@@ -14,7 +15,8 @@ class Companion {
     required this.name,
     required this.unlockCity,
     required this.region,
-    required this.assetPath,
+    required this.assetPathMarche,
+    required this.assetPathArret,
     required this.defaultColor,
   });
 }
@@ -22,35 +24,21 @@ class Companion {
 class CompanionData {
   static const List<Companion> allCompanions = [
     Companion(
-      id: 'axolotl',
-      name: 'Nami l\'Axolotl',
-      unlockCity: 'La Source Magique', // Sur le lac
-      region: 'lac',
-      assetPath: 'compagnons/axolotl.png',
-      defaultColor: Color(0xFF4FC3F7),
-    ),
-    Companion(
-      id: 'fennec',
-      name: 'Pikou le Fennec',
-      unlockCity: 'L\'oasis de l\'exil', // Dans le désert
-      region: 'desert',
-      assetPath: 'compagnons/fennec.png',
-      defaultColor: Color(0xFFFFB74D),
-    ),
-    Companion(
-      id: 'chamois',
-      name: 'Floki le Chamois',
-      unlockCity: 'Le sommet d\'azur', // Dans les montagnes
-      region: 'montagnes',
-      assetPath: 'compagnons/chamois.png',
-      defaultColor: Color(0xFF81C784),
-    ),
-    Companion(
       id: 'chien',
       name: 'Dogito',
       unlockCity: 'Le village de Néris', // Dans la forêt
       region: 'montagnes',
-      assetPath: 'assets/compagnons/chien_marche.gif',
+      assetPathMarche: 'assets/compagnons/chien_marche.gif',
+      assetPathArret: 'assets/compagnons/chien_arret.gif',
+      defaultColor: Color(0xFFFF8A80),
+    ),
+    Companion(
+      id: 'chien',
+      name: 'Dogito2',
+      unlockCity: 'Le village de Néris', // Dans la forêt
+      region: 'montagnes',
+      assetPathMarche: 'assets/compagnons/chien_marche.gif',
+      assetPathArret: 'assets/compagnons/chien_arret.gif',
       defaultColor: Color(0xFFFF8A80),
     ),
   ];
