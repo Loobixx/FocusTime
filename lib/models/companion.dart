@@ -46,10 +46,10 @@ class CompanionData {
       defaultColor: Color(0xFF81C784),
     ),
     Companion(
-      id: 'dogito',
+      id: 'chien',
       name: 'Dogito',
-      unlockCity: 'Le village de la clairière', // Dans la forêt
-      region: 'foret',
+      unlockCity: 'Le village de Néris', // Dans la forêt
+      region: 'montagnes',
       assetPath: 'compagnons/chien_marche.gif',
       defaultColor: Color(0xFFFF8A80),
     ),

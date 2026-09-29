@@ -133,7 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/fond1.png'),
+                  image: AssetImage('assets/biome/fond1.png'),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -243,59 +243,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(height: 32),
 
+                              // ✨ NOUVEAU : Zone d'administration avec les deux boutons
                               if (isMasterAdmin) ...[
                                 const SizedBox(height: 12),
-                                Container(
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFFFF8C00), Color(0xFFFF5722)],
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.orange.withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
+                                
+                                // 🟢 BOUTON 1 : TOUT DÉBLOQUER
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    elevation: 0,
                                   ),
-                                  child: ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.transparent,
-                                      shadowColor: Colors.transparent,
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    ),
-                                    icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
-                                    label: const Text(
-                                      'Panneau Développeur / Débloquer tout',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                    onPressed: () async {
-                                      final uid = FirebaseAuth.instance.currentUser?.uid;
-                                      if (uid == null) return;
+                                  icon: const Icon(Icons.admin_panel_settings),
+                                  label: const Text('Admin : Tout débloquer', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  onPressed: () async {
+                                    final uid = FirebaseAuth.instance.currentUser?.uid;
+                                    if (uid == null) return;
 
-                                      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-                                        'unlockedCompanions': ['axolotl', 'fennec', 'chamois', 'chien'],
-                                        'activeCompanion': 'chien',
-                                      }, SetOptions(merge: true));
+                                    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+                                      'unlockedCompanions': ['axolotl', 'fennec', 'chamois', 'chien'],
+                                      'unlockedCharacters': ['nuit', 'desert', 'montagnes', 'lac', 'nuages'],
+                                      'activeCompanion': 'chien',
+                                    }, SetOptions(merge: true));
 
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('⚡ Données admin appliquées avec succès !'),
-                                            backgroundColor: Colors.green,
-                                          ),
-                                        );
-                                      }
-                                    },
-                                  ),
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚡ Animaux et Biomes débloqués !'), backgroundColor: Colors.green));
+                                    }
+                                  },
                                 ),
+                                const SizedBox(height: 12),
+
+                                // 🔴 BOUTON 2 : MODE JOUEUR CLASSIQUE
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey.shade800,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    elevation: 0,
+                                  ),
+                                  icon: const Icon(Icons.person_outline),
+                                  label: const Text('Admin : Vue Joueur Classique', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  onPressed: () async {
+                                    final uid = FirebaseAuth.instance.currentUser?.uid;
+                                    if (uid == null) return;
+
+                                    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+                                      'unlockedCompanions': [], 
+                                      'unlockedCharacters': ['nuit'], 
+                                      'characterId': 'nuit',
+                                      'characterColor': Colors.deepPurple.toARGB32(),
+                                      'activeCompanion': FieldValue.delete(),
+                                    }, SetOptions(merge: true));
+
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('👀 Vue classique restaurée. Personnages verrouillés.'), backgroundColor: Colors.orange));
+                                      _loadPseudo(); 
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 24),
                               ],
 
                               _buildMenuItem(

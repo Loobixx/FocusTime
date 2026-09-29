@@ -66,8 +66,8 @@ class _LoginScreenState extends State<LoginScreen> {
           'createdAt': Timestamp.now(),
           'characterId': 'nuit',
           'characterColor': Colors.deepPurple.toARGB32(),
-          'hat': 'Aucun',
           'pseudo': '',
+          'unlockedCharacters': ['nuit'], 
         });
       }
 
@@ -119,10 +119,10 @@ class _LoginScreenState extends State<LoginScreen> {
       await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
         'email': email,
         'createdAt': Timestamp.now(),
-        'characterId': 'nuit', // 👈 On met la Nuit par défaut
-        'characterColor': Colors.deepPurple.toARGB32(), // 👈 Directement le violet !
-        'hat': 'Aucun',
+        'characterId': 'nuit', 
+        'characterColor': Colors.deepPurple.toARGB32(), 
         'pseudo': '',
+        'unlockedCharacters': ['nuit'], 
       });
       }
 
@@ -167,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/fond1.png'), 
+                  image: AssetImage('assets/biome/fond1.png'), 
                   fit: BoxFit.cover,
                 ),
               ),

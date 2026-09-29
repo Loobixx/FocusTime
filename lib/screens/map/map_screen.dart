@@ -168,7 +168,7 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           Positioned.fill(
             child: Image.asset(
-              'assets/fond_de_zoom.png',
+              'assets/biome/fond_de_zoom.png',
               fit: BoxFit.cover,
             ),
           ),
@@ -213,7 +213,7 @@ class _MapScreenState extends State<MapScreen> {
                           children: [
                             const RepaintBoundary(
                               child: Image(
-                                image: AssetImage('assets/map_global.png'),
+                                image: AssetImage('assets/biome/map_global.png'),
                                 width: baseWidth,
                                 height: baseHeight,
                                 fit: BoxFit.fill,

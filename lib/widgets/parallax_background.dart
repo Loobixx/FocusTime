@@ -107,7 +107,7 @@ class _ParallaxBackgroundState extends State<ParallaxBackground>
         children: [
           Positioned.fill(
             child: _buildInfiniteLayer(
-              asset: 'assets/fond_lointain.png',
+              asset: 'assets/biome/fond_lointain.png',
               screenWidth: size.width,
               screenHeight: size.height,
               offset: bgOffset,
@@ -115,7 +115,7 @@ class _ParallaxBackgroundState extends State<ParallaxBackground>
           ),
           Positioned.fill(
             child: _buildInfiniteLayer(
-              asset: 'assets/sol_proche.png',
+              asset: 'assets/biome/sol_proche.png',
               screenWidth: size.width,
               screenHeight: size.height,
               offset: groundOffset,

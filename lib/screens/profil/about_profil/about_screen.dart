@@ -33,7 +33,7 @@ class AboutScreen extends StatelessWidget {
             child: Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/fond1.png'),
+                  image: AssetImage('assets/biome/fond1.png'),
                   fit: BoxFit.cover,
                 ),
               ),

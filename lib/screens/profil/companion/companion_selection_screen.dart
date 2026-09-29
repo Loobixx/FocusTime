@@ -53,6 +53,22 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
     });
   }
 
+  Future<void> _unequipCompanion() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      'activeCompanion': FieldValue.delete(), // Retire le compagnon actif
+    });
+
+    setState(() {}); // Rafraîchit l'affichage
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🐾 Compagnon déséquipé !')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -64,7 +80,7 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
             child: Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/fond1.png'),
+                  image: AssetImage('assets/biome/fond1.png'),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -119,6 +135,19 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
                   ),
                 ],
 
+                const SizedBox(height: 16),
+
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  ),
+                  icon: const Icon(Icons.remove_circle_outline),
+                  label: const Text('Déséquiper le compagnon actuel'),
+                  onPressed: _unequipCompanion,
+                ), 
+                
                 const SizedBox(height: 16),
 
                 // Grille des animaux disponibles et verrouillés

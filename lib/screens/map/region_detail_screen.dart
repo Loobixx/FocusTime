@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:focus_time/screens/map/data/region_cross_data.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import '../../models/city_network.dart';
-import '../focus_moment/active_timer_screen.dart';
+import '../focus_moment/expedition_screen.dart';
 
 class RegionDetailScreen extends StatefulWidget {
   final String regionName;
@@ -100,12 +100,12 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
 
   String _getImageAsset(String regionName) {
     switch (regionName) {
-      case 'desert': return 'assets/desert.png';
-      case 'montagnes': return 'assets/montagnes.png';
-      case 'nuit': return 'assets/nuit.png';
-      case 'nuages': return 'assets/nuages.png';
-      case 'lac': return 'assets/lac.png';
-      default: return 'assets/fond1.png';
+      case 'desert': return 'assets/biome/desert.png';
+      case 'montagnes': return 'assets/biome/montagnes.png';
+      case 'nuit': return 'assets/biome/nuit.png';
+      case 'nuages': return 'assets/biome/nuages.png';
+      case 'lac': return 'assets/biome/lac.png';
+      default: return 'assets/biome/fond1.png';
     }
   }
 
@@ -144,13 +144,18 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
       ..scale(fitScale);
   }
 
-  bool get _hasFocusPlanned => widget.selectedDurationMinutes > 0;
+  // 👈 On accepte le -1 pour que la carte comprenne que tu es en mode voyage
+  bool get _hasFocusPlanned => widget.selectedDurationMinutes > 0 || widget.selectedDurationMinutes == -1;
 
   ShortestPathResult? _routeFor(RegionCross cross) => _routes[cross.name];
 
   bool _isReachable(RegionCross cross) {
     if (!_hasFocusPlanned) return false;
     if (_currentCity != null && cross.name == _currentCity) return false;
+    
+    // 👈 NOUVEAU : Si c'est -1 (Admin), la ville est toujours accessible !
+    if (widget.selectedDurationMinutes == -1) return true; 
+
     final route = _routeFor(cross);
     if (route == null) return false;
     return route.totalTravelMinutes <= widget.selectedDurationMinutes;
@@ -229,7 +234,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset('assets/fond_de_zoom.png', fit: BoxFit.cover),
+            child: Image.asset('assets/biome/fond_de_zoom.png', fit: BoxFit.cover),
           ),
           Positioned.fill(
             child: _imageSize == null

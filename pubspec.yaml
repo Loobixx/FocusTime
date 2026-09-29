@@ -83,24 +83,13 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/fond1.png
-    - assets/fond2.png
-    - assets/map_global.png
-    - assets/nuit.png
-    - assets/montagnes.png
-    - assets/nuages.png
-    - assets/lac.png
-    - assets/desert.png
-    - assets/fond_de_zoom.png
+    - assets/biome/
 
     - assets/NomCitiesDesert/
     - assets/NomCitiesMontagnes/
     - assets/NomCitiesLac/
     - assets/NomCitiesNuages/
     - assets/NomCitiesNuit/
-
-    - assets/sol_proche.png
-    - assets/fond_lointain.png
 
     - assets/PersonnageAnimation/Nuit/Marche/
 

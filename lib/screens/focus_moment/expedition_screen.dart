@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:focus_time/screens/focus_moment/travel_events.dart';
 import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,10 +13,8 @@ import '../home_screen.dart';
 import 'dart:io' show Platform;
 
 import '../../widgets/parallax_background.dart';
-import 'active_timer_dialogs.dart';
 import '../../models/companion.dart';
 import '../../widgets/companion_widget.dart';
-
 
 class ActiveTimerScreen extends StatefulWidget {
   final List<String> plannedRoute;
@@ -41,7 +40,10 @@ class _LegTimeline {
 }
 
 class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindingObserver {
+  // ✨ NOUVEAU : On stocke le temps total réel de la session (en secondes)
+  late int _totalSeconds;
   late int _remainingSeconds;
+  
   Timer? _timer;
   bool _isCompleted = false;
   bool _hasCheated = false;
@@ -66,7 +68,13 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
 
-    _remainingSeconds = widget.durationMinutes * 60;
+    // ✨ NOUVEAU : Si Mode Admin (-1), on donne 1 seconde par ville pour que ça aille très vite
+    if (widget.durationMinutes == -1) {
+      _totalSeconds = widget.plannedRoute.isNotEmpty ? widget.plannedRoute.length : 1;
+    } else {
+      _totalSeconds = widget.durationMinutes * 60;
+    }
+    _remainingSeconds = _totalSeconds;
 
     _travelService.setFocusActive(
       true,
@@ -91,12 +99,15 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     int totalCumulativeSeconds = 0;
 
     int totalRouteSteps = widget.plannedRoute.length;
-    int totalAllowedSeconds = CityNetwork.isDevMode ? 60 : (widget.durationMinutes * 60);
-    int secondsPerStep = totalAllowedSeconds ~/ totalRouteSteps;
-    if (secondsPerStep < 2) secondsPerStep = 2;
+    
+    // ✨ NOUVEAU : Calcul correct du temps par étape basé sur _totalSeconds
+    int secondsPerStep = widget.durationMinutes == -1 
+        ? 1 
+        : (_totalSeconds ~/ (totalRouteSteps > 0 ? totalRouteSteps : 1));
+    if (secondsPerStep < 1) secondsPerStep = 1;
 
     for (String city in widget.plannedRoute) {
-      int effectiveSeconds = CityNetwork.isDevMode 
+      int effectiveSeconds = (widget.durationMinutes == -1 || CityNetwork.isDevMode) 
           ? secondsPerStep 
           : (CityNetwork.getAvailableDestinations(currentCity)[city] ?? 60) * 60;
 
@@ -168,7 +179,9 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
         if (_remainingSeconds > 0) {
           _remainingSeconds--;
 
-          int elapsed = (widget.durationMinutes * 60) - _remainingSeconds;
+          // ✨ NOUVEAU : On calcule avec _totalSeconds pour éviter les valeurs négatives
+          int elapsed = _totalSeconds - _remainingSeconds;
+          
           for (int i = 0; i < _routeMilestones.length; i++) {
             if (elapsed >= _routeMilestones[i].cumulativeSeconds && 
                 !_triggeredMilestoneIndexes.contains(i) && 
@@ -206,10 +219,12 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     );
   }
   
-void _startPauseTimer(int minutes) async {
+  void _startPauseTimer(int minutes) async {
     _timer?.cancel(); 
     
-    final durationSec = minutes * 60;
+    // ✨ NOUVEAU : En mode admin, la pause ne dure que 2 secondes !
+    final durationSec = widget.durationMinutes == -1 ? 2 : minutes * 60;
+    
     setState(() {
       _isPaused = true;
       _pauseRemainingSeconds = durationSec;
@@ -217,7 +232,6 @@ void _startPauseTimer(int minutes) async {
       _pauseEndTime = DateTime.now().add(Duration(seconds: durationSec));
     });
 
-    // On garde juste le chronomètre permanent (ID 200) dans la barre d'état
     if (Platform.isAndroid || Platform.isIOS) {
       try {
         await NotificationService().showPauseChronometer(durationSec);
@@ -233,8 +247,8 @@ void _startPauseTimer(int minutes) async {
         if (_pauseRemainingSeconds > 0) {
           _pauseRemainingSeconds--;
 
-          // ✨ ICI : Dès qu'il reste exactement 120 secondes (2 minutes), on envoie la notification !
-          if (_pauseRemainingSeconds == 120) {
+          // Notifier à 2 min de la fin (uniquement en jeu normal)
+          if (_pauseRemainingSeconds == 120 && widget.durationMinutes != -1) {
             NotificationService().showNotification(
               id: 201,
               title: '⏰ Bientôt la fin de la pause !',
@@ -304,49 +318,146 @@ void _startPauseTimer(int minutes) async {
     }
   }
 
+  Future<void> _checkAndUnlockCompanion(String arrivedCity) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  // Dans ta fonction qui valide la fin de voyage :
-Future<void> _checkAndUnlockCompanion(String arrivedCity) async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
+    // On cherche si un animal est lié à cette ville
+    final companionToUnlock = CompanionData.allCompanions.cast<Companion?>().firstWhere(
+      (c) => c?.unlockCity == arrivedCity,
+      orElse: () => null,
+    );
 
-  // On cherche si un animal est lié à cette ville
-  final companionToUnlock = CompanionData.allCompanions.cast<Companion?>().firstWhere(
-    (c) => c?.unlockCity == arrivedCity,
-    orElse: () => null,
-  );
+    if (companionToUnlock != null) {
+      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final doc = await userRef.get();
+      final List<dynamic> unlocked = doc.data()?['unlockedCompanions'] ?? [];
 
-  if (companionToUnlock != null) {
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-    final doc = await userRef.get();
-    final List<dynamic> unlocked = doc.data()?['unlockedCompanions'] ?? [];
+      if (!unlocked.contains(companionToUnlock.id)) {
+        await userRef.update({
+          'unlockedCompanions': FieldValue.arrayUnion([companionToUnlock.id]),
+          'activeCompanion': companionToUnlock.id, // Équipé automatiquement !
+        });
 
-    if (!unlocked.contains(companionToUnlock.id)) {
-      await userRef.update({
-        'unlockedCompanions': FieldValue.arrayUnion([companionToUnlock.id]),
-        'activeCompanion': companionToUnlock.id, // Équipé automatiquement !
-      });
+        if (mounted) {
+          // ✨ SUPERBE POP-UP DE DÉBLOCAGE DEVANT LE RESTE
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => Dialog(
+              backgroundColor: Colors.transparent,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          '🎉 Nouveau Compagnon !',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF143063),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
 
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('🎉 Nouveau compagnon !'),
-            content: Text('Tu as rencontré ${companionToUnlock.name} à ${companionToUnlock.unlockCity} ! Il t\'accompagnera désormais lors de tes sessions.'),
-            actions: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Génial !', style: TextStyle(color: Colors.white)),
+                        // 📦 Case contenant l'animation de l'animal au repos
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFFF8C00), width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFF8C00).withValues(alpha: 0.3),
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              // Assure-toi d'avoir ton GIF ou image statique dans tes assets
+                              child: Image.asset(
+                                'assets/compagnons/${companionToUnlock.id}_arret.gif', 
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  // Fallback sur l'image normale si le gif n'existe pas encore
+                                  return Image.asset(companionToUnlock.assetPath, fit: BoxFit.cover);
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        Text(
+                          'Tu as rencontré ${companionToUnlock.name} à ${companionToUnlock.unlockCity} !',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF143063),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Il est maintenant débloqué et t\'accompagne dans tes aventures.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.black.withValues(alpha: 0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF8C00),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              'Génial !',
+                              style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ],
-          ),
-        );
+            ),
+          );
+        }
       }
     }
   }
-}
 
   Future<void> _finishTrip() async {
     setState(() => _isCompleted = true);
@@ -359,16 +470,28 @@ Future<void> _checkAndUnlockCompanion(String arrivedCity) async {
       body: 'Ton trajet et ton temps de focus ont bien été enregistrés.',
     );
 
-    await _travelService.processTripResults(
-      totalFuelMinutes: widget.durationMinutes,
-      plannedRoute: widget.plannedRoute,
-    );
-
-    // 🐾 Vérifie si la destination finale débloque un nouveau compagnon
+    // ✨ NOUVEAU : On met à jour la position du joueur dans Firebase tout de suite !
     if (widget.plannedRoute.isNotEmpty) {
       final arrivedCity = widget.plannedRoute.last;
+      final user = FirebaseAuth.instance.currentUser;
+      
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'currentCity': arrivedCity, // 📍 Déplace le joueur sur la carte
+        });
+      }
+      
+      // 🐾 Débloque le compagnon si besoin
       await _checkAndUnlockCompanion(arrivedCity);
     }
+
+    // ✨ NOUVEAU : On transforme le -1 (Admin) en 0 pour ne pas faire planter tes statistiques/XP dans TravelService
+    int safeDuration = widget.durationMinutes == -1 ? 0 : widget.durationMinutes;
+    
+    await _travelService.processTripResults(
+      totalFuelMinutes: safeDuration,
+      plannedRoute: widget.plannedRoute,
+    );
 
     if (!mounted) return;
 
@@ -381,96 +504,95 @@ Future<void> _checkAndUnlockCompanion(String arrivedCity) async {
     });
   }
 
-void _showRouteBottomSheet(BuildContext context, Color darkBlue, Color focusOrange, int currentLegIndex) {
-  int travelMinutes = widget.plannedTravelMinutes;
-  int restMinutes = widget.durationMinutes - travelMinutes;
-  if (restMinutes < 0) restMinutes = 0;
+  void _showRouteBottomSheet(BuildContext context, Color darkBlue, Color focusOrange, int currentLegIndex) {
+    int travelMinutes = widget.plannedTravelMinutes;
+    int restMinutes = widget.durationMinutes - travelMinutes;
+    if (restMinutes < 0) restMinutes = 0;
 
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (context) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.95),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Plan de route complet',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: darkBlue),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: widget.plannedRoute.asMap().entries.map((entry) {
-                int idx = entry.key;
-                String city = entry.value;
-
-                Color chipColor = (idx < currentLegIndex)
-                    ? Colors.green
-                    : (idx == currentLegIndex ? focusOrange : Colors.grey);
-                IconData chipIcon = (idx < currentLegIndex)
-                    ? Icons.check_circle
-                    : (idx == currentLegIndex ? Icons.navigation : Icons.radio_button_unchecked);
-
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: chipColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: chipColor, width: 1.0),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.95),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Plan de route complet',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: darkBlue),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(chipIcon, size: 13, color: chipColor),
-                      const SizedBox(width: 4),
-                      Text(city, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: chipColor)),
-                    ],
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(context),
                   ),
-                );
-              }).toList(),
-            ),
-            const Divider(height: 24),
-            Row(
-              children: [
-                Icon(Icons.timer_outlined, color: darkBlue, size: 16),
-                const SizedBox(width: 4),
-                Text('Voyage : ${formatMinutesToHours(travelMinutes)}',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkBlue)),
-                if (restMinutes > 0) ...[
-                  const SizedBox(width: 12),
-                  const Icon(Icons.hotel, color: Color(0xFF6A1B9A), size: 16),
-                  const SizedBox(width: 4),
-                  Text('Repos : ${formatMinutesToHours(restMinutes)}',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A))),
                 ],
-              ],
-            ),
-            const SizedBox(height: 12),
-          ],
-        ),
-      );
-    },
-  );
-}
-  
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: widget.plannedRoute.asMap().entries.map((entry) {
+                  int idx = entry.key;
+                  String city = entry.value;
 
+                  Color chipColor = (idx < currentLegIndex)
+                      ? Colors.green
+                      : (idx == currentLegIndex ? focusOrange : Colors.grey);
+                  IconData chipIcon = (idx < currentLegIndex)
+                      ? Icons.check_circle
+                      : (idx == currentLegIndex ? Icons.navigation : Icons.radio_button_unchecked);
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: chipColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: chipColor, width: 1.0),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(chipIcon, size: 13, color: chipColor),
+                        const SizedBox(width: 4),
+                        Text(city, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: chipColor)),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Icon(Icons.timer_outlined, color: darkBlue, size: 16),
+                  const SizedBox(width: 4),
+                  Text('Voyage : ${formatMinutesToHours(travelMinutes)}',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkBlue)),
+                  if (restMinutes > 0) ...[
+                    const SizedBox(width: 12),
+                    const Icon(Icons.hotel, color: Color(0xFF6A1B9A), size: 16),
+                    const SizedBox(width: 4),
+                    Text('Repos : ${formatMinutesToHours(restMinutes)}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A))),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
   @override
   void dispose() {
     _timer?.cancel();
@@ -500,7 +622,8 @@ void _showRouteBottomSheet(BuildContext context, Color darkBlue, Color focusOran
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
 
-    int elapsedSeconds = (widget.durationMinutes * 60) - _remainingSeconds;
+    // ✨ NOUVEAU : On utilise _totalSeconds ici
+    int elapsedSeconds = _totalSeconds - _remainingSeconds;
 
     String currentLegTitle = "Préparation...";
     int currentLegIndex = 0;
@@ -527,9 +650,8 @@ void _showRouteBottomSheet(BuildContext context, Color darkBlue, Color focusOran
     int restMinutes = widget.durationMinutes - travelMinutes;
     if (restMinutes < 0) restMinutes = 0;
 
-    double progress = (widget.durationMinutes * 60 > 0)
-        ? (_remainingSeconds / (widget.durationMinutes * 60))
-        : 0.0;
+    // ✨ NOUVEAU : La progression se base sur _totalSeconds
+    double progress = (_totalSeconds > 0) ? (_remainingSeconds / _totalSeconds) : 0.0;
 
     return PopScope(
       canPop: false,
@@ -662,7 +784,7 @@ void _showRouteBottomSheet(BuildContext context, Color darkBlue, Color focusOran
                               ? (_pauseOvertimeSeconds > 0 ? '⚠️ Pause dépassée !' : '☕ Campement au feu de camp')
                               : currentLegTitle,
                           style: const TextStyle(
-                            fontSize: 15, // Plus petit et discret
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: darkBlue,
                           ),
@@ -684,38 +806,37 @@ void _showRouteBottomSheet(BuildContext context, Color darkBlue, Color focusOran
                             onPressed: _endPauseNormal,
                           ),
 
-                        // Petite barre discrète qui n'empiète pas sur le sol
-GestureDetector(
-  onTap: () => _showRouteBottomSheet(context, darkBlue, focusOrange, currentLegIndex),
-  child: Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.85),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.white, width: 1.2),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.1),
-          blurRadius: 6,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.route, color: darkBlue, size: 16),
-        const SizedBox(width: 8),
-        Text(
-          'Itinéraire (${currentLegIndex + 1}/${widget.plannedRoute.length})',
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkBlue),
-        ),
-        const SizedBox(width: 6),
-        const Icon(Icons.keyboard_arrow_up, color: darkBlue, size: 18),
-      ],
-    ),
-  ),
-),
+                        GestureDetector(
+                          onTap: () => _showRouteBottomSheet(context, darkBlue, focusOrange, currentLegIndex),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.white, width: 1.2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.route, color: darkBlue, size: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Itinéraire (${currentLegIndex + 1}/${widget.plannedRoute.length})',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkBlue),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.keyboard_arrow_up, color: darkBlue, size: 18),
+                              ],
+                            ),
+                          ),
+                        ),
 
                         const SizedBox(height: 16),
 
@@ -750,11 +871,10 @@ GestureDetector(
                 ),
               ),
             ),
-            // 🐶 Compagnon calé sur le sol du paysage
             if (_activeCompanionId != null)
               Positioned(
-                bottom: 168, // Règle la hauteur au niveau du sol
-                left: MediaQuery.of(context).size.width * 0.58, // Légèrement devant le personnage
+                bottom: 168,
+                left: MediaQuery.of(context).size.width * 0.58,
                 child: CompanionWidget(
                   companionId: _activeCompanionId,
                 ),

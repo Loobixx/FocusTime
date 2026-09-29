@@ -66,7 +66,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
             child: Container(
               decoration: const BoxDecoration(
-                image: DecorationImage(image: AssetImage('assets/fond1.png'), fit: BoxFit.cover),
+                image: DecorationImage(image: AssetImage('assets/biome/fond1.png'), fit: BoxFit.cover),
               ),
             ),
           ),

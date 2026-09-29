@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:focus_time/screens/map/map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 👈 NOUVEAU : Import nécessaire pour vérifier l'admin
 import '../utils/time_formatter.dart';
 
 class FocusScreen extends StatefulWidget {
@@ -26,7 +27,7 @@ class _FocusScreenState extends State<FocusScreen> {
     HapticFeedback.lightImpact();
     setState(() {
       _focusMinutes -= minutesToRemove;
-      if (_focusMinutes < 30) _focusMinutes = 2; // Minimum 30 min
+      if (_focusMinutes < 30) _focusMinutes = 2; // Minimum 30 min (ou 2 pour tes tests)
     });
   }
 
@@ -34,6 +35,9 @@ class _FocusScreenState extends State<FocusScreen> {
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
+
+    // 👈 NOUVEAU : On vérifie si c'est toi
+    final bool isMasterAdmin = FirebaseAuth.instance.currentUser?.email == 'yoprudhomme59@gmail.com';
 
     double progress = (_focusMinutes / 480).clamp(0.0, 1.0);
 
@@ -47,7 +51,7 @@ class _FocusScreenState extends State<FocusScreen> {
               child: Container(
                 decoration: const BoxDecoration(
                   image: DecorationImage(
-                    image: AssetImage('assets/fond2.png'),
+                    image: AssetImage('assets/biome/fond2.png'),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -242,7 +246,7 @@ class _FocusScreenState extends State<FocusScreen> {
 
                       // Bouton Confirmer la durée
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 24.0),
+                        padding: EdgeInsets.only(bottom: isMasterAdmin ? 12.0 : 24.0), // Ajustement du padding
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
@@ -274,6 +278,44 @@ class _FocusScreenState extends State<FocusScreen> {
                           ),
                         ),
                       ),
+
+                      // ✨ NOUVEAU : Bouton ADMIN 1 SECONDE
+                      if (isMasterAdmin)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 24.0),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                elevation: 2,
+                              ),
+                              icon: const Icon(Icons.flash_on, color: Colors.white),
+                              label: const Text(
+                                '🚀 MODE ADMIN : 1 SECONDE',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onPressed: () {
+                                HapticFeedback.heavyImpact();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    // On envoie -1 comme code secret pour 1 seconde
+                                    builder: (context) => const MapScreen(selectedDurationMinutes: -1),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

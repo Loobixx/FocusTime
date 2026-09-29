@@ -14,12 +14,12 @@ class CharacterCustomizerScreen extends StatefulWidget {
 
 class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
   String _selectedCharacterId = 'nuit';
-  String _selectedHat = 'Aucun';
   bool _loading = true;
   bool _saving = false;
   
-  final List<String> _hats = ['Aucun', 'Casquette', 'Chapeau magique', 'Couronne'];
-
+  // 👈 NOUVEAU : Liste dynamique des personnages débloqués dans Firestore
+  List<String> _unlockedCharacters = ['nuit']; 
+  
   @override
   void initState() {
     super.initState();
@@ -40,7 +40,8 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
 
     setState(() {
       _selectedCharacterId = loadedCharacterId;
-      _selectedHat = (data?['hat'] as String?) ?? 'Aucun';
+      // 👈 NOUVEAU : Récupération de la liste des déblocages depuis Firestore
+      _unlockedCharacters = List<String>.from(data?['unlockedCharacters'] ?? ['nuit']);
       _loading = false;
     });
   }
@@ -49,17 +50,17 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // Dans CharacterCustomizerScreen :
     final selectedChar = CharacterOptionsList.characters.firstWhere(
       (c) => c.id == _selectedCharacterId,
       orElse: () => CharacterOptionsList.characters.first,
     );
 
-    if (!selectedChar.isUnlocked) {
+    // 👈 NOUVEAU : On vérifie avec la liste Firestore, plus avec character.isUnlocked
+    if (!_unlockedCharacters.contains(selectedChar.id)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ce personnage n\'est pas encore débloqué !')),
       );
-      return; // 👈 Si isUnlocked vaut false, ça ne sauvegarde JAMAIS dans Firestore !
+      return;
     }
 
     setState(() => _saving = true);
@@ -67,7 +68,6 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
     await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
       'characterId': _selectedCharacterId,
       'characterColor': selectedChar.themeColor.toARGB32(),
-      'hat': _selectedHat,
     });
 
     if (mounted) {
@@ -86,6 +86,9 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
       orElse: () => CharacterOptionsList.characters.first,
     );
 
+    // 👈 NOUVEAU : Variable locale pour savoir si le personnage au centre est débloqué
+    final isCurrentCharUnlocked = _unlockedCharacters.contains(currentChar.id);
+
     return Scaffold(
       body: Stack(
         children: [
@@ -94,7 +97,7 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
             child: Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/fond1.png'),
+                  image: AssetImage('assets/biome/fond1.png'),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -137,10 +140,10 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                           ],
                         ),
                         child: ClipOval(
-                          child: currentChar.isUnlocked
+                          child: isCurrentCharUnlocked // 👈 Utilise la vérification Firestore
                               ? Image.asset(currentChar.imagePath, fit: BoxFit.cover, errorBuilder: (c, o, s) => const Icon(Icons.person, size: 70, color: Colors.grey))
                               : Container(
-                                  color: Colors.black, // 👈 Silhouette noire
+                                  color: Colors.black, // Silhouette noire
                                   child: const Icon(Icons.lock, color: Colors.white, size: 40),
                                 ),
                         ),
@@ -154,7 +157,7 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                             const Text('Choix du personnage', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkBlue)),
                             const SizedBox(height: 10),
                             
-                            // Liste horizontale des 5 personnages
+                            // Liste horizontale des personnages
                             SizedBox(
                               height: 100,
                               child: ListView.builder(
@@ -163,11 +166,14 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                                 itemBuilder: (context, index) {
                                   final character = CharacterOptionsList.characters[index];
                                   final bool isSelected = _selectedCharacterId == character.id;
+                                  
+                                  // 👈 NOUVEAU : Vérifie si le biome courant est dans la liste de l'utilisateur
+                                  final bool isUnlocked = _unlockedCharacters.contains(character.id); 
 
                                   return GestureDetector(
                                     onTap: () {
                                       HapticFeedback.lightImpact();
-                                      if (character.isUnlocked) {
+                                      if (isUnlocked) {
                                         setState(() => _selectedCharacterId = character.id);
                                       } else {
                                         ScaffoldMessenger.of(context).showSnackBar(
@@ -183,25 +189,24 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                                             alignment: Alignment.center,
                                             children: [
                                               Container(
-                                            width: 65,
-                                            height: 65,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                // 🎨 ICI : On utilise la couleur du personnage si il est sélectionné, sinon transparent
-                                                color: isSelected ? character.themeColor : Colors.transparent,
-                                                width: 3.5,
+                                                width: 65,
+                                                height: 65,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color: isSelected ? character.themeColor : Colors.transparent,
+                                                    width: 3.5,
+                                                  ),
+                                                ),
+                                                child: ClipOval(
+                                                  child: isUnlocked // 👈 Utilise la vérification Firestore
+                                                      ? Image.asset(character.imagePath, fit: BoxFit.cover, errorBuilder: (c, o, s) => const Icon(Icons.person))
+                                                      : Container(
+                                                          color: Colors.black,
+                                                          child: const Icon(Icons.lock, color: Colors.white, size: 24),
+                                                        ),
+                                                ),
                                               ),
-                                            ),
-                                            child: ClipOval(
-                                              child: character.isUnlocked
-                                                  ? Image.asset(character.imagePath, fit: BoxFit.cover, errorBuilder: (c, o, s) => const Icon(Icons.person))
-                                                  : Container(
-                                                      color: Colors.black,
-                                                      child: const Icon(Icons.lock, color: Colors.white, size: 24),
-                                                    ),
-                                            ),
-                                          ),
                                             ],
                                           ),
                                           const SizedBox(height: 4),
@@ -210,7 +215,7 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                              color: character.isUnlocked ? darkBlue : Colors.grey,
+                                              color: isUnlocked ? darkBlue : Colors.grey, // 👈 Utilise la vérification Firestore
                                             ),
                                           ),
                                         ],
@@ -221,26 +226,6 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
-                            const Text('Accessoire / Chapeau', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkBlue)),
-                            const SizedBox(height: 10),
-                            DropdownButtonFormField<String>(
-                              initialValue: _hats.contains(_selectedHat) ? _selectedHat : 'Aucun',
-                              dropdownColor: Colors.white.withValues(alpha: 0.9),
-                              decoration: InputDecoration(
-                                filled: true,
-                                fillColor: Colors.white.withValues(alpha: 0.7),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-                              ),
-                              items: _hats.map((hat) {
-                                return DropdownMenuItem(value: hat, child: Text(hat, style: const TextStyle(color: darkBlue)));
-                              }).toList(),
-                              onChanged: (value) {
-                                if (value != null) {
-                                  HapticFeedback.lightImpact();
-                                  setState(() => _selectedHat = value);
-                                }
-                              },
-                            ),
                           ],
                         ),
                       ),
@@ -250,12 +235,12 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                           width: double.infinity,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: currentChar.isUnlocked ? focusOrange : Colors.grey,
+                              backgroundColor: isCurrentCharUnlocked ? focusOrange : Colors.grey, // 👈 Utilise la vérification Firestore
                               padding: const EdgeInsets.symmetric(vertical: 18),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                               elevation: 0,
                             ),
-                            onPressed: (_saving || !currentChar.isUnlocked)
+                            onPressed: (_saving || !isCurrentCharUnlocked) // 👈 Utilise la vérification Firestore
                                 ? null
                                 : () {
                                     HapticFeedback.mediumImpact();
@@ -268,7 +253,7 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                   )
                                 : Text(
-                                    currentChar.isUnlocked ? 'Enregistrer' : '🔒 Personnage verrouillé',
+                                    isCurrentCharUnlocked ? 'Enregistrer' : '🔒 Personnage verrouillé', // 👈 Utilise la vérification Firestore
                                     style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
                                   ),
                           ),

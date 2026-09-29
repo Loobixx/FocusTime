@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/city_network.dart';
 import '../utils/time_formatter.dart';
-import 'focus_moment/active_timer_screen.dart';
+import 'focus_moment/expedition_screen.dart';
 
 class SelectDestinationScreen extends StatefulWidget {
   final int selectedDurationMinutes;
@@ -71,7 +71,7 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
               child: Container(
                 decoration: const BoxDecoration(
                   image: DecorationImage(
-                    image: AssetImage('assets/fond2.png'),
+                    image: AssetImage('assets/biome/fond2.png'),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -151,7 +151,8 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                                   final cityName = entry.key;
                                   final routeResult = entry.value;
                                   final travelMinutes = routeResult.totalTravelMinutes;
-                                  final isReachable = travelMinutes <= widget.selectedDurationMinutes;
+                                  // Si selectedDurationMinutes est 0, c'est le mode Admin, donc on autorise tout.
+                                  final isReachable = widget.selectedDurationMinutes == -1 || travelMinutes <= widget.selectedDurationMinutes;                                 
                                   final isVisited = _visitedCities.contains(cityName);
 
                                   return Padding(

@@ -16,7 +16,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             child: ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
               child: Image.asset(
-                'assets/fond2.png',
+                'assets/biome/fond2.png',
                 fit: BoxFit.cover,
               ),
             ),
