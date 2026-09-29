@@ -50,7 +50,7 @@ class CompanionData {
       name: 'Dogito',
       unlockCity: 'Le village de Néris', // Dans la forêt
       region: 'montagnes',
-      assetPath: 'compagnons/chien_marche.gif',
+      assetPath: 'assets/compagnons/chien_marche.gif',
       defaultColor: Color(0xFFFF8A80),
     ),
   ];
