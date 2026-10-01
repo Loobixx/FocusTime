@@ -60,7 +60,48 @@ class TravelService {
     final userRef = _firestore.collection('users').doc(user.uid);
     final statusRef = userRef.collection('travel').doc('status');
 
-    // Récupérer l'état actuel et les villes visitées
+    // ✨ GESTION DU MODE ADMIN (totalFuelMinutes == 0)
+    if (totalFuelMinutes == 0 && plannedRoute.isNotEmpty) {
+      String finalCity = plannedRoute.last;
+      String startCity = (await userRef.get()).data()?['currentCity'] ?? 'Valenciennes';
+
+      // 1. Toutes les villes du trajet sont "visitées/traversées" (pour le bonus x5)
+      for (String city in plannedRoute) {
+        await userRef.collection('visited_cities').doc(city).set({
+          'visitedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // 2. Seule la DERNIÈRE ville (destination finale où l'on s'arrête) donne droit aux récompenses/compagnons !
+      await userRef.collection('stopped_cities').doc(finalCity).set({
+        'stoppedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Historique, position et nettoyage...
+      await userRef.collection('travel_history').add({
+        'date': FieldValue.serverTimestamp(),
+        'startCity': startCity,
+        'endCity': finalCity,
+        'durationMinutes': 0,
+        'plannedRoute': plannedRoute,
+        'isCompleted': true,
+        'isFailed': false,
+        'visitedDuringTripCount': plannedRoute.length,
+      });
+
+      await userRef.update({'currentCity': finalCity});
+      await statusRef.set({
+        'isFocusActive': false,
+        'midRouteDestination': FieldValue.delete(),
+        'midRouteProgress': 0,
+        'activeDestination': FieldValue.delete(),
+        'endTime': FieldValue.delete(),
+      }, SetOptions(merge: true));
+
+      return;
+    }
+
+    // --- MODE NORMAL (Reste de ta boucle de calcul de carburant) ---
     final statusDoc = await statusRef.get();
     final statusData = statusDoc.data() ?? {};
     
@@ -68,27 +109,22 @@ class TravelService {
     String? midRouteDestination = statusData['midRouteDestination'];
     int midRouteProgress = statusData['midRouteProgress'] ?? 0;
 
-    // Récupérer les villes déjà connues
     final visitedSnapshot = await userRef.collection('visited_cities').get();
     Set<String> visitedCities = visitedSnapshot.docs.map((d) => d.id).toSet();
 
     int remainingFuel = totalFuelMinutes;
     List<String> citiesToVisit = List.from(plannedRoute);
+    List<String> successfullyReachedCities = []; // Pour suivre où l'on s'est arrêté
 
-    // Traiter le trajet ville par ville
     while (remainingFuel > 0 && citiesToVisit.isNotEmpty) {
       String nextDestination = citiesToVisit.first;
-      
       int fullTravelTime = CityNetwork.getAvailableDestinations(currentCity)[nextDestination] ?? 0;
       
-      // Le voyage rapide !
-      // Si la ville d'arrivée est déjà connue, on divise le temps par 5
       if (visitedCities.contains(nextDestination)) {
         fullTravelTime = fullTravelTime ~/ 5; 
       }
 
       int timeNeeded = fullTravelTime;
-
       if (midRouteDestination == nextDestination) {
         timeNeeded = fullTravelTime - midRouteProgress;
       } else {
@@ -101,6 +137,9 @@ class TravelService {
         midRouteDestination = null;
         midRouteProgress = 0;
         
+        successfullyReachedCities.add(currentCity);
+        
+        // Ville traversée / visitée
         await userRef.collection('visited_cities').doc(currentCity).set({
           'visitedAt': FieldValue.serverTimestamp(),
         });
@@ -111,6 +150,14 @@ class TravelService {
         midRouteProgress += remainingFuel; 
         remainingFuel = 0;
       }
+    }
+
+    // 🏆 Si on est arrivé au bout d'au moins une ville, la dernière atteinte est celle où l'on s'arrête !
+    if (successfullyReachedCities.isNotEmpty) {
+      String finalStoppedCity = successfullyReachedCities.last;
+      await userRef.collection('stopped_cities').doc(finalStoppedCity).set({
+        'stoppedAt': FieldValue.serverTimestamp(),
+      });
     }
 
     int visitedDuringTrip = plannedRoute.length - citiesToVisit.length;
@@ -126,7 +173,6 @@ class TravelService {
       'visitedDuringTripCount': visitedDuringTrip,
     });
 
-    // Sauvegarder le nouvel état
     await userRef.update({'currentCity': currentCity});
     await statusRef.set({
       'isFocusActive': false,

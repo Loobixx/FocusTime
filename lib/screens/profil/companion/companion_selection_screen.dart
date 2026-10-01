@@ -181,8 +181,8 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
                             // 2. Débloqué mais non choisi -> Arrêt non choisi (_arret_non_choisi.gif)
                             // 3. Verrouillé -> Cadenas
                             final String imageAsset = isEquipped
-                                ? 'assets/compagnons/${companion.id}_arret.gif'
-                                : 'assets/compagnons/${companion.id}_arret_non_choisi.gif';
+                                ? 'assets/compagnons/${companion.id}/${companion.id}_arret.gif'
+                                : 'assets/compagnons/${companion.id}/${companion.id}_arret_non_choisi.gif';
 
                             return ClipRRect(
                               borderRadius: BorderRadius.circular(20),

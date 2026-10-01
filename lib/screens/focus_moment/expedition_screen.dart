@@ -326,6 +326,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    // Le compagnon n'est débloqué que si la ville correspond à une ville où l'on s'arrête
     final companionToUnlock = CompanionData.allCompanions.cast<Companion?>().firstWhere(
       (c) => c?.unlockCity == arrivedCity,
       orElse: () => null,

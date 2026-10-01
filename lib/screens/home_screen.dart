@@ -92,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Image.asset(
-                              'assets/compagnons/${companion.id}_arret.gif',
+                              'assets/compagnons/${companion.id}/${companion.id}_arret.gif',
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) {
                                 return const Icon(Icons.pets, size: 50, color: Color(0xFFFF8C00));

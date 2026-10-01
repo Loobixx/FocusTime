@@ -101,7 +101,8 @@ flutter:
 
     - assets/audio/ambiance_focus.mp3
 
-    - assets/compagnons/
+    - assets/compagnons/Chien/
+    - assets/compagnons/Chat/
   # An image asset can refer to one or more resolution-specific "variants", see
 
 

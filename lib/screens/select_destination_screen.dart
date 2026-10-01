@@ -21,6 +21,7 @@ class SelectDestinationScreen extends StatefulWidget {
 class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
   String _currentCity = 'Valenciennes';
   Set<String> _visitedCities = {};
+  Set<String> _stoppedCities = {}; // Stocke les villes d'arrêt
   Map<String, ShortestPathResult> _routes = {};
   bool _isLoading = true;
 
@@ -31,27 +32,33 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
   }
 
   Future<void> _loadDataAndCalculateRoutes() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
 
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-    final userDoc = await userRef.get();
-    final visitedDoc = await userRef.collection('visited_cities').get();
+  final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+  final userDoc = await userRef.get();
+  
+  final visitedDoc = await userRef.collection('visited_cities').get();
+  final stoppedDoc = await userRef.collection('stopped_cities').get();
 
-    _currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
-    _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
+  _currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
+  _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
+  _stoppedCities = stoppedDoc.docs.map((d) => d.id).toSet(); 
 
-    _routes = CityNetwork.calculateAllShortestPaths(
-      startCity: _currentCity,
-      visitedCities: _visitedCities,
-    );
+  // 🔍 AJOUTE CETTE LIGNE POUR VÉRIFIER DANS LA CONSOLE :
+  print("🛑 Villes d'arrêt trouvées dans Firestore : $_stoppedCities");
 
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+  _routes = CityNetwork.calculateAllShortestPaths(
+    startCity: _currentCity,
+    visitedCities: _visitedCities,
+  );
+
+  if (mounted) {
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +72,10 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
     return Scaffold(
       body: Stack(
         children: [
+          // Fond flouté avec ambiance
           Positioned.fill(
             child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
+              imageFilter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
               child: Container(
                 decoration: const BoxDecoration(
                   image: DecorationImage(
@@ -79,7 +87,7 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
             ),
           ),
           Positioned.fill(
-            child: Container(color: Colors.black.withValues(alpha: 0.15)),
+            child: Container(color: darkBlue.withValues(alpha: 0.25)),
           ),
           SafeArea(
             child: Center(
@@ -90,8 +98,9 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // En-tête stylé
                       Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -101,46 +110,95 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.35),
+                                  color: Colors.white.withValues(alpha: 0.25),
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
                                 ),
-                                child: const Icon(Icons.arrow_back_ios_new, color: darkBlue, size: 20),
+                                child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                               ),
                             ),
                             const Text(
-                              'Destinations',
+                              'Choix de l\'expédition',
                               style: TextStyle(
-                                fontSize: 24,
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
-                                color: darkBlue,
-                                shadows: [Shadow(color: Colors.white70, blurRadius: 10)],
+                                color: Colors.white,
+                                shadows: [Shadow(color: Colors.black45, blurRadius: 8)],
                               ),
                             ),
                             const SizedBox(width: 40),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
+
+                      // Widget de départ et énergie moderne
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withValues(alpha: 0.9),
+                              Colors.white.withValues(alpha: 0.75),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.my_location, color: focusOrange, size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Départ : $_currentCity  •  Énergie : ${formatMinutesToHours(widget.selectedDurationMinutes)}',
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: darkBlue, fontSize: 13),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: focusOrange.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.my_location, color: focusOrange, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Position actuelle : $_currentCity',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: darkBlue, fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Énergie dispo : ${widget.selectedDurationMinutes == -1 ? "Illimitée (Admin 🚀)" : formatMinutesToHours(widget.selectedDurationMinutes)}',
+                                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 12),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
+
+                      // Légende des couleurs / statuts mise à jour
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 4.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildLegendBadge(Colors.purple.shade400, 'Étape arrêtée'),
+                            _buildLegendBadge(Colors.amber.shade700, 'Traversée'),
+                            _buildLegendBadge(focusOrange, 'Accessible'),
+                            _buildLegendBadge(Colors.grey, 'Trop loin'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Liste des destinations
                       Expanded(
                         child: _isLoading
                             ? const Center(child: CircularProgressIndicator(color: focusOrange))
@@ -151,88 +209,167 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                                   final cityName = entry.key;
                                   final routeResult = entry.value;
                                   final travelMinutes = routeResult.totalTravelMinutes;
-                                  // Si selectedDurationMinutes est 0, c'est le mode Admin, donc on autorise tout.
-                                  final isReachable = widget.selectedDurationMinutes == -1 || travelMinutes <= widget.selectedDurationMinutes;                                 
+                                  
+                                  final isReachable = widget.selectedDurationMinutes == -1 || travelMinutes <= widget.selectedDurationMinutes;
                                   final isVisited = _visitedCities.contains(cityName);
+                                  final isStopped = _stoppedCities.contains(cityName); // Ville où l'on s'est arrêté
+
+                                  Color cardBorderColor = Colors.white24;
+                                  Color accentColor = Colors.grey;
+                                  IconData statusIcon = Icons.place;
+
+                                  // Priorité d'affichage : Arrêt > Visité/Traversé > Accessible > Verrouillé
+                                  if (isStopped) {
+                                    cardBorderColor = Colors.purple.shade400; // Violet pour les arrêts
+                                    accentColor = Colors.purple.shade700;Future<void> _loadDataAndCalculateRoutes() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
+
+  final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+  final userDoc = await userRef.get();
+  
+  final visitedDoc = await userRef.collection('visited_cities').get();
+  final stoppedDoc = await userRef.collection('stopped_cities').get();
+
+  _currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
+  _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
+  _stoppedCities = stoppedDoc.docs.map((d) => d.id).toSet(); 
+
+  // 🔍 AJOUTE CETTE LIGNE POUR VÉRIFIER DANS LA CONSOLE :
+  print("🛑 Villes d'arrêt trouvées dans Firestore : $_stoppedCities");
+
+  _routes = CityNetwork.calculateAllShortestPaths(
+    startCity: _currentCity,
+    visitedCities: _visitedCities,
+  );
+
+  if (mounted) {
+    setState(() {
+      _isLoading = false;
+    });
+  }
+}
+                                    statusIcon = Icons.home_outlined;
+                                  } else if (isVisited) {
+                                    cardBorderColor = Colors.amber.shade400; // Doré pour les traversées
+                                    accentColor = Colors.amber.shade700;
+                                    statusIcon = Icons.verified;
+                                  } else if (isReachable) {
+                                    cardBorderColor = focusOrange;
+                                    accentColor = focusOrange;
+                                    statusIcon = Icons.navigation;
+                                  } else {
+                                    statusIcon = Icons.lock_outline;
+                                  }
 
                                   return Padding(
-                                    padding: const EdgeInsets.only(bottom: 10.0),
+                                    padding: const EdgeInsets.only(bottom: 12.0),
                                     child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(18),
+                                      borderRadius: BorderRadius.circular(20),
                                       child: BackdropFilter(
-                                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                                         child: Container(
                                           decoration: BoxDecoration(
                                             color: isReachable
-                                                ? Colors.white.withValues(alpha: 0.85)
-                                                : Colors.white.withValues(alpha: 0.45),
-                                            borderRadius: BorderRadius.circular(18),
+                                                ? Colors.white.withValues(alpha: 0.88)
+                                                : Colors.white.withValues(alpha: 0.4),
+                                            borderRadius: BorderRadius.circular(20),
                                             border: Border.all(
-                                              color: isReachable ? Colors.white : Colors.white24,
-                                              width: 1.5,
+                                              color: cardBorderColor,
+                                              width: isStopped || isVisited || isReachable ? 2.0 : 1.0,
                                             ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.08),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 3),
+                                              ),
+                                            ],
                                           ),
                                           child: ListTile(
-                                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                             leading: CircleAvatar(
-                                              backgroundColor: isReachable
-                                                  ? focusOrange.withValues(alpha: 0.15)
-                                                  : Colors.grey.withValues(alpha: 0.2),
-                                              child: Icon(
-                                                isVisited ? Icons.verified : Icons.place,
-                                                color: isReachable ? focusOrange : Colors.grey,
-                                              ),
+                                              backgroundColor: accentColor.withValues(alpha: 0.15),
+                                              child: Icon(statusIcon, color: accentColor),
                                             ),
                                             title: Row(
                                               children: [
-                                                Text(
-                                                  cityName,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 16,
-                                                    color: isReachable ? darkBlue : Colors.grey.shade700,
+                                                Expanded(
+                                                  child: Text(
+                                                    cityName,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 16,
+                                                      color: isReachable ? darkBlue : Colors.grey.shade700,
+                                                    ),
                                                   ),
                                                 ),
-                                                if (isVisited) ...[
-                                                  const SizedBox(width: 6),
+                                                // Badge distinctif selon l'état
+                                                if (isStopped)
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.green.withValues(alpha: 0.15),
-                                                      borderRadius: BorderRadius.circular(8),
+                                                      color: Colors.purple.withValues(alpha: 0.2),
+                                                      borderRadius: BorderRadius.circular(10),
+                                                      border: Border.all(color: Colors.purple.shade700, width: 1),
                                                     ),
-                                                    child: const Text(
-                                                      '×5 rapide',
-                                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green),
+                                                    child: Text(
+                                                      '🏕️ Étape arrêtée',
+                                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple.shade900),
+                                                    ),
+                                                  )
+                                                else if (isVisited)
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.amber.withValues(alpha: 0.2),
+                                                      borderRadius: BorderRadius.circular(10),
+                                                      border: Border.all(color: Colors.amber.shade700, width: 1),
+                                                    ),
+                                                    child: Text(
+                                                      '✨ Traversée',
+                                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
                                                     ),
                                                   ),
-                                                ],
                                               ],
                                             ),
                                             subtitle: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                const SizedBox(height: 4),
+                                                const SizedBox(height: 6),
                                                 Text(
-                                                  'Trajet : $_currentCity ➔ ${routeResult.path.join(" ➔ ")}',
+                                                  'Chemin : $_currentCity ➔ ${routeResult.path.join(" ➔ ")}',
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                     color: isReachable ? Colors.black87 : Colors.black45,
                                                   ),
                                                 ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  'Temps de route : ${formatMinutesToHours(travelMinutes)} (${routeResult.path.length} étape${routeResult.path.length > 1 ? "s" : ""})',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isReachable ? const Color(0xFF1B5E20) : Colors.red.shade700,
-                                                  ),
+                                                const SizedBox(height: 3),
+                                                Row(
+                                                  children: [
+                                                    Icon(Icons.timer, size: 13, color: isReachable ? const Color(0xFF1B5E20) : Colors.red.shade700),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      'Temps : ${formatMinutesToHours(travelMinutes)} (${routeResult.path.length} étape${routeResult.path.length > 1 ? "s" : ""})',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: isReachable ? const Color(0xFF1B5E20) : Colors.red.shade700,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
                                             trailing: isReachable
-                                                ? const Icon(Icons.arrow_forward_ios, color: focusOrange, size: 18)
+                                                ? Container(
+                                                    padding: const EdgeInsets.all(8),
+                                                    decoration: BoxDecoration(
+                                                      color: focusOrange.withValues(alpha: 0.15),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: const Icon(Icons.arrow_forward_ios, color: focusOrange, size: 16),
+                                                  )
                                                 : const Icon(Icons.lock_outline, color: Colors.grey, size: 18),
                                             onTap: isReachable
                                                 ? () {
@@ -264,6 +401,29 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // Petit widget helper pour la légende en haut
+  Widget _buildLegendBadge(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 4)],
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }

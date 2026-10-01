@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:focus_time/models/companion.dart';
 import 'package:focus_time/screens/profil/companion/companion_selection_screen.dart';
 import 'package:focus_time/screens/profil/delete_profil/delete_account_dialog.dart';
 import 'package:focus_time/screens/profil/politique_de_confidentialit%C3%A9/privacy_policy_screen.dart';
@@ -262,14 +263,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     final uid = FirebaseAuth.instance.currentUser?.uid;
                                     if (uid == null) return;
 
+                                    // ✨ Récupère dynamiquement TOUS les IDs de compagnons depuis companion.dart
+                                    List<String> allCompanionIds = CompanionData.allCompanions.map((c) => c.id).toList();
+
                                     await FirebaseFirestore.instance.collection('users').doc(uid).set({
-                                      'unlockedCompanions': ['axolotl', 'fennec', 'chamois', 'chien'],
+                                      'unlockedCompanions': allCompanionIds, // 🐾 Insère toute la liste automatiquement
                                       'unlockedCharacters': ['nuit', 'desert', 'montagnes', 'lac', 'nuages'],
-                                      'activeCompanion': 'chien',
+                                      'activeCompanion': allCompanionIds.isNotEmpty ? allCompanionIds.first : 'chien', // Met le premier en actif par défaut
                                     }, SetOptions(merge: true));
 
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚡ Animaux et Biomes débloqués !'), backgroundColor: Colors.green));
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('⚡ Tous les compagnons et biomes ont été débloqués !'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
                                     }
                                   },
                                 ),

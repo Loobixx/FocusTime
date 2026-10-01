@@ -28,17 +28,17 @@ class CompanionData {
       name: 'Dogito',
       unlockCity: 'Le village de Néris', // Dans la forêt
       region: 'montagnes',
-      assetPathMarche: 'assets/compagnons/chien_marche.gif',
-      assetPathArret: 'assets/compagnons/chien_arret.gif',
+      assetPathMarche: 'assets/compagnons/chien/chien_marche.gif',
+      assetPathArret: 'assets/compagnons/chien/chien_arret.gif',
       defaultColor: Color(0xFFFF8A80),
     ),
     Companion(
-      id: 'chien',
-      name: 'Dogito2',
+      id: 'chat',
+      name: 'Catito',
       unlockCity: 'Le village de Néris', // Dans la forêt
       region: 'montagnes',
-      assetPathMarche: 'assets/compagnons/chien_marche.gif',
-      assetPathArret: 'assets/compagnons/chien_arret.gif',
+      assetPathMarche: 'assets/compagnons/chat/chat_marche.gif',
+      assetPathArret: 'assets/compagnons/chat/chat_arret.gif',
       defaultColor: Color(0xFFFF8A80),
     ),
   ];
