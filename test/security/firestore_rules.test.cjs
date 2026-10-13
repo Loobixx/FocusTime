@@ -90,6 +90,19 @@ async function writeDocument(path, idToken) {
   });
 }
 
+async function writeAdminStatus(path, enabled, idToken) {
+  return fetch(documentUrl(path), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({
+      fields: { enabled: { booleanValue: enabled } },
+    }),
+  });
+}
+
 test('Firestore data is private to the authenticated owner', async () => {
   const owner = await createTestUser('unprivileged@example.com');
   const ownerDocumentPath = `users/${owner.localId}`;
@@ -144,6 +157,11 @@ test('Firestore data is private to the authenticated owner', async () => {
   );
   assert.equal(selfAdminGrant.status, 403, await selfAdminGrant.text());
 
+  const adminList = await fetch(documentUrl('admin_emails'), {
+    headers: { Authorization: `Bearer ${owner.idToken}` },
+  });
+  assert.equal(adminList.status, 403, await adminList.text());
+
   const cleanup = await fetch(documentUrl(ownerPath), {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${owner.idToken}` },
@@ -192,7 +210,41 @@ test('only verified emails on the server-managed allowlist get admin access', as
     documentUrl(adminDocumentPath),
     { headers: { Authorization: `Bearer ${verifiedAdminToken}` } },
   );
-  assert.equal(adminAllowlistRead.status, 403, await adminAllowlistRead.text());
+  assert.equal(adminAllowlistRead.status, 200, await adminAllowlistRead.text());
+
+  const adminList = await fetch(documentUrl('admin_emails'), {
+    headers: { Authorization: `Bearer ${verifiedAdminToken}` },
+  });
+  assert.equal(adminList.status, 200, await adminList.text());
+
+  const selfStatusChange = await writeAdminStatus(
+    adminDocumentPath,
+    false,
+    verifiedAdminToken,
+  );
+  assert.equal(selfStatusChange.status, 403, await selfStatusChange.text());
+
+  const selfGrantAttempt = await writeAdminStatus(
+    `admin_emails/${encodeURIComponent(adminEmail)}`,
+    true,
+    verifiedAdminToken,
+  );
+  assert.equal(selfGrantAttempt.status, 403, await selfGrantAttempt.text());
+
+  const newAdminPath = 'admin_emails/new-admin@example.com';
+  const grantAnotherAdmin = await writeAdminStatus(
+    newAdminPath,
+    true,
+    verifiedAdminToken,
+  );
+  assert.equal(grantAnotherAdmin.status, 200, await grantAnotherAdmin.text());
+
+  const revokeAnotherAdmin = await writeAdminStatus(
+    newAdminPath,
+    false,
+    verifiedAdminToken,
+  );
+  assert.equal(revokeAnotherAdmin.status, 200, await revokeAnotherAdmin.text());
 
   const clientGrantAttempt = await writeDocument(
     'admin_emails/new-admin@example.com',
