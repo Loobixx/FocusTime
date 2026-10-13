@@ -26,6 +26,11 @@ class _MapScreenState extends State<MapScreen> {
   bool _viewInitialized = false;
   double _fitScale = 1.0;
 
+  static final List<String> _characterFrames = List.generate(
+    21,
+    (i) => 'assets/PersonnageAnimation/Nuit/Arret/${i + 1}.png',
+  );
+
   static const double baseWidth = 1023.0;
   static const double baseHeight = 1537.0;
 
@@ -231,42 +236,21 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                             ),
 
+                            // ✨ Le personnage a été remis ici ✨
                             if (playerPosition != null)
-                              Positioned(
-                                left: playerPosition.dx - 25,
-                                top: playerPosition.dy - 50,
-                                child: const IgnorePointer(
-                                  child: RepaintBoundary(
-                                    child: PersistentAnimatedCharacter(
-                                      size: 120,
-                                      frames: [
-                                        'assets/PersonnageAnimation/Nuit/Arret/1.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/2.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/3.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/4.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/5.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/6.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/7.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/8.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/9.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/10.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/11.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/12.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/13.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/14.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/15.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/16.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/17.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/18.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/19.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/20.png',
-                                        'assets/PersonnageAnimation/Nuit/Arret/21.png',
-                                      ],
-                                      frameDuration: Duration(milliseconds: 2000),
-                                    ),
-                                  ),
-                                ),
-                              ),
+  Positioned(
+    left: playerPosition.dx - 25,
+    top: playerPosition.dy - 50,
+    child: IgnorePointer(
+      child: RepaintBoundary(
+        child: PersistentAnimatedCharacter(
+          size: 120,
+          frames: _characterFrames,
+          frameDuration: const Duration(milliseconds: 100),
+        ),
+      ),
+    ),
+  ),
                           ],
                         ),
                       ),

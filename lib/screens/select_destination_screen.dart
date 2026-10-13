@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:focus_time/utils/city_name.dart';
 import '../models/city_network.dart';
 import '../utils/time_formatter.dart';
 import 'focus_moment/expedition_screen.dart';
@@ -19,11 +20,14 @@ class SelectDestinationScreen extends StatefulWidget {
 }
 
 class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
-  String _currentCity = 'Valenciennes';
+  String _currentCity = 'Le village de Néris';
   Set<String> _visitedCities = {};
   Set<String> _stoppedCities = {}; // Stocke les villes d'arrêt
+  Set<String> _visitedKeys = {};          // normalisés (pour l'affichage)
+  Set<String> _stoppedKeys = {};          // normalisés (pour l'affichage)
   Map<String, ShortestPathResult> _routes = {};
   bool _isLoading = true;
+  
 
   @override
   void initState() {
@@ -32,47 +36,42 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
   }
 
   Future<void> _loadDataAndCalculateRoutes() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-  final userDoc = await userRef.get();
-  
-  final visitedDoc = await userRef.collection('visited_cities').get();
-  final stoppedDoc = await userRef.collection('stopped_cities').get();
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userDoc = await userRef.get();
+    
+    final visitedDoc = await userRef.collection('visited_cities').get();
+    final stoppedDoc = await userRef.collection('stopped_cities').get();
 
-  _currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
-  _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
-  _stoppedCities = stoppedDoc.docs.map((d) => d.id).toSet(); 
+    _currentCity = userDoc.data()?['currentCity'] ?? 'Le village de Néris';
+    _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
+    _stoppedCities = stoppedDoc.docs.map((d) => d.id).toSet(); 
 
-  // 🔍 AJOUTE CETTE LIGNE POUR VÉRIFIER DANS LA CONSOLE :
-  print("🛑 Villes d'arrêt trouvées dans Firestore : $_stoppedCities");
+    _routes = CityNetwork.calculateAllShortestPaths(
+      startCity: _currentCity,
+      visitedCities: _visitedCities,
+    );
 
-  _routes = CityNetwork.calculateAllShortestPaths(
-    startCity: _currentCity,
-    visitedCities: _visitedCities,
-  );
-
-  if (mounted) {
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
 
-    // Trier les destinations par temps de trajet croissant
     final sortedDestinations = _routes.entries.toList()
       ..sort((a, b) => a.value.totalTravelMinutes.compareTo(b.value.totalTravelMinutes));
 
     return Scaffold(
       body: Stack(
         children: [
-          // Fond flouté avec ambiance
           Positioned.fill(
             child: ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
@@ -98,7 +97,6 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // En-tête stylé
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12.0),
                         child: Row(
@@ -131,7 +129,6 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                         ),
                       ),
 
-                      // Widget de départ et énergie moderne
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -175,6 +172,12 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                                     'Énergie dispo : ${widget.selectedDurationMinutes == -1 ? "Illimitée (Admin 🚀)" : formatMinutesToHours(widget.selectedDurationMinutes)}',
                                     style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700, fontSize: 12),
                                   ),
+                                  // 🔴 DEBUG VISUEL AJOUTÉ ICI 🔴
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'DEBUG Arrêts : ${_stoppedCities.isEmpty ? "AUCUN (Base vide)" : _stoppedCities.join(", ")}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontSize: 11),
+                                  ),
                                 ],
                               ),
                             ),
@@ -183,7 +186,6 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Légende des couleurs / statuts mise à jour
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 4.0),
                         child: Row(
@@ -198,7 +200,6 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Liste des destinations
                       Expanded(
                         child: _isLoading
                             ? const Center(child: CircularProgressIndicator(color: focusOrange))
@@ -212,46 +213,20 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                                   
                                   final isReachable = widget.selectedDurationMinutes == -1 || travelMinutes <= widget.selectedDurationMinutes;
                                   final isVisited = _visitedCities.contains(cityName);
-                                  final isStopped = _stoppedCities.contains(cityName); // Ville où l'on s'est arrêté
+                                  final isStopped = _stoppedCities.contains(cityName);
 
+                                  final key = normalizeCityName(cityName);
                                   Color cardBorderColor = Colors.white24;
+
                                   Color accentColor = Colors.grey;
                                   IconData statusIcon = Icons.place;
 
-                                  // Priorité d'affichage : Arrêt > Visité/Traversé > Accessible > Verrouillé
                                   if (isStopped) {
-                                    cardBorderColor = Colors.purple.shade400; // Violet pour les arrêts
-                                    accentColor = Colors.purple.shade700;Future<void> _loadDataAndCalculateRoutes() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
-
-  final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-  final userDoc = await userRef.get();
-  
-  final visitedDoc = await userRef.collection('visited_cities').get();
-  final stoppedDoc = await userRef.collection('stopped_cities').get();
-
-  _currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
-  _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
-  _stoppedCities = stoppedDoc.docs.map((d) => d.id).toSet(); 
-
-  // 🔍 AJOUTE CETTE LIGNE POUR VÉRIFIER DANS LA CONSOLE :
-  print("🛑 Villes d'arrêt trouvées dans Firestore : $_stoppedCities");
-
-  _routes = CityNetwork.calculateAllShortestPaths(
-    startCity: _currentCity,
-    visitedCities: _visitedCities,
-  );
-
-  if (mounted) {
-    setState(() {
-      _isLoading = false;
-    });
-  }
-}
+                                    cardBorderColor = Colors.purple.shade400; 
+                                    accentColor = Colors.purple.shade700;
                                     statusIcon = Icons.home_outlined;
                                   } else if (isVisited) {
-                                    cardBorderColor = Colors.amber.shade400; // Doré pour les traversées
+                                    cardBorderColor = Colors.amber.shade400; 
                                     accentColor = Colors.amber.shade700;
                                     statusIcon = Icons.verified;
                                   } else if (isReachable) {
@@ -304,7 +279,6 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
                                                     ),
                                                   ),
                                                 ),
-                                                // Badge distinctif selon l'état
                                                 if (isStopped)
                                                   Container(
                                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -404,7 +378,6 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
     );
   }
 
-  // Petit widget helper pour la légende en haut
   Widget _buildLegendBadge(Color color, String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,

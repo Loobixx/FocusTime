@@ -35,7 +35,7 @@ class TravelService {
     if (user == null) return;
 
     final userRef = _firestore.collection('users').doc(user.uid);
-    final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Valenciennes';
+    final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris';
 
     await userRef.collection('travel_history').add({
       'date': FieldValue.serverTimestamp(),
@@ -63,7 +63,7 @@ class TravelService {
     // ✨ GESTION DU MODE ADMIN (totalFuelMinutes == 0)
     if (totalFuelMinutes == 0 && plannedRoute.isNotEmpty) {
       String finalCity = plannedRoute.last;
-      String startCity = (await userRef.get()).data()?['currentCity'] ?? 'Valenciennes';
+      String startCity = (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris';
 
       // 1. Toutes les villes du trajet sont "visitées/traversées" (pour le bonus x5)
       for (String city in plannedRoute) {
@@ -105,7 +105,7 @@ class TravelService {
     final statusDoc = await statusRef.get();
     final statusData = statusDoc.data() ?? {};
     
-    String currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Valenciennes';
+    String currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris';
     String? midRouteDestination = statusData['midRouteDestination'];
     int midRouteProgress = statusData['midRouteProgress'] ?? 0;
 
@@ -164,7 +164,7 @@ class TravelService {
 
     await userRef.collection('travel_history').add({
       'date': FieldValue.serverTimestamp(),
-      'startCity': (await userRef.get()).data()?['currentCity'] ?? 'Valenciennes',
+      'startCity': (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris',
       'endCity': currentCity,
       'durationMinutes': totalFuelMinutes,
       'plannedRoute': plannedRoute,

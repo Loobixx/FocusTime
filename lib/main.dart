@@ -10,7 +10,10 @@ import 'package:flutter/foundation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  PaintingBinding.instance.imageCache
+    ..maximumSizeBytes = 300 << 20 // 300 Mo
+    ..maximumSize = 500;
+    
   // Mode bord à bord
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(

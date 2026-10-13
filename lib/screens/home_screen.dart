@@ -160,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (doc.exists && doc.data()?['isFocusActive'] == true) {
       final data = doc.data()!;
       final destination = data['activeDestination'] as String? ?? 'Inconnue';
-      final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Valenciennes';
+      final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris';
 
       await userRef.collection('travel_history').add({
         'date': FieldValue.serverTimestamp(),
@@ -454,10 +454,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               .doc(FirebaseAuth.instance.currentUser?.uid)
                               .snapshots(),
                           builder: (context, userSnapshot) {
-                            String currentCity = 'Valenciennes';
+                            String currentCity = 'Le village de Néris';
                             if (userSnapshot.hasData && userSnapshot.data!.exists) {
                               final data = userSnapshot.data!.data() as Map<String, dynamic>?;
-                              currentCity = data?['currentCity'] ?? 'Valenciennes';
+                              currentCity = data?['currentCity'] ?? 'Le village de Néris';
                             }
 
                             return StreamBuilder<DocumentSnapshot>(

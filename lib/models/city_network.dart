@@ -16,9 +16,6 @@ class CityNode {
 }
 
 class CityNetwork {
-
-  static const bool isDevMode = false;
-
   static final Map<String, CityNode> network = {
     // ==========================================
     // --- ZONE DÉSERT (Sahur) ---
@@ -41,7 +38,13 @@ class CityNetwork {
     ),
     'La stelle du desert de Sahur': const CityNode(
       name: 'La stelle du desert de Sahur',
-      connectedCities: {'La cité Solaris': 30, 'Le piège des sables': 30, 'Le coeur du désert': 30},
+      connectedCities: {
+        'La cité Solaris': 30, 
+        'Le piège des sables': 30, 
+        'Le coeur du désert': 30, 
+        'La stelle des montagnes d\'Orane': 30,
+        'La stelle de Nayris': 30,
+      },
     ),
     'Le coeur du désert': const CityNode(
       name: 'Le coeur du désert',
@@ -61,7 +64,7 @@ class CityNetwork {
     ),
     'La porte du désert': const CityNode(
       name: 'La porte du désert',
-      connectedCities: {'La piste des marchands': 30, 'Le cimetières des géants': 30, 'Rive Calme': 30}, // Vers le lac
+      connectedCities: {'La piste des marchands': 30, 'Le cimetières des géants': 30, 'Rive Calme': 30},
     ),
     'L\'autel du soleil': const CityNode(
       name: 'L\'autel du soleil',
@@ -125,7 +128,7 @@ class CityNetwork {
     ),
     'Le village de Néris': const CityNode(
       name: 'Le village de Néris',
-      connectedCities: {'Le Ruisseau des murmures': 30, 'Le cercle des anciens': 30, 'L\'Halte blanche': 60, 'L\'île Aos Sé': 30},
+      connectedCities: {'Le Ruisseau des murmures': 30, 'Le cercle des anciens': 30, 'L\'Halte blanche': 60, 'L\'île Aos Sé': 30, 'Île Céleste': 30},
     ),
     'L\'île Aos Sé': const CityNode(
       name: 'L\'île Aos Sé',
@@ -169,7 +172,12 @@ class CityNetwork {
     ),
     'La stelle des montagnes d\'Orane': const CityNode(
       name: 'La stelle des montagnes d\'Orane',
-      connectedCities: {'L\'observatoire d\'Ouest': 30, 'Le sommet d\'azur': 30},
+      connectedCities: {
+        'L\'observatoire d\'Ouest': 30, 
+        'Le sommet d\'azur': 30, 
+        'La stelle du desert de Sahur': 30,
+        'La stelle de Nayris': 30, 
+      },
     ),
     'L\'observatoire d\'Ouest': const CityNode(
       name: 'L\'observatoire d\'Ouest',
@@ -178,6 +186,54 @@ class CityNetwork {
     'La forêt d\'Orane': const CityNode(
       name: 'La forêt d\'Orane',
       connectedCities: {'L\'observatoire d\'Ouest': 30, 'Le ponton des brunes': 30},
+    ),
+
+    // ==========================================
+    // --- ZONE LAC (Nayris) ---
+    // ==========================================
+    'La stelle de Nayris': const CityNode(
+      name: 'La stelle de Nayris',
+      connectedCities: {
+        'La stelle du desert de Sahur': 30, 
+        'La stelle des montagnes d\'Orane': 30,
+        'La pointe fleurie': 30,
+      },
+    ),
+    'La pointe fleurie': const CityNode(
+      name: 'La pointe fleurie',
+      connectedCities: {'La stelle de Nayris': 30, 'Les vestiges d\'Aelion': 30},
+    ),
+    'Les vestiges d\'Aelion': const CityNode(
+      name: 'Les vestiges d\'Aelion',
+      connectedCities: {'La pointe fleurie': 30, 'La Source Magique': 30},
+    ),
+    'La Source Magique': const CityNode(
+      name: 'La Source Magique',
+      connectedCities: {'Les vestiges d\'Aelion': 30, 'Les 4 tours de la forêt': 30},
+    ),
+    'Les 4 tours de la forêt': const CityNode(
+      name: 'Les 4 tours de la forêt',
+      connectedCities: {'La Source Magique': 30, 'Le bateau fantôme': 30},
+    ),
+    'Le bateau fantôme': const CityNode(
+      name: 'Le bateau fantôme',
+      connectedCities: {'Les 4 tours de la forêt': 30, 'La zone de plongée': 30},
+    ),
+    'La zone de plongée': const CityNode(
+      name: 'La zone de plongée',
+      connectedCities: {'Le bateau fantôme': 30, 'Le voilier du lac': 30},
+    ),
+    'Le voilier du lac': const CityNode(
+      name: 'Le voilier du lac',
+      connectedCities: {'La zone de plongée': 30, 'La village Keltia': 30},
+    ),
+    'La village Keltia': const CityNode(
+      name: 'La village Keltia',
+      connectedCities: {'Le voilier du lac': 30, 'La cascade de nayris': 30},
+    ),
+    'La cascade de nayris': const CityNode(
+      name: 'La cascade de nayris',
+      connectedCities: {'La village Keltia': 30},
     ),
 
     // ==========================================
@@ -235,8 +291,8 @@ class CityNetwork {
         final neighbor = entry.key;
         if (!unvisited.contains(neighbor)) continue;
 
-        // Si on est en mode dev, on force le trajet à 1 minute, sinon on prend la vraie valeur (30)
-        int weight = isDevMode ? 1 : entry.value;
+        // On prend le vrai temps de trajet défini dans le réseau
+        int weight = entry.value;
 
         if (visitedCities.contains(neighbor)) {
           weight = (weight ~/ 5).clamp(1, 999999);

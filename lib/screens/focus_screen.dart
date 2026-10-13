@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:focus_time/screens/map/map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // 👈 NOUVEAU : Import nécessaire pour vérifier l'admin
+import 'package:firebase_auth/firebase_auth.dart';
 import '../utils/time_formatter.dart';
 
 class FocusScreen extends StatefulWidget {
@@ -15,19 +15,13 @@ class FocusScreen extends StatefulWidget {
 class _FocusScreenState extends State<FocusScreen> {
   int _focusMinutes = 60;
 
-  void _addTime(int minutesToAdd) {
+  void _adjustTime(int minutesToAddOrRemove) {
     HapticFeedback.lightImpact();
     setState(() {
-      _focusMinutes += minutesToAdd;
-      if (_focusMinutes > 480) _focusMinutes = 480; // Plafond à 8h max
-    });
-  }
-
-  void _removeTime(int minutesToRemove) {
-    HapticFeedback.lightImpact();
-    setState(() {
-      _focusMinutes -= minutesToRemove;
-      if (_focusMinutes < 30) _focusMinutes = 2; // Minimum 30 min (ou 2 pour tes tests)
+      _focusMinutes += minutesToAddOrRemove;
+      // Plafond min à 10 min et max à 480 min (8h)
+      if (_focusMinutes < 10) _focusMinutes = 10;
+      if (_focusMinutes > 480) _focusMinutes = 480;
     });
   }
 
@@ -36,7 +30,6 @@ class _FocusScreenState extends State<FocusScreen> {
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
 
-    // 👈 NOUVEAU : On vérifie si c'est toi
     final bool isMasterAdmin = FirebaseAuth.instance.currentUser?.email == 'yoprudhomme59@gmail.com';
 
     double progress = (_focusMinutes / 480).clamp(0.0, 1.0);
@@ -105,7 +98,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 42), // Équilibre visuel
+                            const SizedBox(width: 42),
                           ],
                         ),
                       ),
@@ -194,7 +187,7 @@ class _FocusScreenState extends State<FocusScreen> {
 
                       const Spacer(flex: 1),
 
-                      // Panneau de boutons de réglage (+ / -)
+                      // Panneau de boutons de réglage précis (+ / - fins)
                       ClipRRect(
                         borderRadius: BorderRadius.circular(22),
                         child: BackdropFilter(
@@ -218,22 +211,26 @@ class _FocusScreenState extends State<FocusScreen> {
                                 // Ligne Ajouts (+)
                                 Row(
                                   children: [
-                                    Expanded(child: _buildTimeButton('+30m', () => _addTime(30), Colors.blue.shade800)),
-                                    const SizedBox(width: 10),
-                                    Expanded(child: _buildTimeButton('+1h', () => _addTime(60), Colors.blue.shade800)),
-                                    const SizedBox(width: 10),
-                                    Expanded(child: _buildTimeButton('+2h', () => _addTime(120), Colors.blue.shade800)),
+                                    Expanded(child: _buildTimeButton('+5m', () => _adjustTime(5), Colors.blue.shade800)),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: _buildTimeButton('+15m', () => _adjustTime(15), Colors.blue.shade800)),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: _buildTimeButton('+30m', () => _adjustTime(30), Colors.blue.shade800)),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: _buildTimeButton('+1h', () => _adjustTime(60), Colors.blue.shade800)),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 10),
                                 // Ligne Retraits (-)
                                 Row(
                                   children: [
-                                    Expanded(child: _buildTimeButton('-30m', () => _removeTime(30), Colors.red.shade700)),
-                                    const SizedBox(width: 10),
-                                    Expanded(child: _buildTimeButton('-1h', () => _removeTime(60), Colors.red.shade700)),
-                                    const SizedBox(width: 10),
-                                    Expanded(child: _buildTimeButton('-2h', () => _removeTime(120), Colors.red.shade700)),
+                                    Expanded(child: _buildTimeButton('-5m', () => _adjustTime(-5), Colors.red.shade700)),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: _buildTimeButton('-15m', () => _adjustTime(-15), Colors.red.shade700)),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: _buildTimeButton('-30m', () => _adjustTime(-30), Colors.red.shade700)),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: _buildTimeButton('-1h', () => _adjustTime(-60), Colors.red.shade700)),
                                   ],
                                 ),
                               ],
@@ -246,7 +243,7 @@ class _FocusScreenState extends State<FocusScreen> {
 
                       // Bouton Confirmer la durée
                       Padding(
-                        padding: EdgeInsets.only(bottom: isMasterAdmin ? 12.0 : 24.0), // Ajustement du padding
+                        padding: EdgeInsets.only(bottom: isMasterAdmin ? 12.0 : 24.0),
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
@@ -279,7 +276,7 @@ class _FocusScreenState extends State<FocusScreen> {
                         ),
                       ),
 
-                      // ✨ NOUVEAU : Bouton ADMIN 1 SECONDE
+                      // Bouton ADMIN 1 SECONDE
                       if (isMasterAdmin)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 24.0),
@@ -308,7 +305,6 @@ class _FocusScreenState extends State<FocusScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    // On envoie -1 comme code secret pour 1 seconde
                                     builder: (context) => const MapScreen(selectedDurationMinutes: -1),
                                   ),
                                 );
@@ -330,19 +326,19 @@ class _FocusScreenState extends State<FocusScreen> {
   Widget _buildTimeButton(String label, VoidCallback onPressed, Color textColor) {
     return InkWell(
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: FontWeight.bold,
             color: textColor,
           ),

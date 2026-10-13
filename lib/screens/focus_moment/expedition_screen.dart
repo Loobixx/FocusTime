@@ -101,7 +101,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
     final userDoc = await userRef.get();
 
-    String currentCity = userDoc.data()?['currentCity'] ?? 'Valenciennes';
+    String currentCity = userDoc.data()?['currentCity'] ?? 'Le village de Néris';
     _activeCompanionId = userDoc.data()?['activeCompanion'] as String?;
     List<_LegTimeline> milestones = [];
     int totalCumulativeSeconds = 0;
@@ -114,7 +114,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     if (secondsPerStep < 1) secondsPerStep = 1;
 
     for (String city in widget.plannedRoute) {
-      int effectiveSeconds = (widget.durationMinutes == -1 || CityNetwork.isDevMode) 
+      // On utilise uniquement le bouton Admin (-1) pour passer à 1 seconde
+      int effectiveSeconds = (widget.durationMinutes == -1) 
           ? secondsPerStep 
           : (CityNetwork.getAvailableDestinations(currentCity)[city] ?? 60) * 60;
 

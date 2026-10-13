@@ -63,7 +63,7 @@ class DeleteAccountDialog {
                           _buildInfoRow('Identifiant (UID)', user.uid),
                           _buildInfoRow('E-mail', user.email ?? userData['email'] ?? 'Non renseigné'),
                           _buildInfoRow('Pseudo', userData['pseudo']?.toString().isNotEmpty == true ? userData['pseudo'] : 'Aucun'),
-                          _buildInfoRow('Position actuelle', userData['currentCity'] ?? 'Valenciennes'),
+                          _buildInfoRow('Position actuelle', userData['currentCity'] ?? 'Le village de Néris'),
                           _buildInfoRow('Personnage', userData['characterId'] ?? 'nuit'),
                           _buildInfoRow('Villes visitées', visitedCities.isEmpty ? 'Aucune' : visitedCities.join(', ')),
                           _buildInfoRow('Trajets archivés', '$historyCount trajet(s)'),
