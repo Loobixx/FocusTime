@@ -1,21 +1,51 @@
 # FocusTime
 
-A new Flutter project.
+FocusTime transforme les sessions de concentration en voyages. Choisissez une
+durée et un itinéraire sur la carte : le temps de focus fait progresser votre
+personnage de ville en ville.
 
-## Getting Started
+## Fonctionnalités
 
-This project is a starting point for a Flutter application.
+- Créer un compte ou se connecter avec Firebase Authentication (e-mail ou
+  Google).
+- Choisir une durée de concentration et planifier un itinéraire sur la carte.
+- Découvrir des villes et suivre sa progression au fil des voyages.
+- Débloquer et équiper des compagnons, et personnaliser son personnage.
+- Consulter l'historique des voyages et les statistiques de progression.
+- Profiter d'une ambiance sonore et configurer les notifications de voyage et
+  de pause.
 
-A few resources to get you started if this is your first Flutter project:
+## Prérequis
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Flutter avec le SDK Dart **3.12.0 ou supérieur** (voir la contrainte dans
+  `pubspec.yaml`).
+- Un projet Firebase avec **Authentication** et **Cloud Firestore** configurés.
+  Les options Firebase de l'application sont dans `lib/firebase_options.dart`.
+  Si vous utilisez votre propre projet Firebase, remplacez-les par sa
+  configuration et activez les méthodes de connexion souhaitées. La connexion
+  Google peut aussi nécessiter une configuration OAuth propre à la plateforme.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Lancer l'application
 
+À la racine du projet, récupérez les dépendances puis démarrez l'application sur
+un appareil ou un émulateur :
 
+```sh
 flutter pub get
+flutter run
+```
+
+Pour lancer la version Web dans Chrome sur le port 5000 :
+
+```sh
 flutter run -d chrome --web-port=5000
+```
+
+## Envoyer les changements
+
+Pour utiliser `push.sh`, ouvrez **Git Bash** à la racine du projet et lancez le
+script en lui passant un message de commit entre guillemets :
+
+```sh
+./push.sh "nom de commit"
+```
