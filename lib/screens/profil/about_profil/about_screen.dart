@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:focus_time/utils/app_constants.dart'; // 👈 Importe Firebase Auth
+import 'package:focus_time/utils/user_roles.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -11,9 +12,7 @@ class AboutScreen extends StatelessWidget {
     // 📧 Récupère l'email de l'utilisateur connecté
     final String email = FirebaseAuth.instance.currentUser?.email ?? '';
 
-    // ✨ Personnalisation en fonction de l'email
-    // (Remplace 'ton.email@gmail.com' et 'lise.email@gmail.com' par vos vraies adresses)
-    bool isLise = email == 'lise.adam.va@gmail.com'; 
+    final isLise = UserRoles.isLise(email);
 
     // Couleurs adaptées selon la personne
     final Color darkBlue = isLise ? const Color(0xFF4A148C) : const Color(0xFF143063); // Violet pour Lise, Bleu pour toi

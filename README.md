@@ -24,6 +24,13 @@ personnage de ville en ville.
   Si vous utilisez votre propre projet Firebase, remplacez-les par sa
   configuration et activez les méthodes de connexion souhaitées. La connexion
   Google peut aussi nécessiter une configuration OAuth propre à la plateforme.
+- Les règles Firestore du dépôt limitent chaque compte à ses propres données.
+  Déployez-les avec Firebase CLI en remplaçant l'identifiant par celui de votre
+  projet :
+
+  ```sh
+  firebase deploy --only firestore:rules --project YOUR_FIREBASE_PROJECT_ID
+  ```
 
 ## Lancer l'application
 
@@ -40,6 +47,33 @@ Pour lancer la version Web dans Chrome sur le port 5000 :
 ```sh
 flutter run -d chrome --web-port=5000
 ```
+
+## Tests
+
+Lancer les tests Flutter :
+
+```sh
+flutter test
+```
+
+Les règles d'accès Firestore se testent contre les émulateurs Firebase :
+
+```sh
+firebase emulators:exec --only auth,firestore --project demo-focustime "node --test test/security/firestore_rules.test.cjs"
+```
+
+## Accès administrateur
+
+L'adresse `yoprudhomme59@gmail.com` est reconnue comme administrateur dans
+l'interface. Pour lui accorder aussi l'accès Firestore aux données des comptes,
+crée dans Firebase Console une collection `admin_emails`, puis un document dont
+l'ID est `yoprudhomme59@gmail.com` et dont le champ booléen `enabled` vaut
+`true`. Le compte doit avoir une adresse e-mail vérifiée.
+
+Ne donne pas à l'application cliente le droit d'écrire dans `admin_emails` :
+seul un administrateur de confiance doit pouvoir ajouter ou retirer ces accès.
+L'adresse de Lise personnalise son interface, mais ne lui accorde pas d'accès
+aux données des autres comptes.
 
 ## Envoyer les changements
 
