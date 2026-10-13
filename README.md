@@ -24,9 +24,9 @@ personnage de ville en ville.
   Si vous utilisez votre propre projet Firebase, remplacez-les par sa
   configuration et activez les méthodes de connexion souhaitées. La connexion
   Google peut aussi nécessiter une configuration OAuth propre à la plateforme.
-- Les règles Firestore du dépôt limitent chaque compte à ses propres données.
-  Déployez-les avec Firebase CLI en remplaçant l'identifiant par celui de votre
-  projet :
+- Les règles Firestore du dépôt limitent l'accès aux données personnelles à
+  leur propriétaire, sauf pour les comptes administrateurs autorisés. Déployez-
+  les avec Firebase CLI en remplaçant l'identifiant par celui de votre projet :
 
   ```sh
   firebase deploy --only firestore:rules --project YOUR_FIREBASE_PROJECT_ID
@@ -64,16 +64,16 @@ firebase emulators:exec --only auth,firestore --project demo-focustime "node --t
 
 ## Accès administrateur
 
-L'adresse `yoprudhomme59@gmail.com` est reconnue comme administrateur dans
-l'interface. Pour lui accorder aussi l'accès Firestore aux données des comptes,
-crée dans Firebase Console une collection `admin_emails`, puis un document dont
-l'ID est `yoprudhomme59@gmail.com` et dont le champ booléen `enabled` vaut
-`true`. Le compte doit avoir une adresse e-mail vérifiée.
-
-Ne donne pas à l'application cliente le droit d'écrire dans `admin_emails` :
-seul un administrateur de confiance doit pouvoir ajouter ou retirer ces accès.
-L'adresse de Lise personnalise son interface, mais ne lui accorde pas d'accès
-aux données des autres comptes.
+Les droits administrateur sont vérifiés dans Firestore et non déduits de
+l'adresse e-mail. Pour initialiser le premier administrateur, déployez les
+règles ci-dessus puis, depuis Firebase Console, créez la collection
+`admin_emails` et un document dont l'ID est `yoprudhomme59@gmail.com`, avec le
+champ booléen `enabled` réglé sur `true`. Le compte doit avoir une adresse
+vérifiée. Une fois connecté avec ce compte, l'écran de profil affiche la gestion
+des administrateurs : vous pourrez y ajouter d'autres adresses ou désactiver
+leur accès. Un administrateur ne peut pas modifier son propre statut depuis
+l'application ; un autre administrateur peut le faire. L'adresse de Lise
+personnalise son interface, mais ne lui accorde pas d'accès administrateur.
 
 ## Envoyer les changements
 

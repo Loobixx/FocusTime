@@ -15,7 +15,8 @@ import 'package:focus_time/screens/profil/stat/stats_screen.dart';
 import 'package:focus_time/screens/profil/change_password/auth_helper.dart';
 import 'package:focus_time/screens/profil/notification/notification_settings_screen.dart';
 import 'package:focus_time/services/audio_service.dart';
-import 'package:focus_time/utils/user_roles.dart';
+import 'package:focus_time/services/admin_access_service.dart';
+import 'package:focus_time/screens/profil/admin/admin_management_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -29,10 +30,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Color _borderColor = Colors.deepPurple;
   String _characterId = 'nuit';
   bool _loading = true;
+  final AdminAccessService _adminAccessService = AdminAccessService();
+  late final Stream<bool> _adminStatusStream;
 
   @override
   void initState() {
     super.initState();
+    _adminStatusStream = _adminAccessService.watchAdminStatus(
+      FirebaseAuth.instance.currentUser?.email,
+    );
     _loadPseudo();
   }
 
@@ -124,8 +130,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
     final email = FirebaseAuth.instance.currentUser?.email ?? 'Email inconnu';
-    final currentUserEmail = FirebaseAuth.instance.currentUser?.email ?? '';
-    final bool isMasterAdmin = UserRoles.isAdmin(currentUserEmail);
 
     return Scaffold(
       body: Stack(
@@ -245,8 +249,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(height: 32),
 
-                              // ✨ NOUVEAU : Zone d'administration avec les deux boutons
-                              if (isMasterAdmin) ...[
+                              StreamBuilder<bool>(
+                                stream: _adminStatusStream,
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasError) {
+                                    return const Padding(
+                                      padding: EdgeInsets.only(bottom: 12),
+                                      child: Text(
+                                        'Statut administrateur indisponible.',
+                                        style: TextStyle(color: Colors.redAccent),
+                                      ),
+                                    );
+                                  }
+                                  if (snapshot.data != true) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                const SizedBox(height: 12),
+                                _buildMenuItem(
+                                  Icons.admin_panel_settings,
+                                  'Gérer les administrateurs',
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const AdminManagementScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
                                 const SizedBox(height: 12),
                                 
                                 // 🟢 BOUTON 1 : TOUT DÉBLOQUER
@@ -315,7 +349,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   },
                                 ),
                                 const SizedBox(height: 24),
-                              ],
+                                    ],
+                                  );
+                                },
+                              ),
 
                               _buildMenuItem(
                                 Icons.edit,

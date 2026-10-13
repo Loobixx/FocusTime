@@ -16,7 +16,16 @@ service cloud.firestore {
     }
 
     match /admin_emails/{email} {
-      allow read, write: if false;
+      allow get: if isAuthorizedAdmin()
+        || (request.auth != null
+          && request.auth.token.email_verified == true
+          && request.auth.token.email == email);
+      allow list: if isAuthorizedAdmin();
+      allow create, update: if isAuthorizedAdmin()
+        && email != request.auth.token.email
+        && request.resource.data.enabled is bool;
+      allow delete: if isAuthorizedAdmin()
+        && email != request.auth.token.email;
     }
 
     match /{document=**} {

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../utils/time_formatter.dart';
-import '../utils/user_roles.dart';
+import '../services/admin_access_service.dart';
 
 class FocusScreen extends StatefulWidget {
   const FocusScreen({super.key});
@@ -15,6 +15,16 @@ class FocusScreen extends StatefulWidget {
 
 class _FocusScreenState extends State<FocusScreen> {
   int _focusMinutes = 60;
+  final AdminAccessService _adminAccessService = AdminAccessService();
+  late final Stream<bool> _adminStatusStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _adminStatusStream = _adminAccessService.watchAdminStatus(
+      FirebaseAuth.instance.currentUser?.email,
+    );
+  }
 
   void _adjustTime(int minutesToAddOrRemove) {
     HapticFeedback.lightImpact();
@@ -30,8 +40,6 @@ class _FocusScreenState extends State<FocusScreen> {
   Widget build(BuildContext context) {
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
-
-    final bool isMasterAdmin = UserRoles.isAdmin(FirebaseAuth.instance.currentUser?.email);
 
     double progress = (_focusMinutes / 480).clamp(0.0, 1.0);
 
@@ -243,76 +251,90 @@ class _FocusScreenState extends State<FocusScreen> {
                       const Spacer(flex: 1),
 
                       // Bouton Confirmer la durée
-                      Padding(
-                        padding: EdgeInsets.only(bottom: isMasterAdmin ? 12.0 : 24.0),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: focusOrange,
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              elevation: 2,
+                      StreamBuilder<bool>(
+                        stream: _adminStatusStream,
+                        builder: (context, snapshot) {
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: snapshot.data == true ? 12.0 : 24.0,
                             ),
-                            onPressed: () {
-                              HapticFeedback.mediumImpact();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => MapScreen(selectedDurationMinutes: _focusMinutes),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: focusOrange,
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  elevation: 2,
                                 ),
-                              );
-                            },
-                            child: const Text(
-                              'Confirmer la durée',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                                onPressed: () {
+                                  HapticFeedback.mediumImpact();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => MapScreen(selectedDurationMinutes: _focusMinutes),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'Confirmer la durée',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
 
                       // Bouton ADMIN 1 SECONDE
-                      if (isMasterAdmin)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 24.0),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.redAccent,
-                                padding: const EdgeInsets.symmetric(vertical: 18),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                elevation: 2,
-                              ),
-                              icon: const Icon(Icons.flash_on, color: Colors.white),
-                              label: const Text(
-                                '🚀 MODE ADMIN : 1 SECONDE',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              onPressed: () {
-                                HapticFeedback.heavyImpact();
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const MapScreen(selectedDurationMinutes: -1),
+                      StreamBuilder<bool>(
+                        stream: _adminStatusStream,
+                        builder: (context, snapshot) {
+                          if (snapshot.data != true) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 24.0),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
                                   ),
-                                );
-                              },
+                                  elevation: 2,
+                                ),
+                                icon: const Icon(Icons.flash_on, color: Colors.white),
+                                label: const Text(
+                                  '🚀 MODE ADMIN : 1 SECONDE',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  HapticFeedback.heavyImpact();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const MapScreen(selectedDurationMinutes: -1),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
