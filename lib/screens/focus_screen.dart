@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../utils/time_formatter.dart';
+import '../utils/user_roles.dart';
 
 class FocusScreen extends StatefulWidget {
   const FocusScreen({super.key});
@@ -30,7 +31,7 @@ class _FocusScreenState extends State<FocusScreen> {
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
 
-    final bool isMasterAdmin = FirebaseAuth.instance.currentUser?.email == 'yoprudhomme59@gmail.com';
+    final bool isMasterAdmin = UserRoles.isAdmin(FirebaseAuth.instance.currentUser?.email);
 
     double progress = (_focusMinutes / 480).clamp(0.0, 1.0);
 

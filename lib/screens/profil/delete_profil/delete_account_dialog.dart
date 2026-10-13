@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:focus_time/screens/login_screen.dart';
+import 'package:focus_time/services/user_data_deletion_service.dart';
 
 class DeleteAccountDialog {
   static Future<void> show(BuildContext context) async {
@@ -15,11 +16,13 @@ class DeleteAccountDialog {
     final travelDoc = await userRef.collection('travel').doc('status').get();
     final historySnap = await userRef.collection('travel_history').get();
     final visitedSnap = await userRef.collection('visited_cities').get();
+    final stoppedSnap = await userRef.collection('stopped_cities').get();
 
     final userData = userDoc.data() ?? {};
     final travelData = travelDoc.data() ?? {};
     final historyCount = historySnap.docs.length;
     final visitedCities = visitedSnap.docs.map((d) => d.id).toList();
+    final stoppedCitiesCount = stoppedSnap.docs.length;
 
     if (!context.mounted) return;
 
@@ -66,6 +69,7 @@ class DeleteAccountDialog {
                           _buildInfoRow('Position actuelle', userData['currentCity'] ?? 'Le village de Néris'),
                           _buildInfoRow('Personnage', userData['characterId'] ?? 'nuit'),
                           _buildInfoRow('Villes visitées', visitedCities.isEmpty ? 'Aucune' : visitedCities.join(', ')),
+                          _buildInfoRow('Villes où tu t\'es arrêté', '$stoppedCitiesCount'),
                           _buildInfoRow('Trajets archivés', '$historyCount trajet(s)'),
                           if (travelData.isNotEmpty)
                             _buildInfoRow('Statut de voyage en cours', travelData['isFocusActive'] == true ? 'Actif' : 'Inactif'),
@@ -127,28 +131,7 @@ class DeleteAccountDialog {
   // 3. Traitement de la suppression en cascade
   static Future<void> _executeFullDeletion(BuildContext context, BuildContext dialogContext, User user) async {
     try {
-      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-
-      // A. Suppression des documents des sous-collections
-      final travelDocs = await userRef.collection('travel').get();
-      for (var doc in travelDocs.docs) {
-        await doc.reference.delete();
-      }
-
-      final historyDocs = await userRef.collection('travel_history').get();
-      for (var doc in historyDocs.docs) {
-        await doc.reference.delete();
-      }
-
-      final visitedDocs = await userRef.collection('visited_cities').get();
-      for (var doc in visitedDocs.docs) {
-        await doc.reference.delete();
-      }
-
-      // B. Suppression du document racine utilisateur
-      await userRef.delete();
-
-      // C. Suppression du compte Firebase Auth
+      await UserDataDeletionService().deleteUserData(user.uid);
       await user.delete();
 
       if (dialogContext.mounted) Navigator.pop(dialogContext);
@@ -169,7 +152,9 @@ class DeleteAccountDialog {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Pour des raisons de sécurité, veuillez vous reconnecter avant de supprimer votre compte.'),
+              content: Text(
+                'Tes données ont été supprimées. Reconnecte-toi puis relance la suppression pour terminer la fermeture du compte.',
+              ),
               backgroundColor: Colors.orange,
             ),
           );

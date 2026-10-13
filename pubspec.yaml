@@ -55,6 +55,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  fake_cloud_firestore: ^4.3.0
 
 flutter_launcher_icons:
   image_path: "assets/appli_front_image/icon_app.png"
@@ -88,8 +89,6 @@ flutter:
     - assets/NomCitiesDesert/
     - assets/NomCitiesMontagnes/
     - assets/NomCitiesLac/
-    - assets/NomCitiesNuages/
-    - assets/NomCitiesNuit/
 
     - assets/PersonnageAnimation/Nuit/Marche/
 

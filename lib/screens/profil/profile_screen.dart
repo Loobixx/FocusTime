@@ -15,6 +15,7 @@ import 'package:focus_time/screens/profil/stat/stats_screen.dart';
 import 'package:focus_time/screens/profil/change_password/auth_helper.dart';
 import 'package:focus_time/screens/profil/notification/notification_settings_screen.dart';
 import 'package:focus_time/services/audio_service.dart';
+import 'package:focus_time/utils/user_roles.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -124,7 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     const darkBlue = Color(0xFF143063);
     final email = FirebaseAuth.instance.currentUser?.email ?? 'Email inconnu';
     final currentUserEmail = FirebaseAuth.instance.currentUser?.email ?? '';
-    final bool isMasterAdmin = currentUserEmail == 'yoprudhomme59@gmail.com';
+    final bool isMasterAdmin = UserRoles.isAdmin(currentUserEmail);
 
     return Scaffold(
       body: Stack(
