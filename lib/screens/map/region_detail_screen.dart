@@ -117,16 +117,25 @@ class FogSettings {
       RegionTitleReveal(
         position: Offset(1150.0, 140.0), // "Orane"
         radiusX: 300.0,
-        radiusY: 125.0,
+        radiusY: 150.0,
         softness: 0.35,
         rotationDegrees: 0,
       ),
     ],
     'desert': [
       RegionTitleReveal(
-        position: Offset(600.0, 1500.0), // "Sahur"
-        radiusX: 130.0,
-        radiusY: 50.0,
+        position: Offset(760.0, 1450.0), // "Sahur"
+        radiusX: 330.0,
+        radiusY: 150.0,
+        softness: 0.35,
+        rotationDegrees: 0,
+      ),
+    ],
+    'lac': [
+      RegionTitleReveal(
+        position: Offset(300.0, 200.0), // "Nayris"
+        radiusX: 330.0,
+        radiusY: 150.0,
         softness: 0.35,
         rotationDegrees: 0,
       ),
