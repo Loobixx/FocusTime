@@ -16,6 +16,7 @@ class CityNode {
 }
 
 class CityNetwork {
+  static bool isDevMode = false;
   static final Map<String, CityNode> network = {
     // ==========================================
     // --- ZONE DÉSERT (Sahur) ---
@@ -225,15 +226,15 @@ class CityNetwork {
     ),
     'Le voilier du lac': const CityNode(
       name: 'Le voilier du lac',
-      connectedCities: {'La zone de plongée': 30, 'La village Keltia': 30},
+      connectedCities: {'La zone de plongée': 30, 'Le village Keltia': 30},
     ),
-    'La village Keltia': const CityNode(
-      name: 'La village Keltia',
-      connectedCities: {'Le voilier du lac': 30, 'La cascade de nayris': 30},
+    'Le village Keltia': const CityNode(
+      name: 'Le village Keltia',
+      connectedCities: {'Le voilier du lac': 30, 'La cascade de Nayris': 30},
     ),
-    'La cascade de nayris': const CityNode(
-      name: 'La cascade de nayris',
-      connectedCities: {'La village Keltia': 30},
+    'La cascade de Nayris': const CityNode(
+      name: 'La cascade de Nayris',
+      connectedCities: {'Le village Keltia': 30},
     ),
 
     // ==========================================
@@ -257,7 +258,32 @@ class CityNetwork {
     return network[currentCity]?.connectedCities ?? {};
   }
 
-  // Algorithme de Dijkstra avec réduction /5 pour les villes visitées
+  /// Retourne l'ensemble des villes visibles hors du brouillard :
+  /// - La ville actuelle + toutes les villes déjà visitées/arrêtées
+  /// - + 1 ville de distance autour de chacune d'elles (les voisines directes)
+  static Set<String> getVisibleCities({
+    required String? currentCity,
+    required Set<String> knownCities,
+  }) {
+    final Set<String> baseKnown = Set.from(knownCities);
+    if (currentCity != null) {
+      baseKnown.add(currentCity);
+    }
+
+    final Set<String> visible = Set.from(baseKnown);
+
+    for (final city in baseKnown) {
+      final neighbors = network[city]?.connectedCities.keys ?? const Iterable.empty();
+      visible.addAll(neighbors);
+    }
+
+    return visible;
+  }
+
+  /// Algorithme de Dijkstra modifié :
+  /// - Réduction /5 pour les villes déjà visitées
+  /// - BLOCAGE : Une ville non visitée peut être une destination finale,
+  ///   mais ne peut JAMAIS servir de pont vers une autre ville.
   static Map<String, ShortestPathResult> calculateAllShortestPaths({
     required String startCity,
     required Set<String> visitedCities,
@@ -286,12 +312,19 @@ class CityNetwork {
       if (current == null || minDistance == 999999) break;
       unvisited.remove(current);
 
+      // 🔒 RÈGLE D'EXPLORATION :
+      // Si la ville 'current' n'est pas notre point de départ ET qu'elle n'a jamais été visitée,
+      // on s'arrête là pour cette branche ! On ne regarde pas ses voisins.
+      final bool isKnown = (current == startCity) || visitedCities.contains(current);
+      if (!isKnown) {
+        continue;
+      }
+
       final neighbors = network[current]?.connectedCities ?? {};
       for (var entry in neighbors.entries) {
         final neighbor = entry.key;
         if (!unvisited.contains(neighbor)) continue;
 
-        // On prend le vrai temps de trajet défini dans le réseau
         int weight = entry.value;
 
         if (visitedCities.contains(neighbor)) {
@@ -306,7 +339,7 @@ class CityNetwork {
       }
     }
 
-    // Reconstitution des trajets
+    // Reconstitution des trajets accessibles
     final Map<String, ShortestPathResult> results = {};
 
     for (var targetCity in network.keys) {

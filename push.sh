@@ -10,16 +10,23 @@ if [ -z "$COMMIT_MSG" ]; then
   exit 1
 fi
 
+# 🛑 Vérifie que le fichier cible existe bien
+if [ ! -f "$TARGET_FILE" ]; then
+  echo "❌ Erreur : Le fichier $TARGET_FILE est introuvable depuis ce dossier !"
+  exit 1
+fi
+
 echo "🚀 Préparation du push..."
 
-# Remplacement ciblant le mot-clé indépendamment des espaces ou caractères invisibles
-perl -i -pe 's/isDevMode\s*=\s*true/isDevMode = false/g' "$TARGET_FILE"
+# Remplacement avec sed (plus stable sur Git Bash) qui gère les espaces variables
+sed -i 's/isDevMode *= *true/isDevMode = false/g' "$TARGET_FILE"
 
-# Vérification
-if grep -q "isDevMode = false;" "$TARGET_FILE"; then
+# Vérification plus souple (sans le point-virgule)
+if grep -q "isDevMode = false" "$TARGET_FILE"; then
   echo "✅ isDevMode est bien passé à false."
 else
   echo "❌ Échec du remplacement dans $TARGET_FILE !"
+  echo "💡 Astuce : Vérifie que ton fichier contient bien 'isDevMode = true' (et pas déjà false ou un autre nom de variable)."
   exit 1
 fi
 
@@ -29,5 +36,5 @@ git commit -m "$COMMIT_MSG"
 git push
 
 # Rétablissement pour le travail local
-perl -i -pe 's/isDevMode\s*=\s*false/isDevMode = true/g' "$TARGET_FILE"
+sed -i 's/isDevMode *= *false/isDevMode = true/g' "$TARGET_FILE"
 echo "✅ isDevMode réactivé localement !"
