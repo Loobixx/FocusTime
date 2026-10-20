@@ -89,8 +89,8 @@ flutter:
     - assets/NomCitiesMontagnes/
     - assets/NomCitiesLac/
 
-    - assets/PersonnageAnimation/nuit/Marche/
-    - assets/PersonnageAnimation/nuit/Arret/
+    - assets/PersonnageAnimation/Nuit/Marche/
+    - assets/PersonnageAnimation/Nuit/Arret/
   
     - assets/TeteProfil/
     - assets/Notif/
