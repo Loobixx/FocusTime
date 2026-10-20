@@ -6,8 +6,6 @@ class Companion {
   final String name;
   final String unlockCity;      // La ville précise qui débloque ce compagnon
   final String region;          // 'lac', 'desert', 'montagnes', etc.
-  final String assetPathMarche;
-  final String assetPathArret;
   final Color defaultColor;
 
   const Companion({
@@ -15,8 +13,6 @@ class Companion {
     required this.name,
     required this.unlockCity,
     required this.region,
-    required this.assetPathMarche,
-    required this.assetPathArret,
     required this.defaultColor,
   });
 }
@@ -28,8 +24,6 @@ class CompanionData {
       name: 'Dogito',
       unlockCity: 'Le village de Néris', // Dans la forêt
       region: 'montagnes',
-      assetPathMarche: 'assets/compagnons/chien/chien_marche.gif',
-      assetPathArret: 'assets/compagnons/chien/chien_arret.gif',
       defaultColor: Color(0xFFFF8A80),
     ),
     Companion(
@@ -37,8 +31,6 @@ class CompanionData {
       name: 'Catito',
       unlockCity: 'Le village de Néris', // Dans la forêt
       region: 'montagnes',
-      assetPathMarche: 'assets/compagnons/chat/chat_marche.gif',
-      assetPathArret: 'assets/compagnons/chat/chat_arret.gif',
       defaultColor: Color(0xFFFF8A80),
     ),
   ];

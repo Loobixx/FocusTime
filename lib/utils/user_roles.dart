@@ -1,3 +1,5 @@
+// lib/utils/user_roles.dart
+
 enum AppUserRole { lise, standard }
 
 class UserRoles {

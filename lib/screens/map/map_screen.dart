@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'dart:ui';
-import 'package:focus_time/widgets/persistent_animated_character.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:focus_time/screens/map/data/map_region_data.dart';
 import 'package:focus_time/screens/map/region_detail_screen.dart';
 import 'package:focus_time/screens/map/data/region_cross_data.dart';
+import 'package:focus_time/widgets/game_sprites.dart';
+import 'package:focus_time/config/sprite_config.dart';
 
 class MapScreen extends StatefulWidget {
   final int selectedDurationMinutes;
@@ -21,15 +22,11 @@ class _MapScreenState extends State<MapScreen> {
   String? _selectedRegionId;
   String? _hoveredRegionId;
   String? _currentRegionId;
+  String _characterId = 'nuit';
 
   late final TransformationController _transformationController;
   bool _viewInitialized = false;
   double _fitScale = 1.0;
-
-  static final List<String> _characterFrames = List.generate(
-    21,
-    (i) => 'assets/PersonnageAnimation/Nuit/Arret/${i + 1}.png',
-  );
 
   static const double baseWidth = 1023.0;
   static const double baseHeight = 1537.0;
@@ -54,6 +51,9 @@ class _MapScreenState extends State<MapScreen> {
         .collection('users')
         .doc(user.uid)
         .get();
+
+    final charId = userDoc.data()?['characterId'] as String? ?? 'nuit';
+    if (mounted) setState(() => _characterId = charId);
 
     String? currentCity = userDoc.data()?['currentCity'] as String?;
     if (currentCity == null) return;
@@ -166,6 +166,7 @@ class _MapScreenState extends State<MapScreen> {
     const darkBlue = Color(0xFF143063);
 
     final playerPosition = _getRegionCenter(_currentRegionId);
+    final Size charSize = SpriteConfig.character(SpriteScene.world);
 
     return Scaffold(
       backgroundColor: const Color(0xFF1E1E1E),
@@ -236,21 +237,20 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                             ),
 
-                            // ✨ Le personnage a été remis ici ✨
+                            // Personnage : taille et animation gérées par SpriteConfig
                             if (playerPosition != null)
-  Positioned(
-    left: playerPosition.dx - 25,
-    top: playerPosition.dy - 50,
-    child: IgnorePointer(
-      child: RepaintBoundary(
-        child: PersistentAnimatedCharacter(
-          size: 120,
-          frames: _characterFrames,
-          frameDuration: const Duration(milliseconds: 100),
-        ),
-      ),
-    ),
-  ),
+                              Positioned(
+                              left: playerPosition.dx - charSize.width / 2,
+                              top: playerPosition.dy - charSize.height * SpriteConfig.footRatio,
+                                child: IgnorePointer(
+                                  child: RepaintBoundary(
+                                    child: CharacterSprite(
+                                      characterId: _characterId,
+                                      scene: SpriteScene.world,
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),

@@ -1,10 +1,10 @@
-import 'package:focus_time/screens/home_screen.dart';
+import 'package:focus_time/screens/home/home_screen.dart';
 import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'screens/login_screen.dart'; 
+import 'screens/auth/login_screen.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 

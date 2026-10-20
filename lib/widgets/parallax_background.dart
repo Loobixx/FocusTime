@@ -1,11 +1,18 @@
+// lib/widgets/parallax_background.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import '../screens/focus_moment/animated_character.dart';
+import '../config/sprite_config.dart';
+import 'game_sprites.dart';
 
 class ParallaxBackground extends StatefulWidget {
   final bool isRunning;
+  final String characterId; // ex: 'nuit'
 
-  const ParallaxBackground({super.key, required this.isRunning});
+  const ParallaxBackground({
+    super.key,
+    required this.isRunning,
+    this.characterId = 'nuit',
+  });
 
   @override
   State<ParallaxBackground> createState() => _ParallaxBackgroundState();
@@ -102,6 +109,9 @@ class _ParallaxBackgroundState extends State<ParallaxBackground>
     final groundOffset = seconds * _groundSpeed;
     final bgOffset = groundOffset * _bgSpeedFactor;
 
+    // La taille vient de SpriteConfig : on s'en sert pour garder le personnage centré.
+    final charSize = SpriteConfig.character(SpriteScene.expedition);
+
     return SizedBox.expand(
       child: Stack(
         children: [
@@ -122,13 +132,13 @@ class _ParallaxBackgroundState extends State<ParallaxBackground>
             ),
           ),
           Positioned(
-            bottom: 80, 
-            left: (size.width / 2) - 280, 
-            child: AnimatedCharacter(
-              size: 420,
-              isWalking: widget.isRunning,
-              frames: List.generate(16, (i) => 'assets/PersonnageAnimation/Nuit/Marche/${i + 1}.png'),
-            ),     
+            bottom: SpriteConfig.expeditionBottom,
+            left: (size.width - charSize.width) / 2 + SpriteConfig.expeditionOffsetX,
+            child: CharacterSprite(
+              characterId: widget.characterId,
+              scene: SpriteScene.expedition,
+              isMoving: widget.isRunning,
+            ),
           ),
         ],
       ),
