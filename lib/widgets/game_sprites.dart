@@ -29,12 +29,12 @@ class CharacterSprite extends StatelessWidget {
       animations: {
         'marche': List.generate(
           frames.walk,
-          // ✨ Ajout de "assets/"
+          // Vérifie bien que les dossiers "Marche" ont une majuscule sur ton PC
           (i) => 'assets/PersonnageAnimation/$folder/Marche/${i + 1}.png',
         ),
         'arret': List.generate(
           frames.idle,
-          // ✨ Ajout de "assets/"
+          // Vérifie bien que les dossiers "Arret" ont une majuscule sur ton PC
           (i) => 'assets/PersonnageAnimation/$folder/Arret/${i + 1}.png',
         ),
       },
@@ -64,28 +64,25 @@ class CompanionSprite extends StatelessWidget {
     final size = SpriteConfig.companion(scene);
     final id = companionId.toLowerCase();
     final isDog = id == 'chien';
+    // Attention ici aussi : 'Chien' et 'Chat' prennent une majuscule dans le code !
     final folder = isDog ? 'Chien' : 'Chat';
 
     final List<String> walkFrames = isDog
         ? List.generate(
             6,
-            // ✨ Ajout de "assets/"
-            (i) => 'assets/compagnons/$folder/chien_marche/$i.png',
+            (i) => 'assets/compagnons/$folder/chien_marche/$i.png', // ✨ Préfixe ajouté
           )
         : List.generate(
             3,
-            // ✨ Ajout de "assets/"
-            (i) => 'assets/compagnons/$folder/marche/frame${i.toString().padLeft(2, '0')}.png',
+            (i) => 'assets/compagnons/$folder/marche/frame${i.toString().padLeft(2, '0')}.png', // ✨ Préfixe ajouté
           );
           
     final List<String> idleFrames = isDog
         ? List.generate(
             isSelected ? 8 : 18,
-            // ✨ Ajout de "assets/"
-            (i) => 'assets/compagnons/$folder/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
+            (i) => 'assets/compagnons/$folder/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png', // ✨ Préfixe ajouté
           )
-        // ✨ Ajout de "assets/"
-        : ['assets/compagnons/$folder/marche.png']; 
+        : ['assets/compagnons/$folder/marche.png']; // ✨ Préfixe ajouté
 
     return SpriteAnimator(
       key: ValueKey(
