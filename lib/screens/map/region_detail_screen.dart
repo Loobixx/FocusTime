@@ -8,7 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:focus_time/screens/map/data/region_cross_data.dart';
 import 'package:focus_time/utils/city_name.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import '../../models/city_network.dart';
 import '../../utils/time_formatter.dart';
 import '../focus/expedition_screen.dart';
@@ -45,17 +46,25 @@ class MapSettings {
   static const double maxHoverDistance = 40.0;
 
   // Palette des marqueurs
-  static const Color colorStopped = Color(0xFFD500F9);     // Violet : ville visitée (arrêt)
-  static const Color colorTraversed = Color(0xFFFFB300);   // Ambre : ville traversée
-  static const Color colorReachable = Color(0xFF00E676);   // Vert : destination accessible
-  static const Color colorUnreachable = Color(0xFFFF1744); // Rouge : trop loin
+  static const Color colorStopped = Color(
+    0xFFE040FB,
+  ); // Violet lisible : ville visitée (arrêt)
+  static const Color colorTraversed = Color(
+    0xFFFFB300,
+  ); // Ambre : ville traversée
+  static const Color colorReachable = Color(
+    0xFF00E676,
+  ); // Vert : destination accessible
+  static const Color colorUnreachable = Color(
+    0xFFFF6B81,
+  ); // Rouge lisible : trop loin
 }
 
 class RegionDetailScreen extends StatefulWidget {
   final String regionName;
   final int selectedDurationMinutes;
   final bool readOnly;
-  
+
   // ✨ FIX : Ajout des paramètres optionnels de transit
   final List<String>? transitRoute;
   final int? transitRemainingMinutes;
@@ -73,7 +82,8 @@ class RegionDetailScreen extends StatefulWidget {
   State<RegionDetailScreen> createState() => _RegionDetailScreenState();
 }
 
-class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTickerProviderStateMixin {
+class _RegionDetailScreenState extends State<RegionDetailScreen>
+    with SingleTickerProviderStateMixin {
   late final TransformationController _controller;
   late final AnimationController _cloudAnimationController;
 
@@ -150,7 +160,9 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
     final userDoc = await userRef.get();
 
     final visitedDoc = await userRef.collection('visited_cities').get();
@@ -160,10 +172,13 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
       setState(() {
         _currentCity = userDoc.data()?['currentCity'] as String?;
         _characterId = userDoc.data()?['characterId'] as String? ?? 'nuit';
-        
+
         // ✨ Récupération des infos de transit en cours depuis Firebase
-        _transitRemainingMinutes = userDoc.data()?['transitRemainingMinutes'] ?? 0;
-        _transitRoute = List<String>.from(userDoc.data()?['transitRoute'] ?? []);
+        _transitRemainingMinutes =
+            userDoc.data()?['transitRemainingMinutes'] ?? 0;
+        _transitRoute = List<String>.from(
+          userDoc.data()?['transitRoute'] ?? [],
+        );
 
         _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
         _stoppedCities = stoppedDoc.docs.map((d) => d.id).toSet();
@@ -179,7 +194,9 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
         // ✨ Si on est en transit, le point de départ pour calculer la suite est la dernière ville visée
         final String? resolvedCurrent = (_transitRoute.isNotEmpty)
             ? _resolveNetworkCityName(_transitRoute.last)
-            : (_currentCity != null ? _resolveNetworkCityName(_currentCity!) : null);
+            : (_currentCity != null
+                  ? _resolveNetworkCityName(_currentCity!)
+                  : null);
 
         final Set<String> visibleCities = CityNetwork.getVisibleCities(
           currentCity: resolvedCurrent,
@@ -209,25 +226,38 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
 
   String _getImageAsset(String regionName) {
     switch (regionName) {
-      case 'desert': return 'assets/biome/desert.png';
-      case 'montagnes': return 'assets/biome/montagnes.png';
-      case 'nuit': return 'assets/biome/nuit.png';
-      case 'nuages': return 'assets/biome/nuages.png';
-      case 'lac': return 'assets/biome/lac.png';
-      default: return 'assets/biome/fond1.png';
+      case 'desert':
+        return 'assets/biome/desert.png';
+      case 'montagnes':
+        return 'assets/biome/montagnes.png';
+      case 'nuit':
+        return 'assets/biome/nuit.png';
+      case 'nuages':
+        return 'assets/biome/nuages.png';
+      case 'lac':
+        return 'assets/biome/lac.png';
+      default:
+        return 'assets/biome/fond1.png';
     }
   }
 
   void _loadImageDimensions() {
     final String assetPath = _getImageAsset(widget.regionName);
-    final ImageStream stream = AssetImage(assetPath).resolve(ImageConfiguration.empty);
+    final ImageStream stream = AssetImage(
+      assetPath,
+    ).resolve(ImageConfiguration.empty);
 
-    stream.addListener(ImageStreamListener((ImageInfo info, bool synchronousCall) {
-      if (!mounted) return;
-      setState(() {
-        _imageSize = Size(info.image.width.toDouble(), info.image.height.toDouble());
-      });
-    }));
+    stream.addListener(
+      ImageStreamListener((ImageInfo info, bool synchronousCall) {
+        if (!mounted) return;
+        setState(() {
+          _imageSize = Size(
+            info.image.width.toDouble(),
+            info.image.height.toDouble(),
+          );
+        });
+      }),
+    );
   }
 
   void _setupInitialView(Size screenSize) {
@@ -253,7 +283,9 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
       ..scale(fitScale);
   }
 
-  bool get _hasFocusPlanned => widget.selectedDurationMinutes > 0 || widget.selectedDurationMinutes == -1;
+  bool get _hasFocusPlanned =>
+      widget.selectedDurationMinutes > 0 ||
+      widget.selectedDurationMinutes == -1;
 
   ShortestPathResult? _routeFor(RegionCross cross) {
     if (_routes.containsKey(cross.name)) return _routes[cross.name];
@@ -278,7 +310,8 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
   }
 
   bool _isVisibleOutOfFog(RegionCross cross) {
-    if (_isCurrentCity(cross) || _isStopped(cross) || _isTraversed(cross)) return true;
+    if (_isCurrentCity(cross) || _isStopped(cross) || _isTraversed(cross))
+      return true;
     if (widget.readOnly) return false;
     return _visibleKeys.contains(normalizeCityName(cross.name));
   }
@@ -313,7 +346,8 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
       final double dy = cross.y - localPosition.dy;
       final double distance = math.sqrt(dx * dx + dy * dy);
 
-      if (distance <= MapSettings.maxHoverDistance && distance < closestDistance) {
+      if (distance <= MapSettings.maxHoverDistance &&
+          distance < closestDistance) {
         closestDistance = distance;
         closestId = cross.id;
       }
@@ -355,12 +389,14 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
           ? <String>[]
           : List<String>.from(route.path);
       if (extra.isNotEmpty &&
-          normalizeCityName(extra.first) == normalizeCityName(_transitRoute.last)) {
+          normalizeCityName(extra.first) ==
+              normalizeCityName(_transitRoute.last)) {
         extra.removeAt(0);
       }
       finalRoute = [..._transitRoute, ...extra];
       finalTravelMinutes =
-          _transitRemainingMinutes + ((isTransitTarget || route == null) ? 0 : route.totalTravelMinutes);
+          _transitRemainingMinutes +
+          ((isTransitTarget || route == null) ? 0 : route.totalTravelMinutes);
     } else {
       finalRoute = List<String>.from(route!.path);
       finalTravelMinutes = route.totalTravelMinutes;
@@ -419,7 +455,11 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white38, width: 1.5),
           ),
-          child: const Icon(Icons.question_mark_rounded, size: 15, color: Colors.white70),
+          child: const Icon(
+            Icons.question_mark_rounded,
+            size: 15,
+            color: Colors.white70,
+          ),
         );
       }
     }
@@ -500,11 +540,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
             ),
         ],
       ),
-      child: Icon(
-        markerIcon,
-        size: finalSize * 0.55,
-        color: markerColor,
-      ),
+      child: Icon(markerIcon, size: finalSize * 0.55, color: markerColor),
     );
   }
 
@@ -540,24 +576,30 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     final List<RegionTitleReveal> regionTitles =
-        FogSettings.titleReveals[widget.regionName] ?? const <RegionTitleReveal>[];
+        FogSettings.titleReveals[widget.regionName] ??
+        const <RegionTitleReveal>[];
 
     const darkBlue = Color(0xFF143063);
-    final List<RegionCross> regionCrosses = RegionCrossesData.crossesByRegion[widget.regionName] ?? [];
+    final List<RegionCross> regionCrosses =
+        RegionCrossesData.crossesByRegion[widget.regionName] ?? [];
     final String? activeCrossId = _selectedCrossId ?? _hoveredCrossId;
 
     final List<FogRevealArea> revealAreas = [];
     for (final cross in regionCrosses) {
       if (_isCurrentCity(cross) || _isStopped(cross) || _isTraversed(cross)) {
-        revealAreas.add(FogRevealArea(
-          center: Offset(cross.x, cross.y),
-          radius: FogSettings.visitedRevealRadius,
-        ));
+        revealAreas.add(
+          FogRevealArea(
+            center: Offset(cross.x, cross.y),
+            radius: FogSettings.visitedRevealRadius,
+          ),
+        );
       } else if (_isVisibleOutOfFog(cross)) {
-        revealAreas.add(FogRevealArea(
-          center: Offset(cross.x, cross.y),
-          radius: FogSettings.frontierRevealRadius,
-        ));
+        revealAreas.add(
+          FogRevealArea(
+            center: Offset(cross.x, cross.y),
+            radius: FogSettings.frontierRevealRadius,
+          ),
+        );
       }
     }
 
@@ -566,14 +608,20 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset('assets/biome/fond_de_zoom.png', fit: BoxFit.cover),
+            child: Image.asset(
+              'assets/biome/fond_de_zoom.png',
+              fit: BoxFit.cover,
+            ),
           ),
           Positioned.fill(
             child: _imageSize == null
                 ? const SizedBox.shrink()
                 : LayoutBuilder(
                     builder: (context, constraints) {
-                      final Size screenSize = Size(constraints.maxWidth, constraints.maxHeight);
+                      final Size screenSize = Size(
+                        constraints.maxWidth,
+                        constraints.maxHeight,
+                      );
 
                       if (!_viewInitialized) {
                         _viewInitialized = true;
@@ -588,13 +636,24 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                       final double imgWidth = _imageSize!.width;
                       final double imgHeight = _imageSize!.height;
 
-                      final double minScale = _fitScale * MapSettings.zoomOutFactor;
-                      final double maxScale = _fitScale * MapSettings.zoomInFactor;
+                      final double minScale =
+                          _fitScale * MapSettings.zoomOutFactor;
+                      final double maxScale =
+                          _fitScale * MapSettings.zoomInFactor;
 
-                      final double horizontalMargin = math.max(0.0, (screenSize.width - (imgWidth * minScale)) / (2 * minScale));
-                      final double verticalMargin = math.max(0.0, (screenSize.height - (imgHeight * minScale)) / (2 * minScale));
+                      final double horizontalMargin = math.max(
+                        0.0,
+                        (screenSize.width - (imgWidth * minScale)) /
+                            (2 * minScale),
+                      );
+                      final double verticalMargin = math.max(
+                        0.0,
+                        (screenSize.height - (imgHeight * minScale)) /
+                            (2 * minScale),
+                      );
 
-                      final bool isAdminMode = widget.selectedDurationMinutes == -1;
+                      final bool isAdminMode =
+                          widget.selectedDurationMinutes == -1;
 
                       final List<Widget> mapStackChildren = [
                         RepaintBoundary(
@@ -618,7 +677,8 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                       painter: FogOfWarPainter(
                                         revealAreas: revealAreas,
                                         titleReveals: regionTitles,
-                                        animationValue: _cloudAnimationController.value,
+                                        animationValue:
+                                            _cloudAnimationController.value,
                                         sprites: _cloudSprites,
                                       ),
                                     );
@@ -630,46 +690,84 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
 
                         if (activeCrossId != null)
                           ...regionCrosses
-                              .where((c) => c.id == activeCrossId && _isVisibleOutOfFog(c) && c.imagePath != null && c.imageX != null && c.imageY != null)
-                              .map((cross) => Positioned(
-                                    left: cross.imageX,
-                                    top: cross.imageY,
-                                    child: RepaintBoundary(
-                                      child: IgnorePointer(
-                                        child: Image.asset(
-                                          cross.imagePath!,
-                                          width: imgWidth,
-                                          height: imgHeight,
-                                          gaplessPlayback: true,
-                                        ),
+                              .where(
+                                (c) =>
+                                    c.id == activeCrossId &&
+                                    _isVisibleOutOfFog(c) &&
+                                    c.imagePath != null &&
+                                    c.imageX != null &&
+                                    c.imageY != null,
+                              )
+                              .map(
+                                (cross) => Positioned(
+                                  left: cross.imageX,
+                                  top: cross.imageY,
+                                  child: RepaintBoundary(
+                                    child: IgnorePointer(
+                                      child: Image.asset(
+                                        cross.imagePath!,
+                                        width: imgWidth,
+                                        height: imgHeight,
+                                        gaplessPlayback: true,
                                       ),
                                     ),
-                                  )),
+                                  ),
+                                ),
+                              ),
 
                         ...regionCrosses.where(_isVisibleOutOfFog).map((cross) {
-                          final double clickAreaSize = math.max(cross.size, 80.0);
+                          final double clickAreaSize = math.max(
+                            cross.size,
+                            80.0,
+                          );
+                          final bool isCurrent = _isCurrentCity(cross);
+                          final bool isStopped = _isStopped(cross);
+                          final bool isTraversed = _isTraversed(cross);
+                          final bool isReachable =
+                              !widget.readOnly && _isReachable(cross);
+                          final String cityState = isCurrent
+                              ? 'Position actuelle'
+                              : (_hasFocusPlanned && !isReachable
+                                    ? 'Non accessible pour cette expédition'
+                                    : (isStopped
+                                          ? 'Ville visitée avec arrêt'
+                                          : (isTraversed
+                                                ? 'Ville traversée'
+                                                : (_hasFocusPlanned
+                                                      ? 'Destination accessible'
+                                                      : 'À découvrir'))));
+                          final VoidCallback selectCross = () {
+                            setState(() {
+                              if (_selectedCrossId == cross.id) {
+                                _selectedCrossId = null;
+                              } else {
+                                _selectedCrossId = cross.id;
+                                _hoveredCrossId = null;
+                              }
+                            });
+                          };
 
                           return Positioned(
                             left: cross.x - (clickAreaSize / 2),
                             top: cross.y - (clickAreaSize / 2),
                             child: RepaintBoundary(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () {
-                                  setState(() {
-                                    if (_selectedCrossId == cross.id) {
-                                      _selectedCrossId = null;
-                                    } else {
-                                      _selectedCrossId = cross.id;
-                                      _hoveredCrossId = null;
-                                    }
-                                  });
-                                },
-                                child: SizedBox(
-                                  width: clickAreaSize,
-                                  height: clickAreaSize,
-                                  child: Center(
-                                    child: _buildCityMarker(cross),
+                              child: Semantics(
+                                button: true,
+                                selected: _selectedCrossId == cross.id,
+                                label: '${cross.name}, $cityState',
+                                hint:
+                                    'Activer pour afficher les détails de ce lieu',
+                                onTap: selectCross,
+                                excludeSemantics: true,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: selectCross,
+                                  child: SizedBox(
+                                    width: clickAreaSize,
+                                    height: clickAreaSize,
+                                    child: Center(
+                                      child: _buildCityMarker(cross),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -679,14 +777,16 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
 
                         // Personnage : taille et animation gérées par SpriteConfig
                         if (_currentCity != null)
-                          ...regionCrosses
-                              .where((c) => _isCurrentCity(c))
-                              .map((cross) {
-                              final Size s = SpriteConfig.character(SpriteScene.region);
-                              return Positioned(
-                                key: const ValueKey('player_position'),
-                                left: cross.x - s.width / 2,
-                                top: cross.y - s.height * SpriteConfig.footRatio,
+                          ...regionCrosses.where((c) => _isCurrentCity(c)).map((
+                            cross,
+                          ) {
+                            final Size s = SpriteConfig.character(
+                              SpriteScene.region,
+                            );
+                            return Positioned(
+                              key: const ValueKey('player_position'),
+                              left: cross.x - s.width / 2,
+                              top: cross.y - s.height * SpriteConfig.footRatio,
                               child: IgnorePointer(
                                 child: RepaintBoundary(
                                   child: CharacterSprite(
@@ -725,9 +825,14 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                 child: _isDesktopOrWeb
                                     ? MouseRegion(
                                         onHover: (event) =>
-                                            _handleHoverPosition(event.localPosition, regionCrosses),
+                                            _handleHoverPosition(
+                                              event.localPosition,
+                                              regionCrosses,
+                                            ),
                                         onExit: (_) => _clearHover(),
-                                        child: Stack(children: mapStackChildren),
+                                        child: Stack(
+                                          children: mapStackChildren,
+                                        ),
                                       )
                                     : Stack(children: mapStackChildren),
                               ),
@@ -742,15 +847,28 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(30),
                                   child: BackdropFilter(
-                                    filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                    filter: ui.ImageFilter.blur(
+                                      sigmaX: 10,
+                                      sigmaY: 10,
+                                    ),
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.4),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.4,
+                                        ),
                                         shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                        ),
                                       ),
                                       child: IconButton(
-                                        icon: const Icon(Icons.arrow_back_ios_new, color: darkBlue),
+                                        icon: const Icon(
+                                          Icons.arrow_back_ios_new,
+                                          color: darkBlue,
+                                        ),
+                                        tooltip: 'Retour à la carte du monde',
                                         onPressed: () => Navigator.pop(context),
                                       ),
                                     ),
@@ -768,25 +886,56 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(16),
                                   child: BackdropFilter(
-                                    filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                    filter: ui.ImageFilter.blur(
+                                      sigmaX: 10,
+                                      sigmaY: 10,
+                                    ),
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF12121C).withValues(alpha: 0.75),
+                                        color: const Color(
+                                          0xFF12121C,
+                                        ).withValues(alpha: 0.75),
                                         borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: Colors.white24),
+                                        border: Border.all(
+                                          color: Colors.white24,
+                                        ),
                                       ),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          _buildLegendItem(MapSettings.colorStopped, Icons.home_rounded, 'Visitée (Arrêt)'),
-                                          _buildLegendItem(MapSettings.colorTraversed, Icons.star_rounded, 'Traversée'),
+                                          _buildLegendItem(
+                                            MapSettings.colorStopped,
+                                            Icons.home_rounded,
+                                            'Visitée (Arrêt)',
+                                          ),
+                                          _buildLegendItem(
+                                            MapSettings.colorTraversed,
+                                            Icons.star_rounded,
+                                            'Traversée',
+                                          ),
                                           if (!_hasFocusPlanned)
-                                            _buildLegendItem(Colors.white70, Icons.question_mark_rounded, 'À découvrir'),
+                                            _buildLegendItem(
+                                              Colors.white70,
+                                              Icons.question_mark_rounded,
+                                              'À découvrir',
+                                            ),
                                           if (_hasFocusPlanned) ...[
-                                            _buildLegendItem(MapSettings.colorReachable, Icons.navigation_rounded, 'Accessible'),
-                                            _buildLegendItem(MapSettings.colorUnreachable, Icons.close_rounded, 'Trop loin'),
+                                            _buildLegendItem(
+                                              MapSettings.colorReachable,
+                                              Icons.navigation_rounded,
+                                              'Accessible',
+                                            ),
+                                            _buildLegendItem(
+                                              MapSettings.colorUnreachable,
+                                              Icons.close_rounded,
+                                              'Trop loin',
+                                            ),
                                           ],
                                         ],
                                       ),
@@ -804,28 +953,45 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                 alignment: Alignment.bottomCenter,
                                 child: Builder(
                                   builder: (context) {
-                                    final selectedCrossObj = regionCrosses.where((c) => c.id == _selectedCrossId).firstOrNull;
-                                    if (selectedCrossObj == null) return const SizedBox.shrink();
+                                    final selectedCrossObj = regionCrosses
+                                        .where((c) => c.id == _selectedCrossId)
+                                        .firstOrNull;
+                                    if (selectedCrossObj == null)
+                                      return const SizedBox.shrink();
 
-// ✨ FIX : Vérifie si c'est la ville vers laquelle on est déjà en route
-                                    final bool isCurrentTarget = _isTransitTarget(selectedCrossObj);
+                                    // ✨ FIX : Vérifie si c'est la ville vers laquelle on est déjà en route
+                                    final bool isCurrentTarget =
+                                        _isTransitTarget(selectedCrossObj);
 
-// Si c'est notre cible actuelle en transit, on autorise l'accès pour relancer du temps dessus !
-                                    final bool canGo = _isReachable(selectedCrossObj) || isCurrentTarget;
-                                    final bool isStopped = _isStopped(selectedCrossObj);
-                                    final bool isTraversed = _isTraversed(selectedCrossObj);
+                                    // Si c'est notre cible actuelle en transit, on autorise l'accès pour relancer du temps dessus !
+                                    final bool canGo =
+                                        _isReachable(selectedCrossObj) ||
+                                        isCurrentTarget;
+                                    final bool isStopped = _isStopped(
+                                      selectedCrossObj,
+                                    );
+                                    final bool isTraversed = _isTraversed(
+                                      selectedCrossObj,
+                                    );
                                     final route = _routeFor(selectedCrossObj);
 
-                                    String statusText = 'Zone frontalière inconnue';
+                                    String statusText =
+                                        'Zone frontalière inconnue';
                                     Color statusColor = Colors.white70;
-                                    
-                                    final bool willCampOnRoad = canGo && route != null && widget.selectedDurationMinutes > 0 && route.totalTravelMinutes > widget.selectedDurationMinutes;
 
-
+                                    final bool willCampOnRoad =
+                                        canGo &&
+                                        route != null &&
+                                        widget.selectedDurationMinutes > 0 &&
+                                        route.totalTravelMinutes >
+                                            widget.selectedDurationMinutes;
 
                                     if (isCurrentTarget) {
-                                      statusText = '⛺ Destination actuelle de ton expédition';
-                                      statusColor = const Color(0xFFFFB300); // Ambre
+                                      statusText =
+                                          '⛺ Destination actuelle de ton expédition';
+                                      statusColor = const Color(
+                                        0xFFFFB300,
+                                      ); // Ambre
                                     } else if (isStopped) {
                                       statusText = '🏕️ Ville déjà visitée';
                                       statusColor = MapSettings.colorStopped;
@@ -834,53 +1000,84 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                       statusColor = MapSettings.colorTraversed;
                                     } else if (canGo) {
                                       if (!_hasFocusPlanned) {
-                                        statusText = '🧭 Tu choisiras ta durée à l\'étape suivante';
-                                        statusColor = MapSettings.colorReachable;
+                                        statusText =
+                                            '🧭 Tu choisiras ta durée à l\'étape suivante';
+                                        statusColor =
+                                            MapSettings.colorReachable;
                                       } else if (willCampOnRoad) {
-                                        statusText = '⛺ Trajet long : campement en chemin';
+                                        statusText =
+                                            '⛺ Trajet long : campement en chemin';
                                         statusColor = const Color(0xFFFFB300);
                                       } else {
-                                        statusText = '🧭 Destination accessible en une fois';
-                                        statusColor = MapSettings.colorReachable;
+                                        statusText =
+                                            '🧭 Destination accessible en une fois';
+                                        statusColor =
+                                            MapSettings.colorReachable;
                                       }
                                     } else if (_hasFocusPlanned) {
-                                      statusText = '🔒 Bloquée par une zone inconnue';
-                                      statusColor = MapSettings.colorUnreachable;
+                                      statusText =
+                                          '🔒 Bloquée par une zone inconnue';
+                                      statusColor =
+                                          MapSettings.colorUnreachable;
                                     }
 
                                     // ✨ Calcul du trajet total cumulé (transit restant + nouveau trajet)
-                                  int totalDisplayMinutes = route != null ? route.totalTravelMinutes : 0;
+                                    int totalDisplayMinutes = route != null
+                                        ? route.totalTravelMinutes
+                                        : 0;
                                     if (isCurrentTarget && route == null) {
-                                      totalDisplayMinutes = 0; // Aucun temps supplémentaire si on clique sur notre propre étape actuelle
+                                      totalDisplayMinutes =
+                                          0; // Aucun temps supplémentaire si on clique sur notre propre étape actuelle
                                     }
                                     if (_transitRoute.isNotEmpty) {
-                                      totalDisplayMinutes += _transitRemainingMinutes;
+                                      totalDisplayMinutes +=
+                                          _transitRemainingMinutes;
                                     }
 
                                     return ClipRRect(
                                       borderRadius: BorderRadius.circular(24),
                                       child: BackdropFilter(
-                                        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                                        filter: ui.ImageFilter.blur(
+                                          sigmaX: 12,
+                                          sigmaY: 12,
+                                        ),
                                         child: Container(
-                                          constraints: const BoxConstraints(maxWidth: 420),
-                                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 420,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 18,
+                                            vertical: 14,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF12121C).withValues(alpha: 0.85),
-                                            borderRadius: BorderRadius.circular(24),
-                                            border: Border.all(color: statusColor.withValues(alpha: 0.6), width: 1.5),
+                                            color: const Color(
+                                              0xFF12121C,
+                                            ).withValues(alpha: 0.85),
+                                            borderRadius: BorderRadius.circular(
+                                              24,
+                                            ),
+                                            border: Border.all(
+                                              color: statusColor.withValues(
+                                                alpha: 0.6,
+                                              ),
+                                              width: 1.5,
+                                            ),
                                           ),
                                           child: Row(
                                             children: [
                                               Expanded(
                                                 child: Column(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       selectedCrossObj.name,
                                                       style: const TextStyle(
                                                         color: Colors.white,
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                         fontSize: 16,
                                                       ),
                                                     ),
@@ -889,11 +1086,14 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                                       statusText,
                                                       style: TextStyle(
                                                         color: statusColor,
-                                                        fontWeight: FontWeight.w600,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                         fontSize: 12,
                                                       ),
                                                     ),
-                                                    if (canGo && (route != null || isCurrentTarget)) ...[
+                                                    if (canGo &&
+                                                        (route != null ||
+                                                            isCurrentTarget)) ...[
                                                       const SizedBox(height: 2),
                                                       Text(
                                                         // ✨ Affichage du temps total cumulé
@@ -901,29 +1101,62 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                                         style: const TextStyle(
                                                           color: Colors.white70,
                                                           fontSize: 12,
-                                                          fontWeight: FontWeight.bold,
+                                                          fontWeight:
+                                                              FontWeight.bold,
                                                         ),
                                                       ),
                                                     ],
                                                   ],
                                                 ),
                                               ),
-                                              if (!widget.readOnly && (_hasFocusPlanned || canGo)) ...[
+                                              if (!widget.readOnly &&
+                                                  (_hasFocusPlanned ||
+                                                      canGo)) ...[
                                                 const SizedBox(width: 12),
                                                 ElevatedButton.icon(
                                                   style: ElevatedButton.styleFrom(
-                                                    backgroundColor: canGo ? const Color(0xFFFF8C00) : Colors.grey.shade800,
-                                                    foregroundColor: Colors.white,
-                                                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                    backgroundColor: canGo
+                                                        ? const Color(
+                                                            0xFFFF8C00,
+                                                          )
+                                                        : Colors.grey.shade800,
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 18,
+                                                          vertical: 12,
+                                                        ),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            20,
+                                                          ),
+                                                    ),
                                                     elevation: canGo ? 6 : 0,
                                                   ),
-                                                  icon: Icon(canGo ? Icons.navigation_rounded : Icons.lock_rounded, size: 18),
-                                                  label: Text(
-                                                    canGo ? 'Y aller !' : 'Bloqué',
-                                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                                  icon: Icon(
+                                                    canGo
+                                                        ? Icons
+                                                              .navigation_rounded
+                                                        : Icons.lock_rounded,
+                                                    size: 18,
                                                   ),
-                                                  onPressed: canGo ? () => _navigateToCross(selectedCrossObj) : null,
+                                                  label: Text(
+                                                    canGo
+                                                        ? 'Y aller !'
+                                                        : 'Bloqué',
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                  onPressed: canGo
+                                                      ? () => _navigateToCross(
+                                                          selectedCrossObj,
+                                                        )
+                                                      : null,
                                                 ),
                                               ],
                                             ],

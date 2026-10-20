@@ -17,6 +17,7 @@ import 'package:focus_time/screens/profile/notification/notification_settings_sc
 import 'package:focus_time/services/audio_service.dart';
 import 'package:focus_time/services/admin_access_service.dart';
 import 'package:focus_time/screens/profile/admin/admin_management_screen.dart';
+import 'package:focus_time/theme/app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -128,7 +129,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const darkBlue = Color(0xFF143063);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color darkBlue = Theme.of(context).colorScheme.primary;
+    final Color panelColor = isDark
+        ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.96)
+        : Colors.white.withValues(alpha: 0.25);
     final email = FirebaseAuth.instance.currentUser?.email ?? 'Email inconnu';
 
     return Scaffold(
@@ -145,6 +150,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
+          if (isDark)
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.24)),
+            ),
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -157,10 +166,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                        border: Border.all(
+                          color: isDark
+                              ? Theme.of(context).colorScheme.outline
+                              : Colors.white.withValues(alpha: 0.4),
+                          width: 1.5,
+                        ),
                       ),
                       child: Material(
-                        color: Colors.white.withValues(alpha: 0.25),
+                        color: panelColor,
                         borderRadius: BorderRadius.circular(30),
                         clipBehavior: Clip.antiAlias,
                         child: Padding(
@@ -173,7 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.arrow_back_ios, color: darkBlue),
+                                    icon: Icon(Icons.arrow_back_ios, color: darkBlue),
                                     onPressed: () {
                                       Navigator.pop(context);
                                     },
@@ -215,7 +229,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         _loading
                                             ? '...'
                                             : (_pseudo.isEmpty ? 'Sans pseudo' : _pseudo),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 28,
                                           fontWeight: FontWeight.bold,
                                           color: darkBlue,
@@ -231,7 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ],
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.exit_to_app, color: darkBlue),
+                                    icon: Icon(Icons.exit_to_app, color: darkBlue),
                                     onPressed: () async {
                                       await GoogleSignIn().signOut();
                                       await FirebaseAuth.instance.signOut();
@@ -419,7 +433,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           color: darkBlue,
                                           size: 26,
                                         ),
-                                        title: const Text(
+                                        title: Text(
                                           'Musique d\'ambiance',
                                           style: TextStyle(
                                             color: darkBlue,
@@ -453,7 +467,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _buildMenuItem(
                                 Icons.dark_mode_outlined,
                                 'Changer de thème',
-                                isAvailable: false,
+                                isAvailable: true,
+                                onTap: _showThemeDialog,
                               ),
                               _buildMenuItem(
                                 Icons.info_outline,
@@ -520,8 +535,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showThemeDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Apparence'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildThemeChoice(dialogContext, ThemeMode.light, 'Clair', 'Utiliser le thème clair'),
+            _buildThemeChoice(dialogContext, ThemeMode.dark, 'Sombre', 'Utiliser le thème sombre'),
+            _buildThemeChoice(dialogContext, ThemeMode.system, 'Selon l’appareil', 'Suivre le réglage du téléphone'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeChoice(
+    BuildContext dialogContext,
+    ThemeMode themeMode,
+    String title,
+    String subtitle,
+  ) {
+    final bool selected = AppThemeController.mode.value == themeMode;
+    final Color primaryColor = Theme.of(context).colorScheme.primary;
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      selected: selected,
+      leading: Icon(
+        selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+        color: selected ? primaryColor : Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      onTap: () async {
+        await AppThemeController.setMode(themeMode);
+        if (dialogContext.mounted) Navigator.pop(dialogContext);
+      },
+    );
+  }
+
   Widget _buildMenuItem(IconData icon, String title, {bool isAvailable = true, VoidCallback? onTap}) {
-    const darkBlue = Color(0xFF143063);
+    final Color darkBlue = Theme.of(context).colorScheme.primary;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),

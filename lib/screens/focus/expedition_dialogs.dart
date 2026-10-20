@@ -138,7 +138,7 @@ class ActiveTimerDialogs {
             onSelect(minutes);
           },
           child: Ink(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 17),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(14),

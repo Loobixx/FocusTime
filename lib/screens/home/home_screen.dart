@@ -9,9 +9,10 @@ import 'package:focus_time/screens/focus/focus_screen.dart';
 import 'package:focus_time/screens/map/map_screen.dart';
 import 'package:focus_time/screens/profile/profile_screen.dart';
 import '../../models/city_network.dart';
-import 'package:focus_time/starter/character_selection_screen.dart'; 
+import 'package:focus_time/starter/character_selection_screen.dart';
 import 'package:focus_time/services/notification_service.dart';
 import 'package:focus_time/services/audio_service.dart';
+import 'package:focus_time/theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
     AudioManager().initAndPlay();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkCharacterSelection(); 
+      _checkCharacterSelection();
       _checkPendingCompanionReward(); // 👈 On vérifie si un compagnon attend d'être fêté
     });
   }
@@ -41,9 +42,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
     final doc = await userRef.get();
-    
+
     String? pendingId = doc.data()?['pendingCompanionReward'] as String?;
     if (pendingId != null && pendingId.isNotEmpty) {
       // On supprime tout de suite le champ pour ne pas réafficher la pop-up en boucle
@@ -78,7 +81,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const Text(
                         '🎉 Nouveau Compagnon !',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF143063)),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF143063),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       Container(
@@ -87,7 +94,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFFF8C00), width: 3),
+                          border: Border.all(
+                            color: const Color(0xFFFF8C00),
+                            width: 3,
+                          ),
                         ),
                         child: ClipOval(
                           child: Padding(
@@ -96,7 +106,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               'compagnons/${companion.id}/${companion.id}_arret.gif',
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) {
-                                return const Icon(Icons.pets, size: 50, color: Color(0xFFFF8C00));
+                                return const Icon(
+                                  Icons.pets,
+                                  size: 50,
+                                  color: Color(0xFFFF8C00),
+                                );
                               },
                             ),
                           ),
@@ -106,7 +120,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         'Tu as rencontré ${companion.name} à ${companion.unlockCity} !',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF143063)),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF143063),
+                        ),
                       ),
                       const SizedBox(height: 24),
                       SizedBox(
@@ -115,11 +133,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF8C00),
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
                             elevation: 0,
                           ),
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Génial !', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                          child: const Text(
+                            'Génial !',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -132,18 +159,23 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
   }
-  
+
   Future<void> _checkCharacterSelection() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
     final currentCity = doc.data()?['currentCity'] as String?;
 
     if ((currentCity == null || currentCity.trim().isEmpty) && mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const CharacterSelectionScreen()),
+        MaterialPageRoute(
+          builder: (context) => const CharacterSelectionScreen(),
+        ),
       );
     } else {
       _checkPseudo();
@@ -155,13 +187,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
     final doc = await userRef.collection('travel').doc('status').get();
 
     if (doc.exists && doc.data()?['isFocusActive'] == true) {
       final data = doc.data()!;
       final destination = data['activeDestination'] as String? ?? 'Inconnue';
-      final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris';
+      final currentCity =
+          (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris';
 
       await userRef.collection('travel_history').add({
         'date': FieldValue.serverTimestamp(),
@@ -184,14 +219,23 @@ class _HomeScreenState extends State<HomeScreen> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             title: const Text('🧭 Tu t\'es perdu !'),
-            content: const Text('L\'application a été fermée pendant ton voyage. Ton trajet a été annulé et comptabilisé comme un échec.'),
+            content: const Text(
+              'L\'application a été fermée pendant ton voyage. Ton trajet a été annulé et comptabilisé comme un échec.',
+            ),
             actions: [
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF8C00),
+                ),
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Compris', style: TextStyle(color: Colors.white)),
+                child: const Text(
+                  'Compris',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -204,16 +248,30 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
     String charId = doc.data()?['characterId'] as String? ?? 'nuit';
 
     Color themeColor = Colors.deepPurple;
     switch (charId) {
-      case 'desert': themeColor = Colors.orange; break;
-      case 'montagnes': themeColor = Colors.green; break;
-      case 'lac': themeColor = Colors.blue; break;
-      case 'nuages': themeColor = Colors.pinkAccent; break;
-      case 'nuit': default: themeColor = Colors.deepPurple; break;
+      case 'desert':
+        themeColor = Colors.orange;
+        break;
+      case 'montagnes':
+        themeColor = Colors.green;
+        break;
+      case 'lac':
+        themeColor = Colors.blue;
+        break;
+      case 'nuages':
+        themeColor = Colors.pinkAccent;
+        break;
+      case 'nuit':
+      default:
+        themeColor = Colors.deepPurple;
+        break;
     }
 
     if (mounted) {
@@ -228,7 +286,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
     final pseudo = doc.data()?['pseudo'] as String?;
 
     if ((pseudo == null || pseudo.trim().isEmpty) && mounted) {
@@ -244,7 +305,9 @@ class _HomeScreenState extends State<HomeScreen> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Text('Choisis ton pseudo'),
           content: TextField(
             controller: pseudoController,
@@ -253,7 +316,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           actions: [
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF8C00),
+              ),
               onPressed: () async {
                 final value = pseudoController.text.trim();
                 if (value.isEmpty) return;
@@ -268,7 +333,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 if (context.mounted) Navigator.pop(context);
               },
-              child: const Text('Valider', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Valider',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -278,7 +346,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const darkBlue = Color(0xFF143063);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color darkBlue = Theme.of(context).colorScheme.primary;
+    final Color panelColor = isDark
+        ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.94)
+        : Colors.white.withValues(alpha: 0.75);
     const focusOrange = Color(0xFFFF8C00);
 
     return Scaffold(
@@ -291,12 +363,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Positioned.fill(
             child: ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-              child: Image.asset(
-                'assets/biome/fond2.png',
-                fit: BoxFit.cover,
-              ),
+              child: Image.asset('assets/biome/fond2.png', fit: BoxFit.cover),
             ),
           ),
+          if (isDark)
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.24)),
+            ),
 
           // 2. Contenu calé dans la zone visible
           SafeArea(
@@ -310,17 +383,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () async {
                         await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const ProfileScreen(),
+                          ),
                         );
                         _loadCharacterData();
                       },
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _borderColor,
-                            width: 3,
-                          ),
+                          border: Border.all(color: _borderColor, width: 3),
                           boxShadow: [
                             BoxShadow(
                               color: _borderColor.withValues(alpha: 0.3),
@@ -339,7 +411,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               errorBuilder: (context, error, stackTrace) {
                                 return Container(
                                   color: Colors.black,
-                                  child: const Icon(Icons.person, color: Colors.white, size: 28),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
                                 );
                               },
                             ),
@@ -350,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const Spacer(flex: 2),
-                const Text(
+                Text(
                   'FocusTime',
                   style: TextStyle(
                     fontSize: 56,
@@ -360,8 +436,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const Spacer(flex: 2),
                 const Spacer(flex: 2),
-                
-// ✨ FIX : StreamBuilder avec des boutons parfaitement alignés et stylisés
+
+                // ✨ FIX : StreamBuilder avec des boutons parfaitement alignés et stylisés
                 StreamBuilder<DocumentSnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('users')
@@ -373,10 +449,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     List<String> transitRoute = [];
 
                     if (snapshot.hasData && snapshot.data!.exists) {
-                      final data = snapshot.data!.data() as Map<String, dynamic>?;
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>?;
                       inTransit = data?['inTransit'] ?? false;
-                      transitRemainingMinutes = data?['transitRemainingMinutes'] ?? 0;
-                      transitRoute = List<String>.from(data?['transitRoute'] ?? []);
+                      transitRemainingMinutes =
+                          data?['transitRemainingMinutes'] ?? 0;
+                      transitRoute = List<String>.from(
+                        data?['transitRoute'] ?? [],
+                      );
                     }
 
                     return Column(
@@ -390,7 +470,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             decoration: BoxDecoration(
                               boxShadow: [
                                 BoxShadow(
-                                  color: (inTransit ? Colors.green.shade700 : focusOrange).withValues(alpha: 0.35),
+                                  color:
+                                      (inTransit
+                                              ? Colors.green.shade700
+                                              : focusOrange)
+                                          .withValues(alpha: 0.35),
                                   blurRadius: 16,
                                   offset: const Offset(0, 6),
                                 ),
@@ -398,8 +482,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: inTransit ? Colors.green.shade500 : focusOrange,
-                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                backgroundColor: inTransit
+                                    ? (isDark
+                                          ? AppColors.transitGreenDarkTheme
+                                          : Colors.green.shade500)
+                                    : focusOrange,
+                                foregroundColor: isDark
+                                    ? AppColors.textPrimary
+                                    : Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30),
                                 ),
@@ -412,7 +505,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => FocusScreen(
-                                        transitRemainingMinutes: transitRemainingMinutes,
+                                        transitRemainingMinutes:
+                                            transitRemainingMinutes,
                                         transitRoute: transitRoute,
                                       ),
                                     ),
@@ -421,12 +515,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                   // Trajet classique
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => const FocusScreen()),
+                                    MaterialPageRoute(
+                                      builder: (context) => const FocusScreen(),
+                                    ),
                                   );
                                 }
                               },
                               child: Text(
-                                inTransit ? 'REPRENDRE LA ROUTE' : 'START FOCUS',
+                                inTransit
+                                    ? 'REPRENDRE LA ROUTE'
+                                    : 'START FOCUS',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   color: Colors.white,
@@ -455,22 +553,41 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => const MapScreen(readOnly: true),
+                                        builder: (context) =>
+                                            const MapScreen(readOnly: true),
                                       ),
                                     );
                                   },
                                   borderRadius: BorderRadius.circular(30),
                                   child: Container(
                                     width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(vertical: 16), // Même hauteur visuelle
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ), // Même hauteur visuelle
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.25), // Un poil plus transparent
+                                      color: isDark
+                                          ? Theme.of(context)
+                                                .colorScheme
+                                                .surface
+                                                .withValues(alpha: 0.9)
+                                          : Colors.white.withValues(
+                                              alpha: 0.25,
+                                            ),
                                       borderRadius: BorderRadius.circular(30),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
+                                      border: Border.all(
+                                        color: isDark
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.outline
+                                            : Colors.white.withValues(
+                                                alpha: 0.6,
+                                              ),
+                                        width: 1.5,
+                                      ),
                                     ),
-                                    child: const Center(
+                                    child: Center(
                                       child: Text(
-                                        'CARTE DU MONDE', // Plus sympa que juste "MAP"
+                                        'CARTE DU MONDE',
                                         style: TextStyle(
                                           fontSize: 16,
                                           color: darkBlue,
@@ -489,12 +606,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-                
+
                 const Spacer(flex: 3),
                 const Spacer(flex: 3),
                 // --- CARTE DE VOYAGE EN BAS ---
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 32,
+                  ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(24),
                     child: BackdropFilter(
@@ -503,9 +623,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.75),
+                          color: panelColor,
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white, width: 1.5),
+                          border: Border.all(
+                            color: isDark
+                                ? Theme.of(context).colorScheme.outline
+                                : Colors.white,
+                            width: 1.5,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.08),
@@ -521,9 +646,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               .snapshots(),
                           builder: (context, userSnapshot) {
                             String currentCity = 'Le village de Néris';
-                            if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                              final data = userSnapshot.data!.data() as Map<String, dynamic>?;
-                              currentCity = data?['currentCity'] ?? 'Le village de Néris';
+                            if (userSnapshot.hasData &&
+                                userSnapshot.data!.exists) {
+                              final data =
+                                  userSnapshot.data!.data()
+                                      as Map<String, dynamic>?;
+                              currentCity =
+                                  data?['currentCity'] ?? 'Le village de Néris';
                             }
 
                             return StreamBuilder<DocumentSnapshot>(
@@ -539,59 +668,96 @@ class _HomeScreenState extends State<HomeScreen> {
                                 String? activeDestination;
                                 int midRouteProgress = 0;
 
-                                if (travelSnapshot.hasData && travelSnapshot.data!.exists) {
-                                  final travelData = travelSnapshot.data!.data() as Map<String, dynamic>?;
-                                  isFocusActive = travelData?['isFocusActive'] ?? false;
-                                  midRouteDestination = travelData?['midRouteDestination'];
-                                  activeDestination = travelData?['activeDestination'];
-                                  midRouteProgress = travelData?['midRouteProgress'] ?? 0;
+                                if (travelSnapshot.hasData &&
+                                    travelSnapshot.data!.exists) {
+                                  final travelData =
+                                      travelSnapshot.data!.data()
+                                          as Map<String, dynamic>?;
+                                  isFocusActive =
+                                      travelData?['isFocusActive'] ?? false;
+                                  midRouteDestination =
+                                      travelData?['midRouteDestination'];
+                                  activeDestination =
+                                      travelData?['activeDestination'];
+                                  midRouteProgress =
+                                      travelData?['midRouteProgress'] ?? 0;
                                 }
 
                                 String displayPosition = currentCity;
-                                if (isFocusActive && activeDestination != null) {
-                                  displayPosition = '$currentCity ➔ $activeDestination';
-                                } else if (midRouteDestination != null && midRouteDestination.isNotEmpty) {
-                                  displayPosition = '$currentCity ➔ $midRouteDestination';
+                                if (isFocusActive &&
+                                    activeDestination != null) {
+                                  displayPosition =
+                                      '$currentCity ➔ $activeDestination';
+                                } else if (midRouteDestination != null &&
+                                    midRouteDestination.isNotEmpty) {
+                                  displayPosition =
+                                      '$currentCity ➔ $midRouteDestination';
                                 }
 
                                 return FutureBuilder<QuerySnapshot>(
                                   future: FirebaseFirestore.instance
                                       .collection('users')
-                                      .doc(FirebaseAuth.instance.currentUser?.uid)
+                                      .doc(
+                                        FirebaseAuth.instance.currentUser?.uid,
+                                      )
                                       .collection('visited_cities')
                                       .get(),
                                   builder: (context, visitedSnapshot) {
                                     Set<String> visitedCities = {};
                                     if (visitedSnapshot.hasData) {
-                                      visitedCities = visitedSnapshot.data!.docs.map((d) => d.id).toSet();
+                                      visitedCities = visitedSnapshot.data!.docs
+                                          .map((d) => d.id)
+                                          .toSet();
                                     }
 
                                     int staticTimeRemaining = 0;
-                                    if (!isFocusActive && midRouteDestination != null) {
-                                      int fullTime = CityNetwork.getAvailableDestinations(currentCity)[midRouteDestination] ?? 0;
-                                      if (visitedCities.contains(midRouteDestination)) {
+                                    if (!isFocusActive &&
+                                        midRouteDestination != null) {
+                                      int fullTime =
+                                          CityNetwork.getAvailableDestinations(
+                                            currentCity,
+                                          )[midRouteDestination] ??
+                                          0;
+                                      if (visitedCities.contains(
+                                        midRouteDestination,
+                                      )) {
                                         fullTime = fullTime ~/ 5;
                                       }
-                                      staticTimeRemaining = fullTime - midRouteProgress;
-                                      if (staticTimeRemaining < 0) staticTimeRemaining = 0;
+                                      staticTimeRemaining =
+                                          fullTime - midRouteProgress;
+                                      if (staticTimeRemaining < 0)
+                                        staticTimeRemaining = 0;
                                     }
 
                                     return Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         // Ligne 1 : Position
                                         Row(
                                           children: [
-                                            const Icon(Icons.location_on, color: Color(0xFFFF8C00), size: 24),
+                                            const Icon(
+                                              Icons.location_on,
+                                              color: Color(0xFFFF8C00),
+                                              size: 24,
+                                            ),
                                             const SizedBox(width: 10),
-                                            const Text(
+                                            Text(
                                               'Position : ',
-                                              style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600),
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                color: darkBlue,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                             Expanded(
                                               child: Text(
                                                 displayPosition,
-                                                style: const TextStyle(fontSize: 16, color: darkBlue, fontWeight: FontWeight.bold),
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  color: darkBlue,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
@@ -603,20 +769,32 @@ class _HomeScreenState extends State<HomeScreen> {
                                         Row(
                                           children: [
                                             Icon(
-                                              isFocusActive ? Icons.directions_car : Icons.nights_stay,
-                                              color: isFocusActive ? Colors.green.shade600 : const Color(0xFF6A1B9A),
+                                              isFocusActive
+                                                  ? Icons.directions_car
+                                                  : Icons.nights_stay,
+                                              color: isFocusActive
+                                                  ? Colors.green.shade600
+                                                  : const Color(0xFF6A1B9A),
                                               size: 24,
                                             ),
                                             const SizedBox(width: 10),
-                                            const Text(
-                                              'Statut : ',
-                                              style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600),
-                                            ),
                                             Text(
-                                              isFocusActive ? 'En plein voyage !' : 'Prêt à randonner',
+                                              'Statut : ',
                                               style: TextStyle(
                                                 fontSize: 15,
-                                                color: isFocusActive ? Colors.green.shade700 : const Color(0xFF6A1B9A),
+                                                color: darkBlue,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            Text(
+                                              isFocusActive
+                                                  ? 'En plein voyage !'
+                                                  : 'Prêt à randonner',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                color: isFocusActive
+                                                    ? Colors.green.shade700
+                                                    : const Color(0xFF6A1B9A),
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
@@ -624,19 +802,34 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
 
                                         // Ligne 3 : Temps restant statique
-                                        if (!isFocusActive && midRouteDestination != null) ...[
+                                        if (!isFocusActive &&
+                                            midRouteDestination != null) ...[
                                           const SizedBox(height: 12),
                                           Row(
                                             children: [
-                                              const Icon(Icons.timer_outlined, color: Color(0xFFFF8C00), size: 24),
+                                              const Icon(
+                                                Icons.timer_outlined,
+                                                color: Color(0xFFFF8C00),
+                                                size: 24,
+                                              ),
                                               const SizedBox(width: 10),
-                                              const Text(
+                                              Text(
                                                 'Reste pour arriver : ',
-                                                style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600),
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  color: darkBlue,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
                                               Text(
-                                                formatMinutesToHours(staticTimeRemaining),
-                                                style: const TextStyle(fontSize: 16, color: darkBlue, fontWeight: FontWeight.bold),
+                                                formatMinutesToHours(
+                                                  staticTimeRemaining,
+                                                ),
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  color: darkBlue,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
                                             ],
                                           ),

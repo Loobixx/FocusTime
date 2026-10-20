@@ -26,7 +26,8 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
+class _MapScreenState extends State<MapScreen>
+    with SingleTickerProviderStateMixin {
   String? _selectedRegionId;
   String? _hoveredRegionId;
   String? _currentRegionId;
@@ -87,7 +88,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (bounds == null) return null;
 
     final double marginMapUnits =
-        WorldCloudSettings.clearMarginCm * WorldCloudSettings.logicalPxPerCm / _fitScale;
+        WorldCloudSettings.clearMarginCm *
+        WorldCloudSettings.logicalPxPerCm /
+        _fitScale;
     final Rect mapRect = Rect.fromLTWH(0, 0, baseWidth, baseHeight);
 
     Rect zone = bounds.intersect(mapRect.deflate(marginMapUnits));
@@ -99,12 +102,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
     final userDoc = await userRef.get();
 
     final visitedDoc = await userRef.collection('visited_cities').get();
     final stoppedDoc = await userRef.collection('stopped_cities').get();
-    
+
     final Set<String> visitedCities = {
       ...visitedDoc.docs.map((d) => d.id),
       ...stoppedDoc.docs.map((d) => d.id),
@@ -135,7 +140,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       setState(() {
         _characterId = charId;
         _currentRegionId = foundRegion;
-        _visitedRegionIds = visitedRegions; 
+        _visitedRegionIds = visitedRegions;
       });
     }
   }
@@ -206,7 +211,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       screenSize.width / baseWidth,
       screenSize.height / baseHeight,
     );
-    
+
     _fitScale = fitScale * 1;
 
     final double scaledWidth = baseWidth * _fitScale;
@@ -221,12 +226,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   Offset? _getRegionCenter(String? regionId) {
     switch (regionId) {
-      case 'desert': return const Offset(260, 480);
-      case 'lac': return const Offset(220, 920);
-      case 'montagnes': return const Offset(630, 1150);
-      case 'nuit': return const Offset(710, 700);
-      case 'nuages': return const Offset(760, 290);
-      default: return null;
+      case 'desert':
+        return const Offset(260, 480);
+      case 'lac':
+        return const Offset(220, 920);
+      case 'montagnes':
+        return const Offset(630, 1150);
+      case 'nuit':
+        return const Offset(710, 700);
+      case 'nuages':
+        return const Offset(760, 290);
+      default:
+        return null;
     }
   }
 
@@ -250,7 +261,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final Size screenSize = Size(constraints.maxWidth, constraints.maxHeight);
+                final Size screenSize = Size(
+                  constraints.maxWidth,
+                  constraints.maxHeight,
+                );
 
                 if (!_viewInitialized) {
                   _viewInitialized = true;
@@ -269,7 +283,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 final Rect? cloudZone = _cloudZone();
 
                 // ✨ On donne TOUTES les régions pour empêcher les nuages blancs d'aller sur l'île
-                final List<Path> allIslandPaths = _regions.map((r) => r.path).toList();
+                final List<Path> allIslandPaths = _regions
+                    .map((r) => r.path)
+                    .toList();
 
                 return InteractiveViewer(
                   transformationController: _transformationController,
@@ -287,18 +303,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onHover: (e) => _handleHover(e, scaledRegions),
                       onExit: (_) => setState(() => _hoveredRegionId = null),
                       child: GestureDetector(
-                        onTapUp: (details) => _handleTapUp(details, scaledRegions),
+                        onTapUp: (details) =>
+                            _handleTapUp(details, scaledRegions),
                         child: Stack(
                           children: [
                             const RepaintBoundary(
                               child: Image(
-                                image: AssetImage('assets/biome/map_global.png'),
+                                image: AssetImage(
+                                  'assets/biome/map_global.png',
+                                ),
                                 width: baseWidth,
                                 height: baseHeight,
                                 fit: BoxFit.fill,
                               ),
                             ),
-                            
+
                             // ☁️ Nuages de la map globale (cantonnés à l'océan)
                             if (cloudZone != null)
                               Positioned.fill(
@@ -308,12 +327,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                       animation: _cloudAnimationController,
                                       builder: (context, child) {
                                         return CustomPaint(
-                                          size: const Size(baseWidth, baseHeight),
+                                          size: const Size(
+                                            baseWidth,
+                                            baseHeight,
+                                          ),
                                           painter: WorldCloudsPainter(
                                             zone: cloudZone,
-                                            animationValue: _cloudAnimationController.value,
+                                            animationValue:
+                                                _cloudAnimationController.value,
                                             sprites: _cloudSprites,
-                                            revealPaths: allIslandPaths, // Garde l'île claire !
+                                            revealPaths:
+                                                allIslandPaths, // Garde l'île claire !
                                           ),
                                         );
                                       },
@@ -330,7 +354,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                   regions: scaledRegions,
                                   selectedRegionId: _selectedRegionId,
                                   hoveredRegionId: _hoveredRegionId,
-                                  visitedRegionIds: _visitedRegionIds, // ✨ On passe les régions explorées
+                                  visitedRegionIds:
+                                      _visitedRegionIds, // ✨ On passe les régions explorées
                                 ),
                               ),
                             ),
@@ -338,7 +363,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                             if (playerPosition != null)
                               Positioned(
                                 left: playerPosition.dx - charSize.width / 2,
-                                top: playerPosition.dy - charSize.height * SpriteConfig.footRatio,
+                                top:
+                                    playerPosition.dy -
+                                    charSize.height * SpriteConfig.footRatio,
                                 child: IgnorePointer(
                                   child: RepaintBoundary(
                                     child: CharacterSprite(
@@ -371,10 +398,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.4),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
                       ),
                       child: IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new, color: darkBlue),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: darkBlue,
+                        ),
+                        tooltip: 'Retour',
                         onPressed: () => Navigator.pop(context),
                       ),
                     ),
@@ -391,19 +424,36 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: darkBlue.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2)
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
                     ],
                   ),
-                  child: Text(
-                    _selectedRegionId != null
-                        ? '$_displayedName — retape pour explorer !'
-                        : _displayedName!,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  child: Semantics(
+                    liveRegion: _selectedRegionId != null,
+                    label: _selectedRegionId != null
+                        ? 'Région sélectionnée : $_displayedName. Touchez de nouveau pour explorer.'
+                        : 'Région : $_displayedName',
+                    excludeSemantics: true,
+                    child: Text(
+                      _selectedRegionId != null
+                          ? '$_displayedName — retape pour explorer !'
+                          : _displayedName!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -437,7 +487,10 @@ class MapPainter extends CustomPainter {
       // ✨ L'ombre exacte pour les régions non explorées (Effet "Fog of War" sur terre)
       if (!isExplored) {
         final darkOverlay = Paint()
-          ..color = Colors.black.withValues(alpha: 0.5) // Noir semi-transparent pour l'effet ombre
+          ..color = Colors.black
+              .withValues(
+                alpha: 0.5,
+              ) // Noir semi-transparent pour l'effet ombre
           ..style = PaintingStyle.fill;
         canvas.drawPath(region.path, darkOverlay);
       }
