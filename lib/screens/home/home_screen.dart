@@ -454,7 +454,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   onTap: () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(builder: (context) => const MapScreen()),
+                                      MaterialPageRoute(
+                                        builder: (context) => const MapScreen(readOnly: true),
+                                      ),
                                     );
                                   },
                                   borderRadius: BorderRadius.circular(30),

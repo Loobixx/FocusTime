@@ -54,6 +54,7 @@ class MapSettings {
 class RegionDetailScreen extends StatefulWidget {
   final String regionName;
   final int selectedDurationMinutes;
+  final bool readOnly;
   
   // ✨ FIX : Ajout des paramètres optionnels de transit
   final List<String>? transitRoute;
@@ -63,6 +64,7 @@ class RegionDetailScreen extends StatefulWidget {
     super.key,
     required this.regionName,
     this.selectedDurationMinutes = 0,
+    this.readOnly = false,
     this.transitRoute,
     this.transitRemainingMinutes,
   });
@@ -277,6 +279,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
 
   bool _isVisibleOutOfFog(RegionCross cross) {
     if (_isCurrentCity(cross) || _isStopped(cross) || _isTraversed(cross)) return true;
+    if (widget.readOnly) return false;
     return _visibleKeys.contains(normalizeCityName(cross.name));
   }
 
@@ -332,6 +335,8 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
   }
 
   void _navigateToCross(RegionCross cross) {
+    if (widget.readOnly) return;
+
     final route = _routeFor(cross);
     final bool isTransitTarget = _isTransitTarget(cross);
 
@@ -401,7 +406,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
 
     final bool isStopped = _isStopped(cross);
     final bool isTraversed = _isTraversed(cross);
-    final bool isReachable = _isReachable(cross);
+    final bool isReachable = !widget.readOnly && _isReachable(cross);
     final bool isSelected = _selectedCrossId == cross.id;
 
     if (!_hasFocusPlanned) {
@@ -903,7 +908,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                                   ],
                                                 ),
                                               ),
-                                              if (_hasFocusPlanned || canGo) ...[
+                                              if (!widget.readOnly && (_hasFocusPlanned || canGo)) ...[
                                                 const SizedBox(width: 12),
                                                 ElevatedButton.icon(
                                                   style: ElevatedButton.styleFrom(

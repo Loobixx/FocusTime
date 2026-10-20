@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,22 +8,31 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:focus_time/screens/map/data/map_region_data.dart';
 import 'package:focus_time/screens/map/region_detail_screen.dart';
 import 'package:focus_time/screens/map/data/region_cross_data.dart';
+import 'package:focus_time/screens/map/fog_of_war.dart';
 import 'package:focus_time/widgets/game_sprites.dart';
 import 'package:focus_time/config/sprite_config.dart';
 
 class MapScreen extends StatefulWidget {
   final int selectedDurationMinutes;
-  const MapScreen({super.key, this.selectedDurationMinutes = 0});
+  final bool readOnly;
+
+  const MapScreen({
+    super.key,
+    this.selectedDurationMinutes = 0,
+    this.readOnly = false,
+  });
 
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
   String? _selectedRegionId;
   String? _hoveredRegionId;
   String? _currentRegionId;
   String _characterId = 'nuit';
+
+  Set<String> _visitedRegionIds = {};
 
   late final TransformationController _transformationController;
   bool _viewInitialized = false;
@@ -36,42 +46,96 @@ class _MapScreenState extends State<MapScreen> {
 
   final List<RegionShape> _regions = MapRegionsData.regions;
 
+  late final AnimationController _cloudAnimationController;
+  List<ui.Image>? _cloudSprites;
+  late final Rect? _regionsBounds = _computeRegionsBounds();
+
   @override
   void initState() {
     super.initState();
     _transformationController = TransformationController();
+
+    _cloudAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: FogSettings.cycleSeconds),
+    )..repeat();
+
+    CloudSprites.generate().then((sprites) {
+      if (!mounted) {
+        for (final img in sprites) {
+          img.dispose();
+        }
+        return;
+      }
+      setState(() => _cloudSprites = sprites);
+    });
+
     _loadUserRegion();
+  }
+
+  Rect? _computeRegionsBounds() {
+    Rect? bounds;
+    for (final region in _regions) {
+      final b = region.path.getBounds();
+      bounds = bounds == null ? b : bounds.expandToInclude(b);
+    }
+    return bounds;
+  }
+
+  Rect? _cloudZone() {
+    final bounds = _regionsBounds;
+    if (bounds == null) return null;
+
+    final double marginMapUnits =
+        WorldCloudSettings.clearMarginCm * WorldCloudSettings.logicalPxPerCm / _fitScale;
+    final Rect mapRect = Rect.fromLTWH(0, 0, baseWidth, baseHeight);
+
+    Rect zone = bounds.intersect(mapRect.deflate(marginMapUnits));
+    if (zone.width < 200 || zone.height < 200) zone = bounds;
+    return zone;
   }
 
   Future<void> _loadUserRegion() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userDoc = await userRef.get();
+
+    final visitedDoc = await userRef.collection('visited_cities').get();
+    final stoppedDoc = await userRef.collection('stopped_cities').get();
+    
+    final Set<String> visitedCities = {
+      ...visitedDoc.docs.map((d) => d.id),
+      ...stoppedDoc.docs.map((d) => d.id),
+    };
 
     final charId = userDoc.data()?['characterId'] as String? ?? 'nuit';
-    if (mounted) setState(() => _characterId = charId);
-
     String? currentCity = userDoc.data()?['currentCity'] as String?;
-    if (currentCity == null) return;
 
+    Set<String> visitedRegions = {};
     String? foundRegion;
+
     for (var entry in RegionCrossesData.crossesByRegion.entries) {
       for (var cross in entry.value) {
-        if (cross.name == currentCity) {
+        if (currentCity != null && cross.name == currentCity) {
           foundRegion = entry.key;
-          break;
+        }
+        if (visitedCities.contains(cross.name)) {
+          visitedRegions.add(entry.key);
         }
       }
-      if (foundRegion != null) break;
+    }
+
+    if (foundRegion != null) {
+      visitedRegions.add(foundRegion);
     }
 
     if (mounted) {
       setState(() {
+        _characterId = charId;
         _currentRegionId = foundRegion;
+        _visitedRegionIds = visitedRegions; 
       });
     }
   }
@@ -79,6 +143,10 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void dispose() {
     _transformationController.dispose();
+    _cloudAnimationController.dispose();
+    for (final s in _cloudSprites ?? const <ui.Image>[]) {
+      s.dispose();
+    }
     super.dispose();
   }
 
@@ -121,6 +189,7 @@ class _MapScreenState extends State<MapScreen> {
         builder: (context) => RegionDetailScreen(
           regionName: regionId,
           selectedDurationMinutes: widget.selectedDurationMinutes,
+          readOnly: widget.readOnly,
         ),
       ),
     );
@@ -153,8 +222,8 @@ class _MapScreenState extends State<MapScreen> {
   Offset? _getRegionCenter(String? regionId) {
     switch (regionId) {
       case 'desert': return const Offset(260, 480);
-      case 'lac': return const Offset(310, 720);
-      case 'montagnes': return const Offset(550, 900);
+      case 'lac': return const Offset(220, 920);
+      case 'montagnes': return const Offset(630, 1150);
       case 'nuit': return const Offset(710, 700);
       case 'nuages': return const Offset(760, 290);
       default: return null;
@@ -197,6 +266,10 @@ class _MapScreenState extends State<MapScreen> {
                 final double maxScale = _fitScale * _zoomInFactor;
 
                 final scaledRegions = _regions;
+                final Rect? cloudZone = _cloudZone();
+
+                // ✨ On donne TOUTES les régions pour empêcher les nuages blancs d'aller sur l'île
+                final List<Path> allIslandPaths = _regions.map((r) => r.path).toList();
 
                 return InteractiveViewer(
                   transformationController: _transformationController,
@@ -226,6 +299,30 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                             ),
                             
+                            // ☁️ Nuages de la map globale (cantonnés à l'océan)
+                            if (cloudZone != null)
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: RepaintBoundary(
+                                    child: AnimatedBuilder(
+                                      animation: _cloudAnimationController,
+                                      builder: (context, child) {
+                                        return CustomPaint(
+                                          size: const Size(baseWidth, baseHeight),
+                                          painter: WorldCloudsPainter(
+                                            zone: cloudZone,
+                                            animationValue: _cloudAnimationController.value,
+                                            sprites: _cloudSprites,
+                                            revealPaths: allIslandPaths, // Garde l'île claire !
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                            // Peinture des régions (avec l'assombrissement)
                             RepaintBoundary(
                               child: CustomPaint(
                                 size: const Size(baseWidth, baseHeight),
@@ -233,15 +330,15 @@ class _MapScreenState extends State<MapScreen> {
                                   regions: scaledRegions,
                                   selectedRegionId: _selectedRegionId,
                                   hoveredRegionId: _hoveredRegionId,
+                                  visitedRegionIds: _visitedRegionIds, // ✨ On passe les régions explorées
                                 ),
                               ),
                             ),
 
-                            // Personnage : taille et animation gérées par SpriteConfig
                             if (playerPosition != null)
                               Positioned(
-                              left: playerPosition.dx - charSize.width / 2,
-                              top: playerPosition.dy - charSize.height * SpriteConfig.footRatio,
+                                left: playerPosition.dx - charSize.width / 2,
+                                top: playerPosition.dy - charSize.height * SpriteConfig.footRatio,
                                 child: IgnorePointer(
                                   child: RepaintBoundary(
                                     child: CharacterSprite(
@@ -321,11 +418,13 @@ class MapPainter extends CustomPainter {
   final List<RegionShape> regions;
   final String? selectedRegionId;
   final String? hoveredRegionId;
+  final Set<String> visitedRegionIds; // ✨ Requis pour savoir quoi assombrir
 
   MapPainter({
     required this.regions,
     this.selectedRegionId,
     this.hoveredRegionId,
+    required this.visitedRegionIds,
   });
 
   @override
@@ -333,7 +432,17 @@ class MapPainter extends CustomPainter {
     for (final region in regions) {
       final bool isHovered = region.id == hoveredRegionId;
       final bool isSelected = region.id == selectedRegionId;
+      final bool isExplored = visitedRegionIds.contains(region.id);
 
+      // ✨ L'ombre exacte pour les régions non explorées (Effet "Fog of War" sur terre)
+      if (!isExplored) {
+        final darkOverlay = Paint()
+          ..color = Colors.black.withValues(alpha: 0.5) // Noir semi-transparent pour l'effet ombre
+          ..style = PaintingStyle.fill;
+        canvas.drawPath(region.path, darkOverlay);
+      }
+
+      // Surbrillance au survol/clic
       if (isHovered || isSelected) {
         final highlightFill = Paint()
           ..color = Colors.white.withValues(alpha: isSelected ? 0.35 : 0.22)
@@ -352,6 +461,7 @@ class MapPainter extends CustomPainter {
   bool shouldRepaint(covariant MapPainter oldDelegate) {
     return oldDelegate.selectedRegionId != selectedRegionId ||
         oldDelegate.hoveredRegionId != hoveredRegionId ||
+        oldDelegate.visitedRegionIds != visitedRegionIds ||
         oldDelegate.regions != regions;
   }
 }

@@ -87,13 +87,12 @@ class FogSettings {
   static const double phoneDensityMultiplier = 0.6;
   static const double phoneSpriteQuality = 0.5;
 
-  static int get cloudFps => phoneFps; // Ajustable selon ta logique de détection de téléphone
+  static int get cloudFps => phoneFps;
   static double get spriteQuality => 1.0;
   static double get densityFactor => phoneDensityMultiplier;
   static FilterQuality get filterQuality => FilterQuality.medium;
 }
 
-/// Représente une zone circulaire dégagée dans le brouillard
 class FogRevealArea {
   final Offset center;
   final double radius;
@@ -101,7 +100,6 @@ class FogRevealArea {
   const FogRevealArea({required this.center, required this.radius});
 }
 
-/// Zone ovale sans nuages pour laisser apparaître les noms de régions
 class RegionTitleReveal {
   final Offset position;
   final double radiusX;
@@ -118,7 +116,6 @@ class RegionTitleReveal {
   });
 }
 
-/// Génère les sprites de nuages une seule fois
 class CloudSprites {
   static const double w = FogSettings.spriteWidth;
   static const double h = FogSettings.spriteHeight;
@@ -151,7 +148,6 @@ class CloudSprites {
       puffs.add([x, y, r]);
     }
 
-    // 1) Ombre
     for (final p in puffs) {
       canvas.drawCircle(
         Offset(p[0], p[1] + p[2] * 0.35),
@@ -161,7 +157,6 @@ class CloudSprites {
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, p[2] * FogSettings.shadowBlur),
       );
     }
-    // 2) Corps
     for (final p in puffs) {
       canvas.drawCircle(
         Offset(p[0], p[1]),
@@ -171,7 +166,6 @@ class CloudSprites {
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, p[2] * FogSettings.bodyBlur),
       );
     }
-    // 3) Lumière
     for (final p in puffs) {
       canvas.drawCircle(
         Offset(p[0], p[1] - p[2] * 0.3),
@@ -194,7 +188,6 @@ class _CloudInstance {
       this.opacity, this.phase, this.speed);
 }
 
-/// Dessine le brouillard : voile + nuages + trous
 class FogOfWarPainter extends CustomPainter {
   final List<FogRevealArea> revealAreas;
   final List<RegionTitleReveal> titleReveals;
@@ -356,5 +349,199 @@ class FogOfWarPainter extends CustomPainter {
         canvas.restore();
       }
     }
+  }
+}
+
+// ============================================================================
+//  ☁️  NUAGES DE LA CARTE DU MONDE (Uniquement sur l'océan)
+// ============================================================================
+class WorldCloudSettings {
+  WorldCloudSettings._();
+
+  static const double clearMarginCm = 3.5;
+  static const double logicalPxPerCm = 38.0;
+  static const double featherMapUnits = 160.0;
+  
+  static const int cloudCount = 20; // Suffisamment pour border l'océan
+  static const double cloudScale = 0.65;
+  static const double opacityFactor = 0.9;
+  static const int maxSpeedMultiplier = 2;
+
+  static const List<RegionTitleReveal> protectedZones = <RegionTitleReveal>[
+    RegionTitleReveal(
+      position: Offset(511.0, 150.0),
+      radiusX: 400.0,
+      radiusY: 160.0,
+      softness: 0.5,
+    ),
+    RegionTitleReveal(
+      position: Offset(850.0, 1400.0),
+      radiusX: 250.0,
+      radiusY: 200.0,
+      softness: 0.4,
+    ),
+    RegionTitleReveal(
+      position: Offset(80.0, 1350.0),
+      radiusX: 120.0,
+      radiusY: 120.0,
+      softness: 0.5,
+    ),
+  ];
+}
+
+class _WorldCloud {
+  final int sprite;
+  final double scale, opacity, phase, startFrac, yFrac;
+  final int speed;
+  const _WorldCloud(this.sprite, this.scale, this.opacity, this.phase,
+      this.startFrac, this.yFrac, this.speed);
+}
+
+class WorldCloudsPainter extends CustomPainter {
+  final Rect zone;
+  final double feather;
+  final double animationValue;
+  final List<ui.Image>? sprites;
+  final List<RegionTitleReveal> protectedZones;
+  final List<Path> revealPaths; // ✨ Reçoit les limites de l'île entière
+
+  const WorldCloudsPainter({
+    required this.zone,
+    required this.animationValue,
+    required this.sprites,
+    this.feather = WorldCloudSettings.featherMapUnits,
+    this.protectedZones = WorldCloudSettings.protectedZones,
+    this.revealPaths = const [],
+  });
+
+  @override
+  bool shouldRepaint(covariant WorldCloudsPainter old) =>
+      old.animationValue != animationValue ||
+      old.sprites != sprites ||
+      old.zone != zone ||
+      old.feather != feather ||
+      old.protectedZones != protectedZones ||
+      old.revealPaths != revealPaths;
+
+  List<_WorldCloud> _clouds(int spriteCount) {
+    final rnd = math.Random(321);
+    final list = <_WorldCloud>[];
+    for (int i = 0; i < WorldCloudSettings.cloudCount; i++) {
+      list.add(_WorldCloud(
+        rnd.nextInt(spriteCount),
+        (FogSettings.minScale + rnd.nextDouble() * FogSettings.scaleRange) *
+            WorldCloudSettings.cloudScale,
+        (FogSettings.minOpacity + rnd.nextDouble() * FogSettings.opacityRange) *
+            WorldCloudSettings.opacityFactor,
+        rnd.nextDouble() * 2 * math.pi,
+        rnd.nextDouble(),
+        rnd.nextDouble(),
+        1 + rnd.nextInt(WorldCloudSettings.maxSpeedMultiplier),
+      ));
+    }
+    list.sort((a, b) => a.scale.compareTo(b.scale));
+    return list;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = sprites;
+    if (s == null || s.isEmpty || zone.isEmpty) return;
+
+    final double f = math.min(feather, math.min(zone.width, zone.height) * 0.3);
+
+    canvas.save();
+    canvas.clipRect(zone);
+    canvas.saveLayer(zone, Paint());
+
+    // 1) Dessin des nuages (sans fond opaque)
+    final Paint p = Paint()..filterQuality = FogSettings.filterQuality;
+    for (final c in _clouds(s.length)) {
+      final double cw = CloudSprites.w * c.scale;
+      final double ch = CloudSprites.h * c.scale;
+      final double wrapW = zone.width + cw * 2;
+
+      double x = c.startFrac * wrapW + animationValue * wrapW * c.speed;
+      x = zone.left - cw + (x % wrapW);
+
+      final double y = zone.top - ch * 0.5 + c.yFrac * zone.height +
+          math.sin(animationValue * 2 * math.pi * c.speed + c.phase) *
+              FogSettings.verticalBobAmplitude;
+
+      if (x > zone.right || x + cw < zone.left || y > zone.bottom || y + ch < zone.top) {
+        continue;
+      }
+
+      p.color = Color.fromRGBO(255, 255, 255, c.opacity);
+      final img = s[c.sprite];
+      canvas.drawImageRect(
+        img,
+        Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+        Rect.fromLTWH(x, y, cw, ch),
+        p,
+      );
+    }
+
+    // 2) Trous de serrure (Titre, Légende)
+    for (final title in protectedZones) {
+      canvas.save();
+      canvas.translate(title.position.dx, title.position.dy);
+      canvas.rotate(title.rotationDegrees * math.pi / 180.0);
+      canvas.scale(title.radiusX, title.radiusY);
+
+      final double inner = (1.0 - title.softness).clamp(0.0, 0.999);
+      canvas.drawCircle(
+        Offset.zero,
+        1.0,
+        Paint()
+          ..blendMode = BlendMode.dstOut
+          ..shader = RadialGradient(
+            colors: const [Colors.black, Colors.black, Colors.transparent],
+            stops: [0.0, inner, 1.0],
+          ).createShader(Rect.fromCircle(center: Offset.zero, radius: 1.0)),
+      );
+      canvas.restore();
+    }
+
+    // ✨ 3) On empêche les nuages d'aller sur les terres (ils s'estompent sur la côte)
+    if (revealPaths.isNotEmpty) {
+      // Un flou élevé pour que les nuages mordent légèrement et joliment sur les côtes
+      final Paint softClearPaint = Paint()
+        ..blendMode = BlendMode.dstOut
+        ..color = Colors.black
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 50.0); 
+
+      final Paint coreClearPaint = Paint()
+        ..blendMode = BlendMode.dstOut
+        ..color = Colors.black
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10.0); 
+
+      for (final path in revealPaths) {
+        canvas.drawPath(path, softClearPaint);
+        canvas.drawPath(path, coreClearPaint);
+      }
+    }
+
+    // 4) Estompage des bords de la zone globale
+    void fade(Rect r, Alignment from, Alignment to) {
+      canvas.drawRect(
+        r,
+        Paint()
+          ..blendMode = BlendMode.dstOut
+          ..shader = LinearGradient(
+            begin: from,
+            end: to,
+            colors: const [Colors.black, Colors.transparent],
+          ).createShader(r),
+      );
+    }
+
+    fade(Rect.fromLTRB(zone.left, zone.top, zone.left + f, zone.bottom), Alignment.centerLeft, Alignment.centerRight);
+    fade(Rect.fromLTRB(zone.right - f, zone.top, zone.right, zone.bottom), Alignment.centerRight, Alignment.centerLeft);
+    fade(Rect.fromLTRB(zone.left, zone.top, zone.right, zone.top + f), Alignment.topCenter, Alignment.bottomCenter);
+    fade(Rect.fromLTRB(zone.left, zone.bottom - f, zone.right, zone.bottom), Alignment.bottomCenter, Alignment.topCenter);
+
+    canvas.restore();
+    canvas.restore();
   }
 }
