@@ -28,12 +28,14 @@ class CharacterSprite extends StatelessWidget {
       currentState: isMoving ? 'marche' : 'arret',
       animations: {
         'marche': List.generate(
-          frames.walk, // Utilise la vraie valeur (16) configurée
-          (i) => 'PersonnageAnimation/$folder/Marche/${i + 1}.png',
+          frames.walk,
+          // ✨ Ajout de "assets/"
+          (i) => 'assets/PersonnageAnimation/$folder/Marche/${i + 1}.png',
         ),
         'arret': List.generate(
-          frames.idle, // Utilise la vraie valeur (21) configurée
-          (i) => 'PersonnageAnimation/$folder/Arret/${i + 1}.png',
+          frames.idle,
+          // ✨ Ajout de "assets/"
+          (i) => 'assets/PersonnageAnimation/$folder/Arret/${i + 1}.png',
         ),
       },
       frameDuration: isMoving
@@ -67,24 +69,25 @@ class CompanionSprite extends StatelessWidget {
     final List<String> walkFrames = isDog
         ? List.generate(
             6,
-            (i) => 'compagnons/$folder/chien_marche/$i.png',
+            // ✨ Ajout de "assets/"
+            (i) => 'assets/compagnons/$folder/chien_marche/$i.png',
           )
         : List.generate(
             3,
-            (i) =>
-                'compagnons/$folder/marche/frame${i.toString().padLeft(2, '0')}.png',
+            // ✨ Ajout de "assets/"
+            (i) => 'assets/compagnons/$folder/marche/frame${i.toString().padLeft(2, '0')}.png',
           );
+          
     final List<String> idleFrames = isDog
         ? List.generate(
             isSelected ? 8 : 18,
-            (i) =>
-                'compagnons/$folder/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
+            // ✨ Ajout de "assets/"
+            (i) => 'assets/compagnons/$folder/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
           )
-        : ['compagnons/$folder/marche.png'];
+        // ✨ Ajout de "assets/"
+        : ['assets/compagnons/$folder/marche.png']; 
 
     return SpriteAnimator(
-      // Recrée l'animateur quand le statut sélectionné change : les chemins
-      // d'images au repos du chien changent eux aussi.
       key: ValueKey(
         'comp_${companionId}_${size.width}x${size.height}_'
         '${isSelected ? 'selected' : 'unselected'}_'
