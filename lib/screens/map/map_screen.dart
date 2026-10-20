@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -167,6 +168,7 @@ class _MapScreenState extends State<MapScreen>
   void _handleHover(PointerHoverEvent event, List<RegionShape> scaled) {
     final region = _regionAt(event.localPosition, scaled);
     if (region?.id != _hoveredRegionId) {
+      if (region != null) HapticFeedback.lightImpact();
       setState(() => _hoveredRegionId = region?.id);
     }
   }
@@ -177,7 +179,11 @@ class _MapScreenState extends State<MapScreen>
       setState(() => _selectedRegionId = null);
       return;
     }
-    HapticFeedback.lightImpact();
+    if (_selectedRegionId == region.id) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
     setState(() {
       if (_selectedRegionId == region.id) {
         _openRegionDetail(region.id);
@@ -356,6 +362,7 @@ class _MapScreenState extends State<MapScreen>
                                   hoveredRegionId: _hoveredRegionId,
                                   visitedRegionIds:
                                       _visitedRegionIds, // ✨ On passe les régions explorées
+                                  onRegionTap: _handleSemanticRegionTap,
                                 ),
                               ),
                             ),
@@ -408,7 +415,14 @@ class _MapScreenState extends State<MapScreen>
                           color: darkBlue,
                         ),
                         tooltip: 'Retour',
-                        onPressed: () => Navigator.pop(context),
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(context);
+                        },
                       ),
                     ),
                   ),
@@ -462,6 +476,16 @@ class _MapScreenState extends State<MapScreen>
       ),
     );
   }
+
+  void _handleSemanticRegionTap(RegionShape region) {
+    if (_selectedRegionId == region.id) {
+      HapticFeedback.mediumImpact();
+      _openRegionDetail(region.id);
+    } else {
+      HapticFeedback.lightImpact();
+      setState(() => _selectedRegionId = region.id);
+    }
+  }
 }
 
 class MapPainter extends CustomPainter {
@@ -469,12 +493,14 @@ class MapPainter extends CustomPainter {
   final String? selectedRegionId;
   final String? hoveredRegionId;
   final Set<String> visitedRegionIds; // ✨ Requis pour savoir quoi assombrir
+  final ValueChanged<RegionShape> onRegionTap;
 
   MapPainter({
     required this.regions,
     this.selectedRegionId,
     this.hoveredRegionId,
     required this.visitedRegionIds,
+    required this.onRegionTap,
   });
 
   @override
@@ -509,6 +535,30 @@ class MapPainter extends CustomPainter {
       }
     }
   }
+
+  @override
+  SemanticsBuilderCallback get semanticsBuilder => (Size size) {
+    return regions.map((region) {
+      final bounds = region.path.getBounds();
+      final widthPadding = math.max(0.0, (48 - bounds.width) / 2);
+      final heightPadding = math.max(0.0, (48 - bounds.height) / 2);
+      final semanticRect = bounds.inflate(math.max(widthPadding, heightPadding));
+      final bool isVisited = visitedRegionIds.contains(region.id);
+      return CustomPainterSemantics(
+        rect: semanticRect,
+        properties: SemanticsProperties(
+          label:
+              'Région ${region.name}, état : ${isVisited ? 'visitée' : 'à découvrir'}',
+          hint: selectedRegionId == region.id
+              ? 'Activer de nouveau pour explorer cette région'
+              : 'Activer pour sélectionner cette région',
+          button: true,
+          selected: selectedRegionId == region.id,
+          onTap: () => onRegionTap(region),
+        ),
+      );
+    }).toList();
+  };
 
   @override
   bool shouldRepaint(covariant MapPainter oldDelegate) {

@@ -34,6 +34,10 @@ abstract final class AppColors {
   static const Color traversed = Color(0xFFFFB300);
   static const Color reachable = Color(0xFF00E676);
   static const Color unreachable = Color(0xFFFF6B81);
+  static const Color stoppedTextOnLight = Color(0xFF8E24AA);
+  static const Color traversedTextOnLight = Color(0xFF805000);
+  static const Color reachableTextOnLight = Color(0xFF1B5E20);
+  static const Color unreachableTextOnLight = Color(0xFFB3261E);
   static const Color error = Color(0xFFB3261E);
   static const Color errorOnDark = Color(0xFFFF6B6B);
 }

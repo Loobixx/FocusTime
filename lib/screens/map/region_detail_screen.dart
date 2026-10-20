@@ -14,6 +14,7 @@ import '../../models/city_network.dart';
 import '../../utils/time_formatter.dart';
 import '../focus/expedition_screen.dart';
 import '../focus/focus_screen.dart'; // ✨ Ajouté pour s'assurer que FocusScreen est bien reconnu
+import '../../theme/app_theme.dart';
 import 'fog_of_war.dart';
 
 // ============================================================================
@@ -46,18 +47,10 @@ class MapSettings {
   static const double maxHoverDistance = 40.0;
 
   // Palette des marqueurs
-  static const Color colorStopped = Color(
-    0xFFE040FB,
-  ); // Violet lisible : ville visitée (arrêt)
-  static const Color colorTraversed = Color(
-    0xFFFFB300,
-  ); // Ambre : ville traversée
-  static const Color colorReachable = Color(
-    0xFF00E676,
-  ); // Vert : destination accessible
-  static const Color colorUnreachable = Color(
-    0xFFFF6B81,
-  ); // Rouge lisible : trop loin
+  static const Color colorStopped = AppColors.stopped;
+  static const Color colorTraversed = AppColors.traversed;
+  static const Color colorReachable = AppColors.reachable;
+  static const Color colorUnreachable = AppColors.unreachable;
 }
 
 class RegionDetailScreen extends StatefulWidget {
@@ -354,6 +347,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
     }
 
     if (closestId != _hoveredCrossId) {
+      if (closestId != null) HapticFeedback.lightImpact();
       setState(() {
         _hoveredCrossId = closestId;
       });
@@ -377,7 +371,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
     // La destination du trajet en cours est toujours sélectionnable (même sans
     // nouvel itinéraire) ; sinon il faut une route calculée.
     if (!isTransitTarget && (!_isReachable(cross) || route == null)) return;
-    HapticFeedback.lightImpact();
+    HapticFeedback.heavyImpact();
 
     List<String> finalRoute;
     int finalTravelMinutes;
@@ -451,14 +445,14 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: const Color(0xFF12121C).withValues(alpha: 0.7),
+            color: AppColors.backgroundDarkTheme.withValues(alpha: 0.92),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white38, width: 1.5),
+            border: Border.all(color: AppColors.textOnDark.withValues(alpha: 0.7), width: 1.5),
           ),
           child: const Icon(
             Icons.question_mark_rounded,
             size: 15,
-            color: Colors.white70,
+            color: AppColors.textOnDark,
           ),
         );
       }
@@ -493,7 +487,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
         height: finalSize * 0.9,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0xFF12121C).withValues(alpha: 0.75),
+          color: AppColors.backgroundDarkTheme.withValues(alpha: 0.94),
           shape: BoxShape.circle,
           border: Border.all(
             color: MapSettings.colorUnreachable.withValues(alpha: 0.9),
@@ -520,7 +514,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
       height: finalSize,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xFF12121C).withValues(alpha: 0.85),
+        color: AppColors.backgroundDarkTheme.withValues(alpha: 0.94),
         shape: BoxShape.circle,
         border: Border.all(
           color: isSelected ? Colors.white : markerColor,
@@ -553,7 +547,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFF12121C),
+              color: Theme.of(context).colorScheme.surface,
               shape: BoxShape.circle,
               border: Border.all(color: color, width: 1.5),
             ),
@@ -562,10 +556,19 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 11,
               fontWeight: FontWeight.w600,
+              shadows: [
+                Shadow(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.black.withValues(alpha: 0.55)
+                      : Colors.white.withValues(alpha: 0.7),
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
           ),
         ],
@@ -579,7 +582,9 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
         FogSettings.titleReveals[widget.regionName] ??
         const <RegionTitleReveal>[];
 
-    const darkBlue = Color(0xFF143063);
+    final Color darkBlue = Theme.of(context).colorScheme.primary;
+    final ColorScheme appColors = Theme.of(context).colorScheme;
+    final bool isDarkTheme = Theme.of(context).brightness == Brightness.dark;
     final List<RegionCross> regionCrosses =
         RegionCrossesData.crossesByRegion[widget.regionName] ?? [];
     final String? activeCrossId = _selectedCrossId ?? _hoveredCrossId;
@@ -604,7 +609,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF12121C),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           Positioned.fill(
@@ -737,6 +742,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                                       ? 'Destination accessible'
                                                       : 'À découvrir'))));
                           final VoidCallback selectCross = () {
+                            HapticFeedback.lightImpact();
                             setState(() {
                               if (_selectedCrossId == cross.id) {
                                 _selectedCrossId = null;
@@ -754,7 +760,8 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                               child: Semantics(
                                 button: true,
                                 selected: _selectedCrossId == cross.id,
-                                label: '${cross.name}, $cityState',
+                                label:
+                                    'Ville de ${cross.name}, état : $cityState',
                                 hint:
                                     'Activer pour afficher les détails de ce lieu',
                                 onTap: selectCross,
@@ -853,23 +860,29 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                     ),
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.4,
-                                        ),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surface
+                                            .withValues(alpha: 0.94),
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.6,
-                                          ),
+                                          color: Theme.of(context).colorScheme.outline,
                                         ),
                                       ),
                                       child: IconButton(
-                                        icon: const Icon(
+                                        icon: Icon(
                                           Icons.arrow_back_ios_new,
                                           color: darkBlue,
                                         ),
                                         tooltip: 'Retour à la carte du monde',
-                                        onPressed: () => Navigator.pop(context),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 48,
+                                          minHeight: 48,
+                                        ),
+                                        onPressed: () {
+                                          HapticFeedback.lightImpact();
+                                          Navigator.pop(context);
+                                        },
                                       ),
                                     ),
                                   ),
@@ -896,12 +909,13 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                         vertical: 8,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFF12121C,
-                                        ).withValues(alpha: 0.75),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surface
+                                            .withValues(alpha: 0.96),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color: Colors.white24,
+                                          color: Theme.of(context).colorScheme.outline,
                                         ),
                                       ),
                                       child: Column(
@@ -921,7 +935,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                           ),
                                           if (!_hasFocusPlanned)
                                             _buildLegendItem(
-                                              Colors.white70,
+                                              Theme.of(context).colorScheme.onSurfaceVariant,
                                               Icons.question_mark_rounded,
                                               'À découvrir',
                                             ),
@@ -977,7 +991,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
 
                                     String statusText =
                                         'Zone frontalière inconnue';
-                                    Color statusColor = Colors.white70;
+                                    Color statusColor = appColors.onSurfaceVariant;
 
                                     final bool willCampOnRoad =
                                         canGo &&
@@ -989,9 +1003,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                     if (isCurrentTarget) {
                                       statusText =
                                           '⛺ Destination actuelle de ton expédition';
-                                      statusColor = const Color(
-                                        0xFFFFB300,
-                                      ); // Ambre
+                                      statusColor = MapSettings.colorTraversed;
                                     } else if (isStopped) {
                                       statusText = '🏕️ Ville déjà visitée';
                                       statusColor = MapSettings.colorStopped;
@@ -1007,7 +1019,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                       } else if (willCampOnRoad) {
                                         statusText =
                                             '⛺ Trajet long : campement en chemin';
-                                        statusColor = const Color(0xFFFFB300);
+                                        statusColor = MapSettings.colorTraversed;
                                       } else {
                                         statusText =
                                             '🧭 Destination accessible en une fois';
@@ -1019,6 +1031,27 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                           '🔒 Bloquée par une zone inconnue';
                                       statusColor =
                                           MapSettings.colorUnreachable;
+                                    }
+
+                                    Color statusTextColor = isDarkTheme
+                                        ? statusColor
+                                        : appColors.onSurfaceVariant;
+                                    if (!isDarkTheme) {
+                                      if (isCurrentTarget ||
+                                          isTraversed ||
+                                          willCampOnRoad) {
+                                        statusTextColor =
+                                            AppColors.traversedTextOnLight;
+                                      } else if (isStopped) {
+                                        statusTextColor =
+                                            AppColors.stoppedTextOnLight;
+                                      } else if (canGo) {
+                                        statusTextColor =
+                                            AppColors.reachableTextOnLight;
+                                      } else if (_hasFocusPlanned) {
+                                        statusTextColor =
+                                            AppColors.unreachableTextOnLight;
+                                      }
                                     }
 
                                     // ✨ Calcul du trajet total cumulé (transit restant + nouveau trajet)
@@ -1050,9 +1083,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                             vertical: 14,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: const Color(
-                                              0xFF12121C,
-                                            ).withValues(alpha: 0.85),
+                                            color: appColors.surface.withValues(alpha: 0.96),
                                             borderRadius: BorderRadius.circular(
                                               24,
                                             ),
@@ -1074,21 +1105,37 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                                   children: [
                                                     Text(
                                                       selectedCrossObj.name,
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
+                                                      style: TextStyle(
+                                                        color: appColors.onSurface,
                                                         fontWeight:
                                                             FontWeight.bold,
                                                         fontSize: 16,
+                                                        shadows: [
+                                                          Shadow(
+                                                            color: isDarkTheme
+                                                                ? Colors.black.withValues(alpha: 0.42)
+                                                                : Colors.black.withValues(alpha: 0.12),
+                                                            blurRadius: 2,
+                                                            offset: const Offset(0, 1),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                     const SizedBox(height: 4),
                                                     Text(
                                                       statusText,
                                                       style: TextStyle(
-                                                        color: statusColor,
+                                                        color: statusTextColor,
                                                         fontWeight:
                                                             FontWeight.w600,
                                                         fontSize: 12,
+                                                        shadows: [
+                                                          Shadow(
+                                                            color: Colors.black.withValues(alpha: isDarkTheme ? 0.35 : 0.08),
+                                                            blurRadius: 1.5,
+                                                            offset: const Offset(0, 1),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                     if (canGo &&
@@ -1098,11 +1145,18 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                                       Text(
                                                         // ✨ Affichage du temps total cumulé
                                                         'Trajet total : ${formatMinutesToHours(totalDisplayMinutes)}',
-                                                        style: const TextStyle(
-                                                          color: Colors.white70,
+                                                        style: TextStyle(
+                                                          color: appColors.onSurfaceVariant,
                                                           fontSize: 12,
                                                           fontWeight:
                                                               FontWeight.bold,
+                                                          shadows: [
+                                                            Shadow(
+                                                              color: Colors.black.withValues(alpha: isDarkTheme ? 0.35 : 0.08),
+                                                              blurRadius: 1.5,
+                                                              offset: const Offset(0, 1),
+                                                            ),
+                                                          ],
                                                         ),
                                                       ),
                                                     ],
@@ -1116,12 +1170,11 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                                 ElevatedButton.icon(
                                                   style: ElevatedButton.styleFrom(
                                                     backgroundColor: canGo
-                                                        ? const Color(
-                                                            0xFFFF8C00,
-                                                          )
-                                                        : Colors.grey.shade800,
-                                                    foregroundColor:
-                                                        Colors.white,
+                                                        ? appColors.secondary
+                                                        : appColors.surfaceContainerHighest,
+                                                    foregroundColor: canGo
+                                                        ? appColors.onSecondary
+                                                        : appColors.onSurfaceVariant,
                                                     padding:
                                                         const EdgeInsets.symmetric(
                                                           horizontal: 18,

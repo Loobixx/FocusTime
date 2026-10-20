@@ -83,12 +83,11 @@ class _FocusScreenState extends State<FocusScreen> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color darkBlue = Theme.of(context).colorScheme.primary;
     const focusOrange = AppColors.focusOrange;
-    final Color panelColor = isDark
-        ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.96)
-        : Colors.white.withValues(alpha: 0.75);
-    final Color borderColor = isDark
-        ? Theme.of(context).colorScheme.outline
-        : Colors.white;
+    final Color panelColor = Theme.of(context)
+        .colorScheme
+        .surface
+        .withValues(alpha: isDark ? 0.96 : 0.94);
+    final Color borderColor = Theme.of(context).colorScheme.outline;
 
     double progress = (_focusMinutes / 480).clamp(0.0, 1.0);
 
@@ -98,7 +97,12 @@ class _FocusScreenState extends State<FocusScreen> {
     String targetCity = isResuming ? widget.transitRoute!.last : "";
     int timeToDestination = widget.transitRemainingMinutes ?? 0;
 
-    Color exactTargetColor = const Color.fromARGB(255, 29, 224, 107);
+    final Color exactTargetColor = isDark
+        ? AppColors.transitGreenDarkTheme
+        : AppColors.transitGreen;
+    final Color confirmForeground = _isExactTargetSelected
+        ? Theme.of(context).colorScheme.onTertiary
+        : Theme.of(context).colorScheme.onSecondary;
     return Scaffold(
       body: Stack(
         children: [
@@ -140,7 +144,10 @@ class _FocusScreenState extends State<FocusScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             InkWell(
-                              onTap: () => Navigator.pop(context),
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                Navigator.pop(context);
+                              },
                               borderRadius: BorderRadius.circular(16),
                               child: Container(
                                 constraints: const BoxConstraints(
@@ -149,23 +156,25 @@ class _FocusScreenState extends State<FocusScreen> {
                                 ),
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: isDark
-                                      ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.94)
-                                      : Colors.white.withValues(alpha: 0.35),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surface
+                                      .withValues(alpha: 0.94),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: isDark
-                                        ? Theme.of(context).colorScheme.outline
-                                        : Colors.white.withValues(alpha: 0.5),
+                                    color: borderColor,
                                   ),
                                 ),
-                                child: Semantics(
-                                  label: 'Retour',
-                                  excludeSemantics: true,
-                                  child: Icon(
-                                    Icons.arrow_back_ios_new,
-                                    color: darkBlue,
-                                    size: 20,
+                                child: Tooltip(
+                                  message: 'Retour',
+                                  child: Semantics(
+                                    label: 'Bouton retour',
+                                    excludeSemantics: true,
+                                    child: Icon(
+                                      Icons.arrow_back_ios_new,
+                                      color: darkBlue,
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -211,7 +220,9 @@ class _FocusScreenState extends State<FocusScreen> {
                             children: [
                               Icon(
                                 Icons.directions_walk,
-                                color: isDark ? AppColors.transitGreenDarkTheme : Colors.green,
+                                color: isDark
+                                    ? AppColors.transitGreenDarkTheme
+                                    : AppColors.transitGreen,
                                 size: 24,
                               ),
                               const SizedBox(width: 10),
@@ -221,6 +232,15 @@ class _FocusScreenState extends State<FocusScreen> {
                                   color: darkBlue,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black.withValues(
+                                        alpha: isDark ? 0.25 : 0.08,
+                                      ),
+                                      blurRadius: 1.5,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -286,7 +306,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                   shape: BoxShape.circle,
                                   color: isDark
                                       ? Theme.of(context).colorScheme.surface
-                                      : const Color(0xFF1E2430),
+                                      : AppColors.surfaceDark,
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withValues(
@@ -312,8 +332,17 @@ class _FocusScreenState extends State<FocusScreen> {
                                           // ✨ LE TEXTE PASSE EN ROUGE ICI SI SÉLECTIONNÉ !
                                           color: _isExactTargetSelected
                                               ? exactTargetColor
-                                              : Colors.white,
+                                              : AppColors.textOnDark,
                                           letterSpacing: 1.0,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withValues(
+                                                alpha: 0.55,
+                                              ),
+                                              blurRadius: 2,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
@@ -332,7 +361,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                             ? exactTargetColor
                                             : (isDark
                                                 ? AppColors.textSecondaryDarkTheme
-                                                : Colors.white.withValues(alpha: 0.6)),
+                                                : AppColors.textOnDark.withValues(alpha: 0.85)),
                                       ),
                                     ),
                                   ],
@@ -364,7 +393,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                     ? exactTargetColor
                                     : (isDark
                                         ? Theme.of(context).colorScheme.surfaceContainerHighest
-                                        : Colors.white.withValues(alpha: 0.9)),
+                                        : Theme.of(context).colorScheme.surface.withValues(alpha: 0.94)),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: exactTargetColor,
@@ -377,7 +406,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                   Icon(
                                     Icons.flag_rounded,
                                     color: _isExactTargetSelected
-                                        ? (isDark ? AppColors.textPrimary : Colors.white)
+                                        ? Theme.of(context).colorScheme.onTertiary
                                         : exactTargetColor,
                                     size: 18,
                                   ),
@@ -388,7 +417,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                       color: _isExactTargetSelected
-                                          ? (isDark ? AppColors.textPrimary : Colors.white)
+                                          ? Theme.of(context).colorScheme.onTertiary
                                           : exactTargetColor,
                                     ),
                                   ),
@@ -429,7 +458,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       child: _buildTimeButton(
                                         '+5m',
                                         () => _adjustTime(5),
-                                        isDark ? AppColors.primaryDarkTheme : Colors.blue.shade800,
+                                        isDark ? AppColors.primaryDarkTheme : AppColors.darkBlue,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -437,7 +466,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       child: _buildTimeButton(
                                         '+15m',
                                         () => _adjustTime(15),
-                                        isDark ? AppColors.primaryDarkTheme : Colors.blue.shade800,
+                                        isDark ? AppColors.primaryDarkTheme : AppColors.darkBlue,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -445,7 +474,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       child: _buildTimeButton(
                                         '+30m',
                                         () => _adjustTime(30),
-                                        isDark ? AppColors.primaryDarkTheme : Colors.blue.shade800,
+                                        isDark ? AppColors.primaryDarkTheme : AppColors.darkBlue,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -453,7 +482,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       child: _buildTimeButton(
                                         '+1h',
                                         () => _adjustTime(60),
-                                        isDark ? AppColors.primaryDarkTheme : Colors.blue.shade800,
+                                        isDark ? AppColors.primaryDarkTheme : AppColors.darkBlue,
                                       ),
                                     ),
                                   ],
@@ -465,7 +494,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       child: _buildTimeButton(
                                         '-5m',
                                         () => _adjustTime(-5),
-                                        isDark ? const Color(0xFFFF8A80) : Colors.red.shade700,
+                                        isDark ? AppColors.errorOnDark : AppColors.error,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -473,7 +502,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       child: _buildTimeButton(
                                         '-15m',
                                         () => _adjustTime(-15),
-                                        isDark ? const Color(0xFFFF8A80) : Colors.red.shade700,
+                                        isDark ? AppColors.errorOnDark : AppColors.error,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -481,7 +510,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       child: _buildTimeButton(
                                         '-30m',
                                         () => _adjustTime(-30),
-                                        isDark ? const Color(0xFFFF8A80) : Colors.red.shade700,
+                                        isDark ? AppColors.errorOnDark : AppColors.error,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -489,7 +518,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       child: _buildTimeButton(
                                         '-1h',
                                         () => _adjustTime(-60),
-                                        isDark ? const Color(0xFFFF8A80) : Colors.red.shade700,
+                                        isDark ? AppColors.errorOnDark : AppColors.error,
                                       ),
                                     ),
                                   ],
@@ -519,9 +548,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       : (isResuming
                                             ? focusOrange
                                             : focusOrange),
-                                  foregroundColor: isDark
-                                      ? AppColors.textPrimary
-                                      : Colors.white,
+                                  foregroundColor: confirmForeground,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 18,
                                   ),
@@ -531,7 +558,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                   elevation: 2,
                                 ),
                                 onPressed: () {
-                                  HapticFeedback.mediumImpact();
+                                  HapticFeedback.heavyImpact();
 
                                   // ✨ FIX : Orientation selon le statut et le temps choisi
                                   if (isResuming) {
@@ -588,7 +615,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                       : 'Confirmer la durée',
                                   style: TextStyle(
                                     fontSize: 18,
-                                    color: isDark ? AppColors.textPrimary : Colors.white,
+                                    color: confirmForeground,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -612,7 +639,8 @@ class _FocusScreenState extends State<FocusScreen> {
                                 width: double.infinity,
                                 child: ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.redAccent,
+                                    backgroundColor: Theme.of(context).colorScheme.error,
+                                    foregroundColor: Theme.of(context).colorScheme.onError,
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 18,
                                     ),
@@ -666,30 +694,43 @@ class _FocusScreenState extends State<FocusScreen> {
     Color textColor,
   ) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 48),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isDark
-              ? Theme.of(context).colorScheme.surfaceContainerHighest
-              : Colors.white.withValues(alpha: 0.9),
+    final bool isAdding = label.startsWith('+');
+    final String amount = label.substring(1);
+    final String semanticLabel = isAdding
+        ? 'Ajouter $amount au temps de focus'
+        : 'Retirer $amount au temps de focus';
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      hint: 'Durée actuelle : ${formatMinutesToHours(_focusMinutes)}',
+      child: Tooltip(
+        message: semanticLabel,
+        child: InkWell(
+          onTap: onPressed,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDark
-                ? Theme.of(context).colorScheme.outline
-                : Colors.black.withValues(alpha: 0.05),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: textColor,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Theme.of(context).colorScheme.surfaceContainerHighest
+                  : Theme.of(context).colorScheme.surface.withValues(alpha: 0.94),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark
+                    ? Theme.of(context).colorScheme.outline
+                    : Theme.of(context).colorScheme.outline.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
           ),
         ),
       ),
