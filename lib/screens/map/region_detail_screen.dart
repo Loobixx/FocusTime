@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, Tar
 import '../../models/city_network.dart';
 import '../../utils/time_formatter.dart';
 import '../focus/expedition_screen.dart';
+import '../focus/focus_screen.dart'; // ✨ Ajouté pour s'assurer que FocusScreen est bien reconnu
 import 'fog_of_war.dart';
 
 // ============================================================================
@@ -53,10 +54,17 @@ class MapSettings {
 class RegionDetailScreen extends StatefulWidget {
   final String regionName;
   final int selectedDurationMinutes;
+  
+  // ✨ FIX : Ajout des paramètres optionnels de transit
+  final List<String>? transitRoute;
+  final int? transitRemainingMinutes;
+
   const RegionDetailScreen({
     super.key,
     required this.regionName,
     this.selectedDurationMinutes = 0,
+    this.transitRoute,
+    this.transitRemainingMinutes,
   });
 
   @override
@@ -86,6 +94,10 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
   Set<String> _visibleKeys = {};
 
   List<ui.Image>? _cloudSprites;
+
+  // ✨ Variables pour stocker l'état de transit récupéré de Firebase
+  int _transitRemainingMinutes = 0;
+  List<String> _transitRoute = [];
 
   @override
   void initState() {
@@ -146,6 +158,11 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
       setState(() {
         _currentCity = userDoc.data()?['currentCity'] as String?;
         _characterId = userDoc.data()?['characterId'] as String? ?? 'nuit';
+        
+        // ✨ Récupération des infos de transit en cours depuis Firebase
+        _transitRemainingMinutes = userDoc.data()?['transitRemainingMinutes'] ?? 0;
+        _transitRoute = List<String>.from(userDoc.data()?['transitRoute'] ?? []);
+
         _visitedCities = visitedDoc.docs.map((d) => d.id).toSet();
         _stoppedCities = stoppedDoc.docs.map((d) => d.id).toSet();
 
@@ -157,7 +174,10 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
           ..._stoppedCities.map(_resolveNetworkCityName),
         };
 
-        final String? resolvedCurrent = _currentCity != null ? _resolveNetworkCityName(_currentCity!) : null;
+        // ✨ Si on est en transit, le point de départ pour calculer la suite est la dernière ville visée
+        final String? resolvedCurrent = (_transitRoute.isNotEmpty)
+            ? _resolveNetworkCityName(_transitRoute.last)
+            : (_currentCity != null ? _resolveNetworkCityName(_currentCity!) : null);
 
         final Set<String> visibleCities = CityNetwork.getVisibleCities(
           currentCity: resolvedCurrent,
@@ -260,15 +280,21 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
     return _visibleKeys.contains(normalizeCityName(cross.name));
   }
 
+  /// Vrai si cette ville est la destination d'un trajet déjà en cours (transit).
+  bool _isTransitTarget(RegionCross cross) {
+    return _transitRoute.isNotEmpty &&
+        normalizeCityName(cross.name) == normalizeCityName(_transitRoute.last);
+  }
+
+  // Une destination est atteignable dès qu'un itinéraire existe, qu'une durée
+  // ait déjà été choisie ou non (sans durée, FocusScreen la demandera ensuite).
   bool _isReachable(RegionCross cross) {
-    if (!_hasFocusPlanned) return false;
     if (_isCurrentCity(cross)) return false;
 
     final route = _routeFor(cross);
     if (route == null) return false;
 
-    if (widget.selectedDurationMinutes == -1) return true;
-    return route.totalTravelMinutes <= widget.selectedDurationMinutes;
+    return true;
   }
 
   void _handleHoverPosition(Offset localPosition, List<RegionCross> crosses) {
@@ -307,15 +333,59 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
 
   void _navigateToCross(RegionCross cross) {
     final route = _routeFor(cross);
-    if (!_isReachable(cross) || route == null) return;
+    final bool isTransitTarget = _isTransitTarget(cross);
+
+    // La destination du trajet en cours est toujours sélectionnable (même sans
+    // nouvel itinéraire) ; sinon il faut une route calculée.
+    if (!isTransitTarget && (!_isReachable(cross) || route == null)) return;
     HapticFeedback.lightImpact();
+
+    List<String> finalRoute;
+    int finalTravelMinutes;
+
+    if (_transitRoute.isNotEmpty) {
+      // Trajet déjà en cours : on conserve l'itinéraire et le temps restant,
+      // et on y ajoute la nouvelle portion (sans dupliquer l'étape de jonction).
+      final List<String> extra = (isTransitTarget || route == null)
+          ? <String>[]
+          : List<String>.from(route.path);
+      if (extra.isNotEmpty &&
+          normalizeCityName(extra.first) == normalizeCityName(_transitRoute.last)) {
+        extra.removeAt(0);
+      }
+      finalRoute = [..._transitRoute, ...extra];
+      finalTravelMinutes =
+          _transitRemainingMinutes + ((isTransitTarget || route == null) ? 0 : route.totalTravelMinutes);
+    } else {
+      finalRoute = List<String>.from(route!.path);
+      finalTravelMinutes = route.totalTravelMinutes;
+    }
+
+    if (_hasFocusPlanned) {
+      // Durée déjà choisie (> 0) ou mode admin (-1) : on lance directement
+      // l'expédition vers la destination sélectionnée, sans redemander la durée.
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ActiveTimerScreen(
+            durationMinutes: widget.selectedDurationMinutes,
+            plannedTravelMinutes: finalTravelMinutes,
+            plannedRoute: finalRoute,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Aucune durée choisie (carte ouverte depuis l'accueil) : on la demande.
+    // `routeAlreadyChosen` évite que FocusScreen renvoie vers la carte.
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ActiveTimerScreen(
-          plannedRoute: route.path,
-          durationMinutes: widget.selectedDurationMinutes,
-          plannedTravelMinutes: route.totalTravelMinutes,
+        builder: (context) => FocusScreen(
+          transitRoute: finalRoute,
+          transitRemainingMinutes: finalTravelMinutes,
+          routeAlreadyChosen: true,
         ),
       ),
     );
@@ -732,27 +802,54 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                     final selectedCrossObj = regionCrosses.where((c) => c.id == _selectedCrossId).firstOrNull;
                                     if (selectedCrossObj == null) return const SizedBox.shrink();
 
-                                    final bool canGo = _isReachable(selectedCrossObj);
+// ✨ FIX : Vérifie si c'est la ville vers laquelle on est déjà en route
+                                    final bool isCurrentTarget = _isTransitTarget(selectedCrossObj);
+
+// Si c'est notre cible actuelle en transit, on autorise l'accès pour relancer du temps dessus !
+                                    final bool canGo = _isReachable(selectedCrossObj) || isCurrentTarget;
                                     final bool isStopped = _isStopped(selectedCrossObj);
                                     final bool isTraversed = _isTraversed(selectedCrossObj);
                                     final route = _routeFor(selectedCrossObj);
 
                                     String statusText = 'Zone frontalière inconnue';
                                     Color statusColor = Colors.white70;
-                                    if (isStopped) {
+                                    
+                                    final bool willCampOnRoad = canGo && route != null && widget.selectedDurationMinutes > 0 && route.totalTravelMinutes > widget.selectedDurationMinutes;
+
+
+
+                                    if (isCurrentTarget) {
+                                      statusText = '⛺ Destination actuelle de ton expédition';
+                                      statusColor = const Color(0xFFFFB300); // Ambre
+                                    } else if (isStopped) {
                                       statusText = '🏕️ Ville déjà visitée';
                                       statusColor = MapSettings.colorStopped;
                                     } else if (isTraversed) {
                                       statusText = '✨ Ville déjà traversée';
                                       statusColor = MapSettings.colorTraversed;
                                     } else if (canGo) {
-                                      statusText = '🧭 Nouvelle destination accessible';
-                                      statusColor = MapSettings.colorReachable;
+                                      if (!_hasFocusPlanned) {
+                                        statusText = '🧭 Tu choisiras ta durée à l\'étape suivante';
+                                        statusColor = MapSettings.colorReachable;
+                                      } else if (willCampOnRoad) {
+                                        statusText = '⛺ Trajet long : campement en chemin';
+                                        statusColor = const Color(0xFFFFB300);
+                                      } else {
+                                        statusText = '🧭 Destination accessible en une fois';
+                                        statusColor = MapSettings.colorReachable;
+                                      }
                                     } else if (_hasFocusPlanned) {
-                                      statusText = route == null
-                                          ? '🔒 Bloquée par une zone inconnue'
-                                          : '❌ Temps de focus insuffisant';
+                                      statusText = '🔒 Bloquée par une zone inconnue';
                                       statusColor = MapSettings.colorUnreachable;
+                                    }
+
+                                    // ✨ Calcul du trajet total cumulé (transit restant + nouveau trajet)
+                                  int totalDisplayMinutes = route != null ? route.totalTravelMinutes : 0;
+                                    if (isCurrentTarget && route == null) {
+                                      totalDisplayMinutes = 0; // Aucun temps supplémentaire si on clique sur notre propre étape actuelle
+                                    }
+                                    if (_transitRoute.isNotEmpty) {
+                                      totalDisplayMinutes += _transitRemainingMinutes;
                                     }
 
                                     return ClipRRect(
@@ -791,20 +888,22 @@ class _RegionDetailScreenState extends State<RegionDetailScreen> with SingleTick
                                                         fontSize: 12,
                                                       ),
                                                     ),
-                                                    if (route != null && _hasFocusPlanned) ...[
+                                                    if (canGo && (route != null || isCurrentTarget)) ...[
                                                       const SizedBox(height: 2),
                                                       Text(
-                                                        'Trajet : ${formatMinutesToHours(route.totalTravelMinutes)}',
+                                                        // ✨ Affichage du temps total cumulé
+                                                        'Trajet total : ${formatMinutesToHours(totalDisplayMinutes)}',
                                                         style: const TextStyle(
                                                           color: Colors.white70,
                                                           fontSize: 12,
+                                                          fontWeight: FontWeight.bold,
                                                         ),
                                                       ),
                                                     ],
                                                   ],
                                                 ),
                                               ),
-                                              if (_hasFocusPlanned) ...[
+                                              if (_hasFocusPlanned || canGo) ...[
                                                 const SizedBox(width: 12),
                                                 ElevatedButton.icon(
                                                   style: ElevatedButton.styleFrom(

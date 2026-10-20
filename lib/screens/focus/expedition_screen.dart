@@ -208,8 +208,11 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       
-      // ✨ FIX : Si l'utilisateur est en pause ou lit la fenêtre, on gèle le temps de marche !
-      if (_isPaused || _isDialogActive) return;
+      // Seule une pause confirmée gèle le temps de marche : la proposition de
+      // pause (_isDialogActive) ne l'arrête plus, le temps continue de défiler.
+      if (_isPaused) return;
+
+      String? arrivedCity;
 
       setState(() {
         if (_isWalkingBackward) {
@@ -227,7 +230,11 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                 !_triggeredMilestoneIndexes.contains(i) && 
                 !_isDialogActive) {
               _triggeredMilestoneIndexes.add(i);
-              _openArrivalPauseDialog(_routeMilestones[i].destination);
+              // Pas de proposition si le trajet se termine à cet instant :
+              // elle serait aussitôt refermée par _finishTrip().
+              if (_remainingSeconds > 0) {
+                arrivedCity = _routeMilestones[i].destination;
+              }
               break;
             }
           }
@@ -236,10 +243,17 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
           _finishTrip();
         }
       });
+
+      // Ouverture hors du setState ; _isDialogActive empêche qu'une même
+      // proposition (ou une suivante) s'empile tant que le dialogue est ouvert.
+      if (arrivedCity != null && mounted) {
+        _openArrivalPauseDialog(arrivedCity!);
+      }
     });
   }
 
   void _openArrivalPauseDialog(String cityName) {
+    // Affiche la proposition SANS arrêter le minuteur.
     setState(() => _isDialogActive = true);
 
     NotificationService().showNotification(
@@ -251,8 +265,14 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     ActiveTimerDialogs.showArrivalDialog(
       context: context,
       cityName: cityName,
-      onClosed: () => setState(() => _isDialogActive = false),
+      // Fermeture / refus : le trajet continue, rien d'autre à faire.
+      onClosed: () {
+        if (mounted) setState(() => _isDialogActive = false);
+      },
+      // Pause explicitement confirmée : c'est ici (et seulement ici) que le
+      // minuteur de marche est arrêté, via _startPauseTimer.
       onSelectPause: (minutes) {
+        if (!mounted) return;
         setState(() => _isDialogActive = false);
         _startPauseTimer(minutes);
       },
@@ -394,26 +414,52 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     int baseMinutes = widget.durationMinutes == -1 ? 10 : widget.durationMinutes;
     int earnedPoints = baseMinutes;
 
-    NotificationService().showNotification(
-      id: 3,
-      title: '🎉 Fin de session !',
-      body: 'Trajet enregistré ! Tu as gagné $earnedPoints points 🪙',
-    );
-
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
       
-      await userRef.set({
-        'points': FieldValue.increment(earnedPoints),
-      }, SetOptions(merge: true));
+      // ✨ FIX : Détection d'un trajet incomplet
+      bool isPartialTrip = widget.durationMinutes != -1 && widget.plannedTravelMinutes > widget.durationMinutes;
 
-      if (widget.plannedRoute.isNotEmpty) {
-        final arrivedCity = widget.plannedRoute.last;
-        await userRef.update({
-          'currentCity': arrivedCity,
-        });
-        await _checkAndUnlockCompanion(arrivedCity);
+      if (isPartialTrip) {
+        int remainingTravel = widget.plannedTravelMinutes - widget.durationMinutes;
+        
+        NotificationService().showNotification(
+          id: 3,
+          title: '🏕️ Campement sauvage !',
+          body: 'Temps de focus écoulé. Il te reste $remainingTravel min de marche vers ${widget.plannedRoute.last}.',
+        );
+
+        // Sauvegarde de l'état "En transit" dans Firebase
+        await userRef.set({
+          'points': FieldValue.increment(earnedPoints),
+          'inTransit': true,
+          'transitRemainingMinutes': remainingTravel,
+          'transitRoute': widget.plannedRoute,
+        }, SetOptions(merge: true));
+        
+      } else {
+        NotificationService().showNotification(
+          id: 3,
+          title: '🎉 Fin de session !',
+          body: 'Trajet terminé et enregistré ! Tu as gagné $earnedPoints points 🪙',
+        );
+
+        // Nettoyage de l'état "En transit" et mise à jour de la ville finale
+        await userRef.set({
+          'points': FieldValue.increment(earnedPoints),
+          'inTransit': false,
+          'transitRemainingMinutes': FieldValue.delete(),
+          'transitRoute': FieldValue.delete(),
+        }, SetOptions(merge: true));
+
+        if (widget.plannedRoute.isNotEmpty) {
+          final arrivedCity = widget.plannedRoute.last;
+          await userRef.update({
+            'currentCity': arrivedCity,
+          });
+          await _checkAndUnlockCompanion(arrivedCity);
+        }
       }
     }
 
@@ -438,6 +484,10 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
     int focusMinutes = widget.durationMinutes == -1 ? 1 : widget.durationMinutes;
     int appActiveMinutes = (_appActiveSeconds / 60).ceil();
     int earnedPoints = focusMinutes;
+
+    // ✨ On recalcule pour l'interface
+    bool isPartialTrip = widget.durationMinutes != -1 && widget.plannedTravelMinutes > widget.durationMinutes;
+    int remainingTravel = isPartialTrip ? (widget.plannedTravelMinutes - widget.durationMinutes) : 0;
 
     showModalBottomSheet(
       context: context,
@@ -464,14 +514,14 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              "📜 Résumé de l'expédition",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkBlue),
+            Text(
+              isPartialTrip ? "🏕️ Campement en chemin" : "📜 Résumé de l'expédition",
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkBlue),
             ),
             const SizedBox(height: 16),
 
             Text(
-              "Villes traversées :", 
+              "Villes traversées / ciblées :", 
               style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700),
             ),
             const SizedBox(height: 8),
@@ -491,7 +541,19 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
 
             const Divider(height: 28),
 
-            _buildSummaryRow(Icons.timer_outlined, "Temps focus prévu", "$focusMinutes min"),
+            _buildSummaryRow(Icons.timer_outlined, "Temps focus effectué", "$focusMinutes min"),
+            
+            // ✨ Ajout d'une ligne pour prévenir du temps restant
+            if (isPartialTrip) ...[
+              const SizedBox(height: 10),
+              _buildSummaryRow(
+                Icons.directions_walk_rounded, 
+                "Reste à parcourir", 
+                "$remainingTravel min",
+                valueColor: Colors.orange.shade800,
+              ),
+            ],
+
             const SizedBox(height: 10),
             _buildSummaryRow(Icons.phone_android, "Temps passé sur l'app", "$appActiveMinutes min"),
             const SizedBox(height: 10),
@@ -526,9 +588,9 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                     (route) => false,
                   );
                 },
-                child: const Text(
-                  "Retour au campement", 
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                child: Text(
+                  isPartialTrip ? "Monter le campement" : "Retour au campement", 
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ),
             ),
@@ -732,7 +794,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
           children: [
             Positioned.fill(
               child: ParallaxBackground(
-                isRunning: !_isPaused && !_isCompleted && !_isWalkingBackward && !_isDialogActive,
+                isRunning: !_isPaused && !_isCompleted && !_isWalkingBackward,
                 characterId: _characterId,
               ),
             ),
@@ -974,7 +1036,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen> with WidgetsBindi
                 child: CompanionSprite(
                   companionId: _activeCompanionId!,
                   scene: SpriteScene.expedition,
-                  isMoving: !_isWalkingBackward && !_isPaused && !_isCompleted && !_isDialogActive,
+                  isMoving: !_isWalkingBackward && !_isPaused && !_isCompleted,
                 ),
               ),
           ],

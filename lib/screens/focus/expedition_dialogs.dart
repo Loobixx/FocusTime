@@ -12,6 +12,16 @@ class ActiveTimerDialogs {
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
 
+    // onClosed ne doit être appelé qu'une fois, que le dialogue soit fermé par
+    // la croix, un choix, ou autrement (ex. bouton retour Android, ou fermeture
+    // par l'écran) : sinon _isDialogActive resterait bloqué à true.
+    bool closedHandled = false;
+    void closeOnce() {
+      if (closedHandled) return;
+      closedHandled = true;
+      onClosed();
+    }
+
     showModalBottomSheet(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.15),
@@ -82,7 +92,7 @@ class ActiveTimerDialogs {
                           icon: const Icon(Icons.close_rounded, size: 20, color: Colors.grey),
                           onPressed: () {
                             Navigator.pop(bottomSheetContext);
-                            onClosed();
+                            closeOnce();
                           },
                         ),
                       ],
@@ -91,11 +101,11 @@ class ActiveTimerDialogs {
                     // Choix rapides
                     Row(
                       children: [
-                        _buildChoiceChip(bottomSheetContext, '5 min', 5, onSelectPause, onClosed),
+                        _buildChoiceChip(bottomSheetContext, '5 min', 5, onSelectPause, closeOnce),
                         const SizedBox(width: 8),
-                        _buildChoiceChip(bottomSheetContext, '10 min', 10, onSelectPause, onClosed),
+                        _buildChoiceChip(bottomSheetContext, '10 min', 10, onSelectPause, closeOnce),
                         const SizedBox(width: 8),
-                        _buildChoiceChip(bottomSheetContext, '15 min', 15, onSelectPause, onClosed),
+                        _buildChoiceChip(bottomSheetContext, '15 min', 15, onSelectPause, closeOnce),
                       ],
                     ),
                   ],
@@ -105,7 +115,7 @@ class ActiveTimerDialogs {
           ),
         );
       },
-    );
+    ).whenComplete(closeOnce);
   }
 
   static Widget _buildChoiceChip(

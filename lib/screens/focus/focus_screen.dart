@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:focus_time/screens/map/map_screen.dart';
+import 'package:focus_time/screens/focus/expedition_screen.dart'; // Pour envoyer directement en expé si transit
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,7 +8,22 @@ import '../../utils/time_formatter.dart';
 import '../../services/admin_access_service.dart';
 
 class FocusScreen extends StatefulWidget {
-  const FocusScreen({super.key});
+  // ✨ FIX : Paramètres pour gérer la reprise de route et le temps exact
+  final List<String>? transitRoute;
+  final int? transitRemainingMinutes;
+  final int? exactDestinationMinutes;
+
+  /// Vrai quand l'itinéraire vient d'être choisi sur la carte (sans durée) :
+  /// on ne renvoie alors jamais vers la carte, on lance directement l'expédition.
+  final bool routeAlreadyChosen;
+
+  const FocusScreen({
+    super.key,
+    this.transitRoute,
+    this.transitRemainingMinutes,
+    this.exactDestinationMinutes,
+    this.routeAlreadyChosen = false,
+  });
 
   @override
   State<FocusScreen> createState() => _FocusScreenState();
@@ -15,6 +31,8 @@ class FocusScreen extends StatefulWidget {
 
 class _FocusScreenState extends State<FocusScreen> {
   int _focusMinutes = 60;
+  bool _isExactTargetSelected = false; // ✨ Suivi du mode "Temps exact"
+
   final AdminAccessService _adminAccessService = AdminAccessService();
   late final Stream<bool> _adminStatusStream;
 
@@ -24,15 +42,36 @@ class _FocusScreenState extends State<FocusScreen> {
     _adminStatusStream = _adminAccessService.watchAdminStatus(
       FirebaseAuth.instance.currentUser?.email,
     );
+
+    // Si on arrive avec un temps exact prédéfini (ex: depuis la reprise de route ou la carte)
+    if (widget.transitRemainingMinutes != null) {
+      _focusMinutes = widget.transitRemainingMinutes!;
+      _isExactTargetSelected = true;
+    } else if (widget.exactDestinationMinutes != null) {
+      _focusMinutes = widget.exactDestinationMinutes!;
+      _isExactTargetSelected = true;
+    }
   }
 
   void _adjustTime(int minutesToAddOrRemove) {
     HapticFeedback.lightImpact();
     setState(() {
+      _isExactTargetSelected = false; // Dès qu'on touche aux boutons + ou -, on sort du mode exact
       _focusMinutes += minutesToAddOrRemove;
       // Plafond min à 10 min et max à 480 min (8h)
       if (_focusMinutes < 10) _focusMinutes = 10;
       if (_focusMinutes > 480) _focusMinutes = 480;
+    });
+  }
+
+  // ✨ Fonction pour activer le temps exact de la destination en rouge
+  void _selectExactTarget() {
+    final int? exactTime = widget.transitRemainingMinutes ?? widget.exactDestinationMinutes;
+    if (exactTime == null) return;
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _focusMinutes = exactTime;
+      _isExactTargetSelected = true;
     });
   }
 
@@ -43,6 +82,12 @@ class _FocusScreenState extends State<FocusScreen> {
 
     double progress = (_focusMinutes / 480).clamp(0.0, 1.0);
 
+    // ✨ FIX : Détection du statut de transit
+    bool isResuming = widget.transitRoute != null && widget.transitRoute!.isNotEmpty;
+    String targetCity = isResuming ? widget.transitRoute!.last : "";
+    int timeToDestination = widget.transitRemainingMinutes ?? 0;
+
+    Color exactTargetColor = const Color.fromARGB(255, 29, 224, 107);
     return Scaffold(
       body: Stack(
         children: [
@@ -61,7 +106,7 @@ class _FocusScreenState extends State<FocusScreen> {
             ),
           ),
 
-          // Voile d'ambiance pour uniformiser le contraste
+          // Voile d'ambiance
           Positioned.fill(
             child: Container(
               color: Colors.black.withValues(alpha: 0.12),
@@ -112,6 +157,37 @@ class _FocusScreenState extends State<FocusScreen> {
                         ),
                       ),
 
+                      // ✨ FIX : Bandeau d'information si on est en transit
+                      if (isResuming) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.directions_walk, color: Colors.green, size: 24),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Arrivée à $targetCity dans ${formatMinutesToHours(timeToDestination)}',
+                                style: const TextStyle(color: darkBlue, fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
                       const Spacer(flex: 1),
 
                       // Cadran moderne avec jauge circulaire
@@ -119,7 +195,6 @@ class _FocusScreenState extends State<FocusScreen> {
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
-                            // Halo externe
                             Container(
                               width: 270,
                               height: 270,
@@ -136,7 +211,6 @@ class _FocusScreenState extends State<FocusScreen> {
                                 ],
                               ),
                             ),
-                            // Indicateur de progression orange
                             SizedBox(
                               width: 246,
                               height: 246,
@@ -144,10 +218,10 @@ class _FocusScreenState extends State<FocusScreen> {
                                 value: progress,
                                 strokeWidth: 6,
                                 backgroundColor: Colors.white.withValues(alpha: 0.2),
-                                valueColor: const AlwaysStoppedAnimation<Color>(focusOrange),
+                                // ✨ Le cercle devient rouge si on est en mode exact, sinon orange
+                                valueColor: AlwaysStoppedAnimation<Color>(_isExactTargetSelected ? exactTargetColor : focusOrange),
                               ),
                             ),
-                            // Disque intérieur sombre
                             Container(
                               width: 215,
                               height: 215,
@@ -169,22 +243,23 @@ class _FocusScreenState extends State<FocusScreen> {
                                     child: Text(
                                       formatMinutesToHours(_focusMinutes),
                                       key: ValueKey<int>(_focusMinutes),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 34,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                        // ✨ LE TEXTE PASSE EN ROUGE ICI SI SÉLECTIONNÉ !
+                                        color: _isExactTargetSelected ? exactTargetColor : Colors.white,
                                         letterSpacing: 1.0,
                                       ),
                                     ),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Expédition',
+                                    _isExactTargetSelected ? '🎯 TEMPS EXACT' : (isResuming ? 'Temps Focus' : 'Expédition'),
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.w600,
                                       letterSpacing: 1.5,
-                                      color: Colors.white.withValues(alpha: 0.6),
+                                      color: _isExactTargetSelected ? exactTargetColor : Colors.white.withValues(alpha: 0.6),
                                     ),
                                   ),
                                 ],
@@ -195,6 +270,41 @@ class _FocusScreenState extends State<FocusScreen> {
                       ),
 
                       const Spacer(flex: 1),
+
+                      // ✨ BOUTON RAPIDE : "Aller jusqu'à la destination" en mode reprise
+                      if (isResuming) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: InkWell(
+                            onTap: _selectExactTarget,
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: _isExactTargetSelected ? exactTargetColor : Colors.white.withValues(alpha: 0.9),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: exactTargetColor, width: 1.5),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.flag_rounded, color: _isExactTargetSelected ? Colors.white : exactTargetColor, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Aller exactement jusqu\'à la destination (${formatMinutesToHours(timeToDestination)})',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: _isExactTargetSelected ? Colors.white : exactTargetColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
 
                       // Panneau de boutons de réglage précis (+ / - fins)
                       ClipRRect(
@@ -217,7 +327,6 @@ class _FocusScreenState extends State<FocusScreen> {
                             ),
                             child: Column(
                               children: [
-                                // Ligne Ajouts (+)
                                 Row(
                                   children: [
                                     Expanded(child: _buildTimeButton('+5m', () => _adjustTime(5), Colors.blue.shade800)),
@@ -230,7 +339,6 @@ class _FocusScreenState extends State<FocusScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 10),
-                                // Ligne Retraits (-)
                                 Row(
                                   children: [
                                     Expanded(child: _buildTimeButton('-5m', () => _adjustTime(-5), Colors.red.shade700)),
@@ -250,7 +358,7 @@ class _FocusScreenState extends State<FocusScreen> {
 
                       const Spacer(flex: 1),
 
-                      // Bouton Confirmer la durée
+                      // Bouton Confirmer (Soit vers la carte, soit vers la reprise)
                       StreamBuilder<bool>(
                         stream: _adminStatusStream,
                         builder: (context, snapshot) {
@@ -262,7 +370,9 @@ class _FocusScreenState extends State<FocusScreen> {
                               width: double.infinity,
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: focusOrange,
+                                  backgroundColor: _isExactTargetSelected 
+                                      ? exactTargetColor
+                                      : (isResuming ? focusOrange : focusOrange),
                                   padding: const EdgeInsets.symmetric(vertical: 18),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30),
@@ -271,16 +381,48 @@ class _FocusScreenState extends State<FocusScreen> {
                                 ),
                                 onPressed: () {
                                   HapticFeedback.mediumImpact();
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => MapScreen(selectedDurationMinutes: _focusMinutes),
-                                    ),
-                                  );
+                                  
+                                  // ✨ FIX : Orientation selon le statut et le temps choisi
+                                  if (isResuming) {
+                                    // S'il reprend et choisit un temps PLUS LONG que le reste de la route :
+                                    if (_focusMinutes > timeToDestination && !widget.routeAlreadyChosen) {
+                                      // On ouvre la carte pour qu'il choisisse les prochaines villes au-delà
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => MapScreen(
+                                            selectedDurationMinutes: _focusMinutes,
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      // S'il choisit un temps plus court ou égal (ou le temps exact), on lance direct le focus
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ActiveTimerScreen(
+                                            durationMinutes: _focusMinutes, // Le temps choisi
+                                            plannedTravelMinutes: timeToDestination, // Le temps total qu'il reste pour cette portion
+                                            plannedRoute: widget.transitRoute!, // L'itinéraire
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    // Trajet classique : direction la carte globale
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => MapScreen(selectedDurationMinutes: _focusMinutes),
+                                      ),
+                                    );
+                                  }
                                 },
-                                child: const Text(
-                                  'Confirmer la durée',
-                                  style: TextStyle(
+                                child: Text(
+                                  isResuming 
+                                    ? ((_focusMinutes > timeToDestination && !widget.routeAlreadyChosen) ? 'Définir la suite du voyage' : (widget.routeAlreadyChosen ? 'Partir en expédition' : 'Reprendre la marche'))
+                                    : 'Confirmer la durée',
+                                  style: const TextStyle(
                                     fontSize: 18,
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -292,49 +434,50 @@ class _FocusScreenState extends State<FocusScreen> {
                         },
                       ),
 
-                      // Bouton ADMIN 1 SECONDE
-                      StreamBuilder<bool>(
-                        stream: _adminStatusStream,
-                        builder: (context, snapshot) {
-                          if (snapshot.data != true) {
-                            return const SizedBox.shrink();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 24.0),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.redAccent,
-                                  padding: const EdgeInsets.symmetric(vertical: 18),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  elevation: 2,
-                                ),
-                                icon: const Icon(Icons.flash_on, color: Colors.white),
-                                label: const Text(
-                                  '🚀 MODE ADMIN : 1 SECONDE',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                onPressed: () {
-                                  HapticFeedback.heavyImpact();
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const MapScreen(selectedDurationMinutes: -1),
+                      // Bouton ADMIN 1 SECONDE (Invisible en transit)
+                      if (!isResuming)
+                        StreamBuilder<bool>(
+                          stream: _adminStatusStream,
+                          builder: (context, snapshot) {
+                            if (snapshot.data != true) {
+                              return const SizedBox.shrink();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 24.0),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.redAccent,
+                                    padding: const EdgeInsets.symmetric(vertical: 18),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
                                     ),
-                                  );
-                                },
+                                    elevation: 2,
+                                  ),
+                                  icon: const Icon(Icons.flash_on, color: Colors.white),
+                                  label: const Text(
+                                    '🚀 MODE ADMIN : 1 SECONDE',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    HapticFeedback.heavyImpact();
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const MapScreen(selectedDurationMinutes: -1),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
+                            );
+                          },
+                        ),
                     ],
                   ),
                 ),

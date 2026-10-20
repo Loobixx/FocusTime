@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:focus_time/models/companion.dart';
+import 'package:focus_time/screens/focus/expedition_screen.dart';
 import 'package:focus_time/utils/time_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -358,73 +359,136 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const Spacer(flex: 2),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 48),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: focusOrange,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const FocusScreen()),
-                        );
-                      },
-                      child: const Text(
-                        'START FOCUS',
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 90),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const MapScreen()),
-                          );
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'MAP',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: darkBlue,
-                                fontWeight: FontWeight.bold,
+                const Spacer(flex: 2),
+                
+// ✨ FIX : StreamBuilder avec des boutons parfaitement alignés et stylisés
+                StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(FirebaseAuth.instance.currentUser?.uid)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    bool inTransit = false;
+                    int transitRemainingMinutes = 0;
+                    List<String> transitRoute = [];
+
+                    if (snapshot.hasData && snapshot.data!.exists) {
+                      final data = snapshot.data!.data() as Map<String, dynamic>?;
+                      inTransit = data?['inTransit'] ?? false;
+                      transitRemainingMinutes = data?['transitRemainingMinutes'] ?? 0;
+                      transitRoute = List<String>.from(data?['transitRoute'] ?? []);
+                    }
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // --- 1. BOUTON D'ACTION PRINCIPAL (Reprendre ou Start) ---
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 48),
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (inTransit ? Colors.green.shade700 : focusOrange).withValues(alpha: 0.35),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: inTransit ? Colors.green.shade500 : focusOrange,
+                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                elevation: 0,
+                              ),
+                              onPressed: () {
+                                if (inTransit && transitRoute.isNotEmpty) {
+                                  // ✨ FIX : On envoie vers le cadran de temps (FocusScreen) avec les données du trajet en pause
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => FocusScreen(
+                                        transitRemainingMinutes: transitRemainingMinutes,
+                                        transitRoute: transitRoute,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  // Trajet classique
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const FocusScreen()),
+                                  );
+                                }
+                              },
+                              child: Text(
+                                inTransit ? 'REPRENDRE LA ROUTE' : 'START FOCUS',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  ),
+
+                        const SizedBox(height: 20),
+
+                        // --- 2. BOUTON MAP (Glassmorphism unifié) ---
+                        Padding(
+                          // On utilise exactement le même padding que le bouton du haut (48)
+                          padding: const EdgeInsets.symmetric(horizontal: 48),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(30),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const MapScreen()),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(30),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(vertical: 16), // Même hauteur visuelle
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.25), // Un poil plus transparent
+                                      borderRadius: BorderRadius.circular(30),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
+                                    ),
+                                    child: const Center(
+                                      child: Text(
+                                        'CARTE DU MONDE', // Plus sympa que juste "MAP"
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: darkBlue,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
+                
+                const Spacer(flex: 3),
                 const Spacer(flex: 3),
                 // --- CARTE DE VOYAGE EN BAS ---
                 Padding(
