@@ -131,10 +131,19 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
                 SizedBox(
                   height: 120,
                   child: _activeCompanion != null
-                      ? CompanionSprite(
-                          companionId: _activeCompanion!,
-                          scene: SpriteScene.expedition,
-                          isMoving: true,
+                      ? Center(
+                          child: SizedBox(
+                            width: 96,
+                            height: 96,
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: CompanionSprite(
+                                companionId: _activeCompanion!,
+                                scene: SpriteScene.expedition,
+                                isMoving: true,
+                              ),
+                            ),
+                          ),
                         )
                       : const Center(
                           child: Icon(Icons.pets_outlined, size: 40, color: Colors.black26),
@@ -200,12 +209,25 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
                                     children: [
                                       Expanded(
                                         child: isUnlocked
-                                            ? CompanionSprite(
-                                                companionId: companion.id,
-                                                scene: SpriteScene.region,
-                                                isMoving: false,
-                                                isSelected:
-                                                    isEquipped || _activeCompanion == null,
+                                            ? LayoutBuilder(
+                                                builder: (context, constraints) {
+                                                  return Center(
+                                                    child: SizedBox(
+                                                      width: constraints.maxWidth * 0.7,
+                                                      height: constraints.maxHeight * 0.7,
+                                                      child: FittedBox(
+                                                        fit: BoxFit.contain,
+                                                        child: CompanionSprite(
+                                                          companionId: companion.id,
+                                                          scene: SpriteScene.region,
+                                                          isMoving: false,
+                                                          isSelected: isEquipped ||
+                                                              _activeCompanion == null,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
                                               )
                                             : const Icon(Icons.lock, size: 48, color: Colors.black38),
                                       ),

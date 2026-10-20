@@ -63,26 +63,38 @@ class CompanionSprite extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = SpriteConfig.companion(scene);
     final id = companionId.toLowerCase();
-    final isDog = id == 'chien';
-    // Attention ici aussi : 'Chien' et 'Chat' prennent une majuscule dans le code !
-    final folder = isDog ? 'Chien' : 'Chat';
-
-    final List<String> walkFrames = isDog
-        ? List.generate(
+    // Chaque compagnon déclare ses chemins ici, à partir de la même structure
+    // d'états (marche / arrêt) utilisée par le chien.
+    final animations = switch (id) {
+      'chien' => <String, List<String>>{
+          'marche': List.generate(
             6,
-            (i) => 'assets/compagnons/$folder/chien_marche/$i.png', // ✨ Préfixe ajouté
-          )
-        : List.generate(
-            3,
-            (i) => 'assets/compagnons/$folder/marche/frame${i.toString().padLeft(2, '0')}.png', // ✨ Préfixe ajouté
-          );
-          
-    final List<String> idleFrames = isDog
-        ? List.generate(
+            (i) => 'assets/compagnons/Chien/chien_marche/$i.png',
+          ),
+          'arret': List.generate(
             isSelected ? 8 : 18,
-            (i) => 'assets/compagnons/$folder/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png', // ✨ Préfixe ajouté
-          )
-        : ['assets/compagnons/$folder/marche.png']; // ✨ Préfixe ajouté
+            (i) =>
+                'assets/compagnons/Chien/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
+          ),
+        },
+      'chat' => <String, List<String>>{
+          'marche': List.generate(
+            3,
+            (i) =>
+                'assets/compagnons/Chat/marche/frame${i.toString().padLeft(2, '0')}.png',
+          ),
+          // Le dossier du chat ne contient pas de frames d'arrêt séparées.
+          // Sa première frame individuelle sert donc d'image fixe au repos.
+          'arret': const [
+            'assets/compagnons/Chat/chat_marche/0.png',
+          ],
+        },
+      _ => const <String, List<String>>{},
+    };
+
+    if (animations.isEmpty) {
+      return SizedBox(width: size.width, height: size.height);
+    }
 
     return SpriteAnimator(
       key: ValueKey(
@@ -93,10 +105,7 @@ class CompanionSprite extends StatelessWidget {
       width: size.width,
       height: size.height,
       currentState: isMoving ? 'marche' : 'arret',
-      animations: {
-        'marche': walkFrames,
-        'arret': idleFrames,
-      },
+      animations: animations,
       frameDuration: SpriteConfig.companionSpeed,
     );
   }

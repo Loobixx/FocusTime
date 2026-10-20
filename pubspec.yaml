@@ -100,7 +100,9 @@ flutter:
     - assets/compagnons/Chien/chien_arret/
     - assets/compagnons/Chien/chien_arret_non_choisi/
     
-    - assets/compagnons/Chat/marche/
+    - assets/compagnons/Chat/chat_marche/
+    - assets/compagnons/Chat/chat_arret/
+    - assets/compagnons/Chat/chat_arret_non_choisi/
   # An image asset can refer to one or more resolution-specific "variants", see
 
 
