@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../home/home_screen.dart'; 
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +20,8 @@ class _LoginScreenState extends State<LoginScreen> {
   // ✨ NOUVEAU : Variables pour gérer la visibilité des mots de passe
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+
+  bool _googleInitialized = false;
 
   // Contrôleurs pour récupérer les valeurs des champs de texte
   final TextEditingController _emailController = TextEditingController();
@@ -39,35 +42,46 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  Future<void>? _googleInitFuture;
+
+  Future<void> _ensureGoogleInitialized() {
+    // On mémorise le Future : initialize() n'est jamais appelé deux fois,
+    // même si deux clics arrivent en même temps ou si le 1er appel échoue.
+    return _googleInitFuture ??= GoogleSignIn.instance.initialize(
+      serverClientId: 'TON_WEB_CLIENT_ID.apps.googleusercontent.com',
+    );
+  }
+
   Future<void> _signInWithGoogle() async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-            
-      if (googleUser == null) {
-        return; 
+      final UserCredential userCredential;
+
+      if (kIsWeb) {
+        // Web : popup Firebase, pas besoin de google_sign_in
+        userCredential = await FirebaseAuth.instance
+            .signInWithPopup(GoogleAuthProvider());
+      } else {
+        // Android / iOS
+        await _ensureGoogleInitialized();
+        final googleUser = await GoogleSignIn.instance.authenticate();
+        final credential = GoogleAuthProvider.credential(
+          idToken: googleUser.authentication.idToken,
+        );
+        userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).get();
-      
-      if (!userDoc.exists) {
-        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
           'email': userCredential.user!.email,
           'createdAt': Timestamp.now(),
           'characterId': 'nuit',
           'characterColor': Colors.deepPurple.toARGB32(),
-          'pseudo': '',
-          'unlockedCharacters': ['nuit'], 
+          'pseudo': userCredential.user!.displayName ?? '',
+          'unlockedCharacters': ['nuit'],
         });
       }
 
@@ -77,14 +91,20 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
-      if (!mounted) return;
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) return;
+      debugPrint("Erreur Google Sign-In : ${e.code} - ${e.description}");
+      _showError("Erreur lors de la connexion avec Google.");
+    } on FirebaseAuthException catch (e) {
+      // Popup fermée par l'utilisateur : pas d'erreur à afficher
+      if (e.code == 'popup-closed-by-user' || e.code == 'cancelled-popup-request') {
+        return;
+      }
+      debugPrint("Erreur Firebase : ${e.code} - ${e.message}");
+      _showError("Erreur lors de la connexion avec Google.");
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur Google Sign-In : ${e.toString()}'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      debugPrint("Erreur lors de la connexion Google : $e");
+      _showError("Erreur lors de la connexion avec Google.");
     }
   }
 

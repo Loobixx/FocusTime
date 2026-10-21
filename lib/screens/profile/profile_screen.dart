@@ -247,7 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   IconButton(
                                     icon: Icon(Icons.exit_to_app, color: darkBlue),
                                     onPressed: () async {
-                                      await GoogleSignIn().signOut();
+                                      await GoogleSignIn.instance.signOut();
                                       await FirebaseAuth.instance.signOut();
 
                                       if (context.mounted) {
