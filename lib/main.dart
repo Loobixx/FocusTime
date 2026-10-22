@@ -3,6 +3,7 @@ import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:focus_time/theme/app_theme.dart';
+import 'package:focus_time/utils/app_haptics.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'screens/auth/login_screen.dart';
@@ -37,6 +38,7 @@ void main() async {
   }
 
   await AppThemeController.load();
+  await AppHaptics.load();
   runApp(const MyApp());
 }
 

@@ -95,6 +95,7 @@ flutter:
     - assets/TeteProfil/
     - assets/Notif/
     - assets/audio/ambiance_focus.mp3
+    - assets/HomePageAssets/Logement/
 
     - assets/compagnons/Chien/chien_marche/
     - assets/compagnons/Chien/chien_arret/

@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:focus_time/screens/map/map_screen.dart';
 import 'package:focus_time/screens/focus/expedition_screen.dart'; // Pour envoyer directement en expé si transit
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:focus_time/utils/app_haptics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/time_formatter.dart';
 import '../../services/admin_access_service.dart';
@@ -55,7 +55,7 @@ class _FocusScreenState extends State<FocusScreen> {
   }
 
   void _adjustTime(int minutesToAddOrRemove) {
-    HapticFeedback.lightImpact();
+    AppHaptics.lightImpact();
     setState(() {
       _isExactTargetSelected =
           false; // Dès qu'on touche aux boutons + ou -, on sort du mode exact
@@ -71,7 +71,7 @@ class _FocusScreenState extends State<FocusScreen> {
     final int? exactTime =
         widget.transitRemainingMinutes ?? widget.exactDestinationMinutes;
     if (exactTime == null) return;
-    HapticFeedback.mediumImpact();
+    AppHaptics.mediumImpact();
     setState(() {
       _focusMinutes = exactTime;
       _isExactTargetSelected = true;
@@ -145,7 +145,7 @@ class _FocusScreenState extends State<FocusScreen> {
                           children: [
                             InkWell(
                               onTap: () {
-                                HapticFeedback.lightImpact();
+                                AppHaptics.lightImpact();
                                 Navigator.pop(context);
                               },
                               borderRadius: BorderRadius.circular(16),
@@ -558,7 +558,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                   elevation: 2,
                                 ),
                                 onPressed: () {
-                                  HapticFeedback.heavyImpact();
+                                  AppHaptics.heavyImpact();
 
                                   // ✨ FIX : Orientation selon le statut et le temps choisi
                                   if (isResuming) {
@@ -662,7 +662,7 @@ class _FocusScreenState extends State<FocusScreen> {
                                     ),
                                   ),
                                   onPressed: () {
-                                    HapticFeedback.heavyImpact();
+                                    AppHaptics.heavyImpact();
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(

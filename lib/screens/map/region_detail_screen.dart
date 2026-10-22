@@ -5,7 +5,7 @@ import 'package:focus_time/widgets/game_sprites.dart';
 import 'package:focus_time/config/sprite_config.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:focus_time/utils/app_haptics.dart';
 import 'package:focus_time/screens/map/data/region_cross_data.dart';
 import 'package:focus_time/utils/city_name.dart';
 import 'package:flutter/foundation.dart'
@@ -347,7 +347,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
     }
 
     if (closestId != _hoveredCrossId) {
-      if (closestId != null) HapticFeedback.lightImpact();
+      if (closestId != null) AppHaptics.lightImpact();
       setState(() {
         _hoveredCrossId = closestId;
       });
@@ -371,7 +371,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
     // La destination du trajet en cours est toujours sélectionnable (même sans
     // nouvel itinéraire) ; sinon il faut une route calculée.
     if (!isTransitTarget && (!_isReachable(cross) || route == null)) return;
-    HapticFeedback.heavyImpact();
+    AppHaptics.heavyImpact();
 
     List<String> finalRoute;
     int finalTravelMinutes;
@@ -742,7 +742,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                                       ? 'Destination accessible'
                                                       : 'À découvrir'))));
                           final VoidCallback selectCross = () {
-                            HapticFeedback.lightImpact();
+                            AppHaptics.lightImpact();
                             setState(() {
                               if (_selectedCrossId == cross.id) {
                                 _selectedCrossId = null;
@@ -880,7 +880,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                           minHeight: 48,
                                         ),
                                         onPressed: () {
-                                          HapticFeedback.lightImpact();
+                                          AppHaptics.lightImpact();
                                           Navigator.pop(context);
                                         },
                                       ),

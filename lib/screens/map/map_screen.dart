@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:focus_time/utils/app_haptics.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:focus_time/screens/map/data/map_region_data.dart';
@@ -168,7 +169,7 @@ class _MapScreenState extends State<MapScreen>
   void _handleHover(PointerHoverEvent event, List<RegionShape> scaled) {
     final region = _regionAt(event.localPosition, scaled);
     if (region?.id != _hoveredRegionId) {
-      if (region != null) HapticFeedback.lightImpact();
+      if (region != null) AppHaptics.lightImpact();
       setState(() => _hoveredRegionId = region?.id);
     }
   }
@@ -180,9 +181,9 @@ class _MapScreenState extends State<MapScreen>
       return;
     }
     if (_selectedRegionId == region.id) {
-      HapticFeedback.mediumImpact();
+      AppHaptics.mediumImpact();
     } else {
-      HapticFeedback.lightImpact();
+      AppHaptics.lightImpact();
     }
     setState(() {
       if (_selectedRegionId == region.id) {
@@ -420,7 +421,7 @@ class _MapScreenState extends State<MapScreen>
                           minHeight: 48,
                         ),
                         onPressed: () {
-                          HapticFeedback.lightImpact();
+                          AppHaptics.lightImpact();
                           Navigator.pop(context);
                         },
                       ),
@@ -479,10 +480,10 @@ class _MapScreenState extends State<MapScreen>
 
   void _handleSemanticRegionTap(RegionShape region) {
     if (_selectedRegionId == region.id) {
-      HapticFeedback.mediumImpact();
+      AppHaptics.mediumImpact();
       _openRegionDetail(region.id);
     } else {
-      HapticFeedback.lightImpact();
+      AppHaptics.lightImpact();
       setState(() => _selectedRegionId = region.id);
     }
   }

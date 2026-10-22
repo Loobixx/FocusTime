@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:focus_time/utils/app_haptics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'character_options.dart';
@@ -172,7 +172,7 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
 
                                   return GestureDetector(
                                     onTap: () {
-                                      HapticFeedback.lightImpact();
+                                      AppHaptics.lightImpact();
                                       if (isUnlocked) {
                                         setState(() => _selectedCharacterId = character.id);
                                       } else {
@@ -243,7 +243,7 @@ class _CharacterCustomizerScreenState extends State<CharacterCustomizerScreen> {
                             onPressed: (_saving || !isCurrentCharUnlocked) // 👈 Utilise la vérification Firestore
                                 ? null
                                 : () {
-                                    HapticFeedback.mediumImpact();
+                                    AppHaptics.mediumImpact();
                                     _saveCharacter();
                                   },
                             child: _saving

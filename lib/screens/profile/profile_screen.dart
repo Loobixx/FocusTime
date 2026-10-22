@@ -18,6 +18,7 @@ import 'package:focus_time/services/audio_service.dart';
 import 'package:focus_time/services/admin_access_service.dart';
 import 'package:focus_time/screens/profile/admin/admin_management_screen.dart';
 import 'package:focus_time/theme/app_theme.dart';
+import 'package:focus_time/utils/app_haptics.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -427,8 +428,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       color: Colors.transparent,
                                       borderRadius: BorderRadius.circular(15),
                                       clipBehavior: Clip.antiAlias,
-                                      child: ListTile(
-                                        leading: Icon(
+                                      child: SwitchListTile(
+                                        value: !isMuted,
+                                        onChanged: (_) =>
+                                            AudioManager().toggleMute(),
+                                        secondary: Icon(
                                           isMuted ? Icons.volume_off : Icons.volume_up,
                                           color: darkBlue,
                                           size: 26,
@@ -441,13 +445,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                        trailing: Switch(
-                                          value: !isMuted,
-                                          activeThumbColor: const Color(0xFFFF8C00),
-                                          onChanged: (_) => AudioManager().toggleMute(),
+                                        activeThumbColor: const Color(0xFFFF8C00),
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
                                         ),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                                        onTap: () => AudioManager().toggleMute(),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(15),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              ValueListenableBuilder<bool>(
+                                valueListenable: AppHaptics.isEnabled,
+                                builder: (context, hapticsEnabled, child) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 2),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      borderRadius: BorderRadius.circular(15),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: SwitchListTile(
+                                        value: hapticsEnabled,
+                                        onChanged: AppHaptics.setEnabled,
+                                        secondary: Icon(
+                                          Icons.vibration,
+                                          color: darkBlue,
+                                          size: 26,
+                                        ),
+                                        title: Text(
+                                          'Retours haptiques',
+                                          style: TextStyle(
+                                            color: darkBlue,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        activeThumbColor: const Color(0xFFFF8C00),
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(15),
+                                        ),
                                       ),
                                     ),
                                   );
