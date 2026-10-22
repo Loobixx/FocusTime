@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 String campCompanionAsset(String companionId) => switch (companionId) {
   'chien' => 'assets/compagnons/Chien/chien_arret/1.png',
   // Le chat ne possède pas de dossier chat_arret avec des images séparées.
-  'chat' => 'assets/compagnons/Chat/chat_marche/0.png',
+  'chat' => 'assets/compagnons/Chien/chien_arret/1.png',
   _ => 'assets/compagnons/Chien/chien_arret/1.png',
 };
 

@@ -33,6 +33,20 @@ class CompanionData {
       region: 'montagnes',
       defaultColor: Color(0xFFFF8A80),
     ),
+    Companion(
+      id: 'oiseau',
+      name: 'Birdito',
+      unlockCity: 'Le village de Néris', // Dans la forêt
+      region: 'montagnes',
+      defaultColor: Color(0xFFFF8A80),
+    ),
+    Companion(
+      id: 'lapin',
+      name: 'Bunnyto',
+      unlockCity: 'Le village de Néris', // Dans la forêt
+      region: 'montagnes',
+      defaultColor: Color(0xFFFF8A80),
+    ),
   ];
 
   static Companion? getById(String? id) {

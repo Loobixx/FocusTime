@@ -50,7 +50,10 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
   bool _isCompleted = false;
   bool _hasCheated = false;
   final TravelService _travelService = TravelService();
-  String? _activeCompanionId;
+  
+  // 👈 NOUVEAU : Liste pour la meute
+  List<String> _activeCompanions = []; 
+  
   String _characterId = 'nuit';
 
   bool _isWalkingBackward = false;
@@ -78,9 +81,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     WakelockPlus.enable();
 
     if (widget.durationMinutes == -1) {
-      _totalSeconds = widget.plannedRoute.isNotEmpty
-          ? widget.plannedRoute.length
-          : 1;
+      _totalSeconds = widget.plannedRoute.isNotEmpty ? widget.plannedRoute.length : 1;
     } else {
       _totalSeconds = widget.durationMinutes * 60;
     }
@@ -110,31 +111,37 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid);
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
 
     if (widget.durationMinutes == -1) {
-      List<String> allCompanionIds = CompanionData.allCompanions
-          .map((c) => c.id)
-          .toList();
+      List<String> allCompanionIds = CompanionData.allCompanions.map((c) => c.id).toList();
       await userRef.update({'unlockedCompanions': allCompanionIds});
     }
 
     final userDoc = await userRef.get();
-
-    String currentCity =
-        userDoc.data()?['currentCity'] ?? 'Le village de Néris';
-    _activeCompanionId = userDoc.data()?['activeCompanion'] as String?;
-
+    String currentCity = userDoc.data()?['currentCity'] ?? 'Le village de Néris';
     String charId = userDoc.data()?['characterId'] as String? ?? 'nuit';
-    setState(() {
-      _characterId = charId;
-    });
+
+    // 👈 NOUVEAU : Récupération de la liste de compagnons (jusqu'à 4)
+    final activeCompanionsList = userDoc.data()?['activeCompanions'] as List<dynamic>?;
+    final singleCompanion = userDoc.data()?['activeCompanion'] as String?;
+
+    List<String> loadedCompanions = [];
+    if (activeCompanionsList != null && activeCompanionsList.isNotEmpty) {
+      loadedCompanions = activeCompanionsList.whereType<String>().toList();
+    } else if (singleCompanion != null) {
+      loadedCompanions = [singleCompanion];
+    }
+
+    if (mounted) {
+      setState(() {
+        _characterId = charId;
+        _activeCompanions = loadedCompanions;
+      });
+    }
 
     List<_LegTimeline> milestones = [];
     int totalCumulativeSeconds = 0;
-
     int totalRouteSteps = widget.plannedRoute.length;
 
     int secondsPerStep = widget.durationMinutes == -1
@@ -145,17 +152,10 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     for (String city in widget.plannedRoute) {
       int effectiveSeconds = (widget.durationMinutes == -1)
           ? secondsPerStep
-          : (CityNetwork.getAvailableDestinations(currentCity)[city] ?? 60) *
-                60;
+          : (CityNetwork.getAvailableDestinations(currentCity)[city] ?? 60) * 60;
 
       totalCumulativeSeconds += effectiveSeconds;
-      milestones.add(
-        _LegTimeline(
-          destination: city,
-          cumulativeSeconds: totalCumulativeSeconds,
-        ),
-      );
-
+      milestones.add(_LegTimeline(destination: city, cumulativeSeconds: totalCumulativeSeconds));
       currentCity = city;
     }
 
@@ -169,19 +169,15 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       if (!_isCompleted && !_isPaused && !_isWalkingBackward) {
         _outOfPauseExits++;
-        setState(() {
-          _isWalkingBackward = true;
-        });
+        setState(() => _isWalkingBackward = true);
 
         NotificationService().showNotification(
           id: 99,
           title: '🔄 Demi-tour !',
-          body:
-              'Tu as quitté le chemin, ton personnage rebrousse chemin et perd du temps.',
+          body: 'Tu as quitté le chemin, ton personnage rebrousse chemin et perd du temps.',
         );
 
         _hasCheated = true;
@@ -219,9 +215,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
-
-      // Seule une pause confirmée gèle le temps de marche : la proposition de
-      // pause (_isDialogActive) ne l'arrête plus, le temps continue de défiler.
       if (_isPaused) return;
 
       String? arrivedCity;
@@ -242,8 +235,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                 !_triggeredMilestoneIndexes.contains(i) &&
                 !_isDialogActive) {
               _triggeredMilestoneIndexes.add(i);
-              // Pas de proposition si le trajet se termine à cet instant :
-              // elle serait aussitôt refermée par _finishTrip().
               if (_remainingSeconds > 0) {
                 arrivedCity = _routeMilestones[i].destination;
               }
@@ -256,8 +247,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
         }
       });
 
-      // Ouverture hors du setState ; _isDialogActive empêche qu'une même
-      // proposition (ou une suivante) s'empile tant que le dialogue est ouvert.
       if (arrivedCity != null && mounted) {
         _openArrivalPauseDialog(arrivedCity!);
       }
@@ -265,7 +254,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
   }
 
   void _openArrivalPauseDialog(String cityName) {
-    // Affiche la proposition SANS arrêter le minuteur.
     setState(() => _isDialogActive = true);
 
     NotificationService().showNotification(
@@ -277,12 +265,9 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     ActiveTimerDialogs.showArrivalDialog(
       context: context,
       cityName: cityName,
-      // Fermeture / refus : le trajet continue, rien d'autre à faire.
       onClosed: () {
         if (mounted) setState(() => _isDialogActive = false);
       },
-      // Pause explicitement confirmée : c'est ici (et seulement ici) que le
-      // minuteur de marche est arrêté, via _startPauseTimer.
       onSelectPause: (minutes) {
         if (!mounted) return;
         setState(() => _isDialogActive = false);
@@ -293,8 +278,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
 
   void _startPauseTimer(int minutes) async {
     _timer?.cancel();
-
-    // Si mode admin (-1), la pause est raccourcie à 2 sec pour les tests
     final durationSec = widget.durationMinutes == -1 ? 2 : minutes * 60;
 
     setState(() {
@@ -305,7 +288,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       _pauseEndTime = DateTime.now().add(Duration(seconds: durationSec));
     });
 
-    // ✨ FIX : On lance le chronomètre tout de suite, sans attendre !
     _pauseTimer?.cancel();
     _pauseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
@@ -317,8 +299,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
             NotificationService().showNotification(
               id: 201,
               title: '⏰ Bientôt la fin de la pause !',
-              body:
-                  'Ta pause au feu de camp se termine dans 2 minutes, prépare-toi à repartir !',
+              body: 'Ta pause au feu de camp se termine dans 2 minutes, prépare-toi à repartir !',
             );
           }
         } else {
@@ -327,7 +308,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       });
     });
 
-    // ✨ La notification est lancée après, sans bloquer le reste du code
     if (Platform.isAndroid || Platform.isIOS) {
       try {
         await NotificationService().showPauseChronometer(durationSec);
@@ -339,7 +319,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
 
   void _endPauseNormal() {
     _pauseTimer?.cancel();
-
     NotificationService().cancelNotification(200);
     NotificationService().cancelNotification(201);
 
@@ -362,9 +341,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       int lateMinutes = (penalty / 60).ceil();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '⏳ Tu as traîné $lateMinutes min... Ce temps a été rajouté à ton voyage en pénalité !',
-          ),
+          content: Text('⏳ Tu as traîné $lateMinutes min... Ce temps a été rajouté à ton voyage !'),
           backgroundColor: Colors.redAccent,
           duration: const Duration(seconds: 5),
         ),
@@ -382,11 +359,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     await _travelService.setFocusActive(false);
 
     if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-        (route) => false,
-      );
+      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const HomeScreen()), (route) => false);
     }
   }
 
@@ -399,9 +372,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
         .firstWhere((c) => c?.unlockCity == arrivedCity, orElse: () => null);
 
     if (companionToUnlock != null) {
-      final userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid);
+      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
       final doc = await userRef.get();
       final List<dynamic> unlocked = doc.data()?['unlockedCompanions'] ?? [];
 
@@ -427,34 +398,24 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       setState(() => _isDialogActive = false);
     }
 
-    int baseMinutes = widget.durationMinutes == -1
-        ? 10
-        : widget.durationMinutes;
+    int baseMinutes = widget.durationMinutes == -1 ? 10 : widget.durationMinutes;
     int earnedPoints = baseMinutes;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid);
+      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
 
-      // ✨ FIX : Détection d'un trajet incomplet
-      bool isPartialTrip =
-          widget.durationMinutes != -1 &&
-          widget.plannedTravelMinutes > widget.durationMinutes;
+      bool isPartialTrip = widget.durationMinutes != -1 && widget.plannedTravelMinutes > widget.durationMinutes;
 
       if (isPartialTrip) {
-        int remainingTravel =
-            widget.plannedTravelMinutes - widget.durationMinutes;
+        int remainingTravel = widget.plannedTravelMinutes - widget.durationMinutes;
 
         NotificationService().showNotification(
           id: 3,
           title: '🏕️ Campement sauvage !',
-          body:
-              'Temps de focus écoulé. Il te reste $remainingTravel min de marche vers ${widget.plannedRoute.last}.',
+          body: 'Temps de focus écoulé. Il te reste $remainingTravel min de marche vers ${widget.plannedRoute.last}.',
         );
 
-        // Sauvegarde de l'état "En transit" dans Firebase
         await userRef.set({
           'points': FieldValue.increment(earnedPoints),
           'inTransit': true,
@@ -465,11 +426,9 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
         NotificationService().showNotification(
           id: 3,
           title: '🎉 Fin de session !',
-          body:
-              'Trajet terminé et enregistré ! Tu as gagné $earnedPoints points 🪙',
+          body: 'Trajet terminé et enregistré ! Tu as gagné $earnedPoints points 🪙',
         );
 
-        // Nettoyage de l'état "En transit" et mise à jour de la ville finale
         await userRef.set({
           'points': FieldValue.increment(earnedPoints),
           'inTransit': false,
@@ -485,19 +444,11 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       }
     }
 
-    int safeDuration = widget.durationMinutes == -1
-        ? 0
-        : widget.durationMinutes;
-
-    await _travelService.processTripResults(
-      totalFuelMinutes: safeDuration,
-      plannedRoute: widget.plannedRoute,
-    );
+    int safeDuration = widget.durationMinutes == -1 ? 0 : widget.durationMinutes;
+    await _travelService.processTripResults(totalFuelMinutes: safeDuration, plannedRoute: widget.plannedRoute);
 
     if (mounted) {
-      setState(() {
-        _isCompleted = true;
-      });
+      setState(() => _isCompleted = true);
     }
   }
 
@@ -505,19 +456,12 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
 
-    int focusMinutes = widget.durationMinutes == -1
-        ? 1
-        : widget.durationMinutes;
+    int focusMinutes = widget.durationMinutes == -1 ? 1 : widget.durationMinutes;
     int appActiveMinutes = (_appActiveSeconds / 60).ceil();
     int earnedPoints = focusMinutes;
 
-    // ✨ On recalcule pour l'interface
-    bool isPartialTrip =
-        widget.durationMinutes != -1 &&
-        widget.plannedTravelMinutes > widget.durationMinutes;
-    int remainingTravel = isPartialTrip
-        ? (widget.plannedTravelMinutes - widget.durationMinutes)
-        : 0;
+    bool isPartialTrip = widget.durationMinutes != -1 && widget.plannedTravelMinutes > widget.durationMinutes;
+    int remainingTravel = isPartialTrip ? (widget.plannedTravelMinutes - widget.durationMinutes) : 0;
 
     showModalBottomSheet(
       context: context,
@@ -537,100 +481,49 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
               child: Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              isPartialTrip
-                  ? "🏕️ Campement en chemin"
-                  : "📜 Résumé de l'expédition",
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: darkBlue,
-              ),
+              isPartialTrip ? "🏕️ Campement en chemin" : "📜 Résumé de l'expédition",
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkBlue),
             ),
             const SizedBox(height: 16),
 
-            Text(
-              "Villes traversées / ciblées :",
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
+            Text("Villes traversées / ciblées :", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: widget.plannedRoute
-                  .map(
-                    (city) => Chip(
-                      backgroundColor: focusOrange.withValues(alpha: 0.12),
-                      side: const BorderSide(color: focusOrange),
-                      avatar: const Icon(
-                        Icons.place,
-                        size: 16,
-                        color: focusOrange,
-                      ),
-                      label: Text(
-                        city,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          color: darkBlue,
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
+              children: widget.plannedRoute.map((city) => Chip(
+                backgroundColor: focusOrange.withValues(alpha: 0.12),
+                side: const BorderSide(color: focusOrange),
+                avatar: const Icon(Icons.place, size: 16, color: focusOrange),
+                label: Text(city, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: darkBlue)),
+              )).toList(),
             ),
 
             const Divider(height: 28),
 
-            _buildSummaryRow(
-              Icons.timer_outlined,
-              "Temps focus effectué",
-              "$focusMinutes min",
-            ),
+            _buildSummaryRow(Icons.timer_outlined, "Temps focus effectué", "$focusMinutes min"),
 
-            // ✨ Ajout d'une ligne pour prévenir du temps restant
             if (isPartialTrip) ...[
               const SizedBox(height: 10),
-              _buildSummaryRow(
-                Icons.directions_walk_rounded,
-                "Reste à parcourir",
-                "$remainingTravel min",
-                valueColor: Colors.orange.shade800,
-              ),
+              _buildSummaryRow(Icons.directions_walk_rounded, "Reste à parcourir", "$remainingTravel min", valueColor: Colors.orange.shade800),
             ],
 
             const SizedBox(height: 10),
-            _buildSummaryRow(
-              Icons.phone_android,
-              "Temps passé sur l'app",
-              "$appActiveMinutes min",
-            ),
+            _buildSummaryRow(Icons.phone_android, "Temps passé sur l'app", "$appActiveMinutes min"),
             const SizedBox(height: 10),
             _buildSummaryRow(
               Icons.warning_amber_rounded,
               "Sorties hors pause",
               "$_outOfPauseExits fois",
-              valueColor: _outOfPauseExits > 0
-                  ? Colors.redAccent
-                  : Colors.green,
+              valueColor: _outOfPauseExits > 0 ? Colors.redAccent : Colors.green,
             ),
             const SizedBox(height: 10),
-            _buildSummaryRow(
-              Icons.monetization_on_outlined,
-              "Points gagnés",
-              "+$earnedPoints pts",
-              valueColor: focusOrange,
-            ),
+            _buildSummaryRow(Icons.monetization_on_outlined, "Points gagnés", "+$earnedPoints pts", valueColor: focusOrange),
 
             const SizedBox(height: 24),
             SizedBox(
@@ -640,23 +533,14 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                   backgroundColor: darkBlue,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                    (route) => false,
-                  );
+                  Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const HomeScreen()), (route) => false);
                 },
                 child: Text(
                   isPartialTrip ? "Monter le campement" : "Retour au campement",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ),
             ),
@@ -666,39 +550,19 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     );
   }
 
-  Widget _buildSummaryRow(
-    IconData icon,
-    String label,
-    String value, {
-    Color? valueColor,
-  }) {
+  Widget _buildSummaryRow(IconData icon, String label, String value, {Color? valueColor}) {
     return Row(
       children: [
         Icon(icon, size: 18, color: const Color(0xFF143063)),
         const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14, color: Colors.black87),
-        ),
+        Text(label, style: const TextStyle(fontSize: 14, color: Colors.black87)),
         const Spacer(),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: valueColor ?? const Color(0xFF143063),
-          ),
-        ),
+        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: valueColor ?? const Color(0xFF143063))),
       ],
     );
   }
 
-  void _showRouteBottomSheet(
-    BuildContext context,
-    Color darkBlue,
-    Color focusOrange,
-    int currentLegIndex,
-  ) {
+  void _showRouteBottomSheet(BuildContext context, Color darkBlue, Color focusOrange, int currentLegIndex) {
     int travelMinutes = widget.plannedTravelMinutes;
     int restMinutes = widget.durationMinutes - travelMinutes;
     if (restMinutes < 0) restMinutes = 0;
@@ -720,18 +584,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Plan de route complet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: darkBlue,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: () => Navigator.pop(context),
-                  ),
+                  Text('Plan de route complet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: darkBlue)),
+                  IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(context)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -742,20 +596,11 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                   int idx = entry.key;
                   String city = entry.value;
 
-                  Color chipColor = (idx < currentLegIndex)
-                      ? Colors.green
-                      : (idx == currentLegIndex ? focusOrange : Colors.grey);
-                  IconData chipIcon = (idx < currentLegIndex)
-                      ? Icons.check_circle
-                      : (idx == currentLegIndex
-                            ? Icons.navigation
-                            : Icons.radio_button_unchecked);
+                  Color chipColor = (idx < currentLegIndex) ? Colors.green : (idx == currentLegIndex ? focusOrange : Colors.grey);
+                  IconData chipIcon = (idx < currentLegIndex) ? Icons.check_circle : (idx == currentLegIndex ? Icons.navigation : Icons.radio_button_unchecked);
 
                   return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: chipColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
@@ -766,14 +611,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                       children: [
                         Icon(chipIcon, size: 13, color: chipColor),
                         const SizedBox(width: 4),
-                        Text(
-                          city,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: chipColor,
-                          ),
-                        ),
+                        Text(city, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: chipColor)),
                       ],
                     ),
                   );
@@ -784,26 +622,12 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                 children: [
                   Icon(Icons.timer_outlined, color: darkBlue, size: 16),
                   const SizedBox(width: 4),
-                  Text(
-                    'Voyage : ${formatMinutesToHours(travelMinutes)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: darkBlue,
-                    ),
-                  ),
+                  Text('Voyage : ${formatMinutesToHours(travelMinutes)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkBlue)),
                   if (restMinutes > 0) ...[
                     const SizedBox(width: 12),
                     const Icon(Icons.hotel, color: Color(0xFF6A1B9A), size: 16),
                     const SizedBox(width: 4),
-                    Text(
-                      'Repos : ${formatMinutesToHours(restMinutes)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF6A1B9A),
-                      ),
-                    ),
+                    Text('Repos : ${formatMinutesToHours(restMinutes)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6A1B9A))),
                   ],
                 ],
               ),
@@ -838,28 +662,20 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     }
   }
 
-  // ✨ FIX : Nouvelle fonction claire pour décider QUEL texte afficher
   String _getTimerText() {
     if (_isWalkingBackward) {
       return "DEMI-TOUR\n${_formatTimerDisplay(isOvertime: false, seconds: _remainingSeconds)}";
     }
     if (_isPaused) {
       if (_pauseOvertimeSeconds > 0) {
-        return _formatTimerDisplay(
-          isOvertime: true,
-          seconds: _pauseOvertimeSeconds,
-        );
+        return _formatTimerDisplay(isOvertime: true, seconds: _pauseOvertimeSeconds);
       } else {
-        return _formatTimerDisplay(
-          isOvertime: false,
-          seconds: _pauseRemainingSeconds,
-        );
+        return _formatTimerDisplay(isOvertime: false, seconds: _pauseRemainingSeconds);
       }
     }
     return _formatTimerDisplay(isOvertime: false, seconds: _remainingSeconds);
   }
 
-  // ✨ FIX : Nouvelle fonction claire pour décider QUELLE couleur utiliser
   Color _getTimerColor() {
     if (_isWalkingBackward) return Colors.orangeAccent;
     if (_isPaused && _pauseOvertimeSeconds > 0) return AppColors.errorOnDark;
@@ -872,7 +688,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     const focusOrange = Color(0xFFFF8C00);
 
     int elapsedSeconds = _totalSeconds - _remainingSeconds;
-
     String currentLegTitle = "Préparation...";
     int currentLegIndex = 0;
 
@@ -887,17 +702,14 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
         }
       }
       if (!isStillTravelling) {
-        currentLegTitle =
-            "⛺ Campement installé à ${_routeMilestones.last.destination}";
+        currentLegTitle = "⛺ Campement installé à ${_routeMilestones.last.destination}";
         currentLegIndex = _routeMilestones.length;
       }
     } else if (widget.plannedRoute.isNotEmpty) {
       currentLegTitle = "Marche vers ${widget.plannedRoute.first}";
     }
 
-    double progress = (_totalSeconds > 0)
-        ? (_remainingSeconds / _totalSeconds)
-        : 0.0;
+    double progress = (_totalSeconds > 0) ? (_remainingSeconds / _totalSeconds) : 0.0;
 
     return PopScope(
       canPop: false,
@@ -934,37 +746,20 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                               Align(
                                 alignment: Alignment.topLeft,
                                 child: InkWell(
-                                  onTap: () =>
-                                      ActiveTimerDialogs.showAbandonDialog(
-                                        context,
-                                        _cancelTrip,
-                                      ),
+                                  onTap: () => ActiveTimerDialogs.showAbandonDialog(context, _cancelTrip),
                                   borderRadius: BorderRadius.circular(16),
                                   child: Container(
-                                    constraints: const BoxConstraints(
-                                      minWidth: 48,
-                                      minHeight: 48,
-                                    ),
+                                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.3,
-                                      ),
+                                      color: Colors.white.withValues(alpha: 0.3),
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.4,
-                                        ),
-                                      ),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
                                     ),
                                     child: Semantics(
                                       label: 'Quitter l’expédition',
                                       excludeSemantics: true,
-                                      child: Icon(
-                                        Icons.arrow_back_ios_new,
-                                        color: darkBlue,
-                                        size: 20,
-                                      ),
+                                      child: Icon(Icons.arrow_back_ios_new, color: darkBlue, size: 20),
                                     ),
                                   ),
                                 ),
@@ -975,9 +770,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                                 child: Padding(
                                   padding: const EdgeInsets.only(top: 40.0),
                                   child: Semantics(
-                                    label: _isPaused
-                                        ? 'Minuteur de pause'
-                                        : 'Minuteur de marche',
+                                    label: _isPaused ? 'Minuteur de pause' : 'Minuteur de marche',
                                     value: _getTimerText(),
                                     excludeSemantics: true,
                                     child: SizedBox(
@@ -989,53 +782,24 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                                           Container(
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
-                                              color:
-                                                  _isPaused ||
-                                                      _isWalkingBackward
+                                              color: _isPaused || _isWalkingBackward
                                                   ? (_isWalkingBackward
-                                                        ? Colors.orange
-                                                              .withValues(
-                                                                alpha: 0.2,
-                                                              )
-                                                        : (_pauseOvertimeSeconds >
-                                                                  0
-                                                              ? Colors.red
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.15,
-                                                                    )
-                                                              : const Color(
-                                                                  0xFF1B2A3D,
-                                                                )))
+                                                        ? Colors.orange.withValues(alpha: 0.2)
+                                                        : (_pauseOvertimeSeconds > 0
+                                                              ? Colors.red.withValues(alpha: 0.15)
+                                                              : const Color(0xFF1B2A3D)))
                                                   : const Color(0xFF1E2430),
                                               border: Border.all(
                                                 color: _isWalkingBackward
                                                     ? Colors.orangeAccent
-                                                    : (_pauseOvertimeSeconds > 0
-                                                          ? Colors.redAccent
-                                                          : Colors.white
-                                                                .withValues(
-                                                                  alpha: 0.5,
-                                                                )),
+                                                    : (_pauseOvertimeSeconds > 0 ? Colors.redAccent : Colors.white.withValues(alpha: 0.5)),
                                                 width: 2.0,
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
                                                   color: _isWalkingBackward
-                                                      ? Colors.orangeAccent
-                                                            .withValues(
-                                                              alpha: 0.4,
-                                                            )
-                                                      : (_pauseOvertimeSeconds >
-                                                                0
-                                                            ? Colors.redAccent
-                                                                  .withValues(
-                                                                    alpha: 0.4,
-                                                                  )
-                                                            : Colors.black
-                                                                  .withValues(
-                                                                    alpha: 0.2,
-                                                                  )),
+                                                      ? Colors.orangeAccent.withValues(alpha: 0.4)
+                                                      : (_pauseOvertimeSeconds > 0 ? Colors.redAccent.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.2)),
                                                   blurRadius: 8,
                                                   offset: const Offset(0, 4),
                                                 ),
@@ -1046,45 +810,29 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                                             width: 200,
                                             height: 200,
                                             child: CircularProgressIndicator(
-                                              value: _isPaused
-                                                  ? null
-                                                  : progress.clamp(0.0, 1.0),
+                                              value: _isPaused ? null : progress.clamp(0.0, 1.0),
                                               strokeWidth: 8,
-                                              backgroundColor: Colors.white
-                                                  .withValues(alpha: 0.2),
+                                              backgroundColor: Colors.white.withValues(alpha: 0.2),
                                               valueColor: AlwaysStoppedAnimation<Color>(
                                                 _isWalkingBackward
                                                     ? Colors.orangeAccent
                                                     : (_isPaused
-                                                          ? (_pauseOvertimeSeconds >
-                                                                    0
-                                                                ? Colors
-                                                                      .redAccent
-                                                                : Colors
-                                                                      .blueAccent)
+                                                          ? (_pauseOvertimeSeconds > 0 ? Colors.redAccent : Colors.blueAccent)
                                                           : focusOrange),
                                               ),
                                             ),
                                           ),
-                                          // ✨ On utilise nos méthodes robustes pour être sûr à 100% de la valeur
                                           Row(
                                             mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
+                                            mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
-                                              Icon(
-                                                Icons.timer_outlined,
-                                                size: 20,
-                                                color: _getTimerColor(),
-                                              ),
+                                              Icon(Icons.timer_outlined, size: 20, color: _getTimerColor()),
                                               const SizedBox(width: 6),
                                               Flexible(
                                                 child: Text(
                                                   _getTimerText(),
                                                   style: TextStyle(
-                                                    fontSize: _isWalkingBackward
-                                                        ? 20
-                                                        : 26,
+                                                    fontSize: _isWalkingBackward ? 20 : 26,
                                                     fontWeight: FontWeight.bold,
                                                     color: _getTimerColor(),
                                                     height: 1.15,
@@ -1107,35 +855,22 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                         const Spacer(flex: 1),
 
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))],
                           ),
                           child: Text(
                             _isWalkingBackward
                                 ? '🔄 Ton personnage rebrousse chemin !'
                                 : (_isPaused
-                                      ? (_pauseOvertimeSeconds > 0
-                                            ? '⚠️ Pause dépassée !'
-                                            : '☕ Campement au feu de camp')
+                                      ? (_pauseOvertimeSeconds > 0 ? '⚠️ Pause dépassée !' : '☕ Campement au feu de camp')
                                       : currentLegTitle),
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: _isWalkingBackward
-                                  ? Colors.orange.shade800
-                                  : darkBlue,
+                              color: _isWalkingBackward ? Colors.orange.shade800 : darkBlue,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -1147,23 +882,12 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                             style: ElevatedButton.styleFrom(
                               backgroundColor: focusOrange,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                               elevation: 4,
                             ),
                             icon: const Icon(Icons.flag_rounded, size: 22),
-                            label: const Text(
-                              "Terminer l'exploration",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            label: const Text("Terminer l'exploration", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                             onPressed: _showExpeditionSummarySheet,
                           ),
                           const SizedBox(height: 12),
@@ -1174,80 +898,36 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 10,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             ),
-                            icon: const Icon(
-                              Icons.play_arrow,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            label: const Text(
-                              'Reprendre le voyage',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                            icon: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
+                            label: const Text('Reprendre le voyage', style: TextStyle(fontWeight: FontWeight.bold)),
                             onPressed: _endPauseNormal,
                           ),
 
                         GestureDetector(
-                          onTap: () => _showRouteBottomSheet(
-                            context,
-                            darkBlue,
-                            focusOrange,
-                            currentLegIndex,
-                          ),
+                          onTap: () => _showRouteBottomSheet(context, darkBlue, focusOrange, currentLegIndex),
                           child: Container(
-                            constraints: const BoxConstraints(
-                              minWidth: 48,
-                              minHeight: 48,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
+                            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.85),
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 1.2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                              border: Border.all(color: Colors.white, width: 1.2),
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6, offset: const Offset(0, 2))],
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
-                                  Icons.route,
-                                  color: darkBlue,
-                                  size: 16,
-                                ),
+                                const Icon(Icons.route, color: darkBlue, size: 16),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Itinéraire ($currentLegIndex/${widget.plannedRoute.length})',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: darkBlue,
-                                  ),
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkBlue),
                                 ),
                                 const SizedBox(width: 6),
-                                const Icon(
-                                  Icons.keyboard_arrow_up,
-                                  color: darkBlue,
-                                  size: 18,
-                                ),
+                                const Icon(Icons.keyboard_arrow_up, color: darkBlue, size: 18),
                               ],
                             ),
                           ),
@@ -1258,14 +938,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                         Padding(
                           padding: const EdgeInsets.only(bottom: 24.0),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.65),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.65), borderRadius: BorderRadius.circular(20)),
                             child: Text(
                               _isWalkingBackward
                                   ? '⚠️ Reviens sur l\'app pour reprendre ta marche en avant !'
@@ -1282,12 +956,8 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                                 color: _isWalkingBackward
                                     ? Colors.orangeAccent
                                     : (_isPaused
-                                          ? (_pauseOvertimeSeconds > 0
-                                                ? Colors.redAccent
-                                                : Colors.lightBlueAccent)
-                                          : (_isCompleted
-                                                ? Colors.lightGreenAccent
-                                                : const Color(0xFFFF6B6B))),
+                                          ? (_pauseOvertimeSeconds > 0 ? Colors.redAccent : Colors.lightBlueAccent)
+                                          : (_isCompleted ? Colors.lightGreenAccent : const Color(0xFFFF6B6B))),
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -1300,16 +970,45 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
               ),
             ),
 
-            if (_activeCompanionId != null)
-              Positioned(
-                bottom: 168,
-                left: MediaQuery.of(context).size.width * 0.58,
+            // 👈 NOUVEAU : Affichage dynamique de toute la meute en expédition !
+            ..._activeCompanions.asMap().entries.map((entry) {
+              int index = entry.key;
+              String compId = entry.value;
+
+              double leftOffset;
+              double bottomOffset;
+
+              // Placement pour simuler une marche en meute
+              switch (index) {
+                case 0:
+                  leftOffset = MediaQuery.of(context).size.width * 0.45;
+                  bottomOffset = 168;
+                  break;
+                case 1:
+                  leftOffset = MediaQuery.of(context).size.width * 0.6;
+                  bottomOffset = 170; // Plus bas = plus au premier plan
+                  break;
+                case 2:
+                  leftOffset = MediaQuery.of(context).size.width * 0.75;
+                  bottomOffset = 172; // Plus haut = plus à l'arrière-plan
+                  break;
+                case 3:
+                default:
+                  leftOffset = MediaQuery.of(context).size.width * 0.03;
+                  bottomOffset = 174;
+                  break;
+              }
+
+              return Positioned(
+                bottom: bottomOffset,
+                left: leftOffset,
                 child: CompanionSprite(
-                  companionId: _activeCompanionId!,
+                  companionId: compId,
                   scene: SpriteScene.expedition,
                   isMoving: !_isWalkingBackward && !_isPaused && !_isCompleted,
                 ),
-              ),
+              );
+            }),
           ],
         ),
       ),

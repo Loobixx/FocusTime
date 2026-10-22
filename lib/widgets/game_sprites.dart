@@ -77,17 +77,38 @@ class CompanionSprite extends StatelessWidget {
                 'assets/compagnons/Chien/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
           ),
         },
-      'chat' => <String, List<String>>{
+        'chat' => <String, List<String>>{
           'marche': List.generate(
-            3,
-            (i) =>
-                'assets/compagnons/Chat/marche/frame${i.toString().padLeft(2, '0')}.png',
+            6,
+            (i) => 'assets/compagnons/Chien/chien_marche/$i.png',
           ),
-          // Le dossier du chat ne contient pas de frames d'arrêt séparées.
-          // Sa première frame individuelle sert donc d'image fixe au repos.
-          'arret': const [
-            'assets/compagnons/Chat/chat_marche/0.png',
-          ],
+          'arret': List.generate(
+            isSelected ? 8 : 18,
+            (i) =>
+                'assets/compagnons/Chien/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
+          ),
+        },
+        'lapin' => <String, List<String>>{
+          'marche': List.generate(
+            6,
+            (i) => 'assets/compagnons/Chien/chien_marche/$i.png',
+          ),
+          'arret': List.generate(
+            isSelected ? 8 : 18,
+            (i) =>
+                'assets/compagnons/Chien/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
+          ),
+        },
+        'oiseau' => <String, List<String>>{
+          'marche': List.generate(
+            6,
+            (i) => 'assets/compagnons/Chien/chien_marche/$i.png',
+          ),
+          'arret': List.generate(
+            isSelected ? 8 : 18,
+            (i) =>
+                'assets/compagnons/Chien/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
+          ),
         },
       _ => const <String, List<String>>{},
     };

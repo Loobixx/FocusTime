@@ -58,7 +58,7 @@ class CampLayoutConfig {
   static const CampLayoutConfig defaults = CampLayoutConfig(
     // Tente : position en %, taille en pixels fixes, scale pour ajuster
     tent: CampElementLayout(
-      position: Offset(-0.05, 0.43),
+      position: Offset(-0.05, 0.45),
       size: Size(160, 140), // 👈 Taille en pixels fixes
       scale: 1,           // 👈 Multiplicateur (augmente pour grossir)
     ),
@@ -70,15 +70,15 @@ class CampLayoutConfig {
     ),
     // Personnage sur le chemin
     character: CampElementLayout(
-      position: Offset(0.3, 0.4), 
+      position: Offset(0, 0.4), 
       size: Size(80, 120),  // 👈 Taille en pixels fixes de base
       scale: 3,           // 👈 Modifie ce nombre pour l'agrandir ou le réduire facilement !
     ),
     // L'enclos
     animalEnclosure: CampElementLayout(
-      position: Offset(0.62, 0.47),
+      position: Offset(0.66, 0.47),
       size: Size(180, 150), // Taille en pixels fixes
-      scale: 0.8,           // Multiplicateur
+      scale: 1,       // Multiplicateur
     ),
   );
 
