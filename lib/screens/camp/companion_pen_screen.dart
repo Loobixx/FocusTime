@@ -5,7 +5,6 @@ import 'package:focus_time/models/companion.dart';
 import 'package:focus_time/widgets/camp_widgets.dart';
 
 class CompanionPenScreen extends StatefulWidget {
-  // 👈 NOUVEAU : Reçoit une liste au lieu d'une simple String
   final List<String> selectedIds; 
   final List<String> unlockedIds;
   final String background;
@@ -30,19 +29,17 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
   static const Color _btnOrange = Color(0xFFF79E4A);
   static const Color _headerYellow = Color(0xFFF5C564);
 
-  // 👈 NOUVEAU : Conserve la liste des animaux cochés
   late List<String> _selectedCompanions = List.from(widget.selectedIds);
 
   void _toggleCompanion(String id) {
     HapticFeedback.selectionClick();
     setState(() {
       if (_selectedCompanions.contains(id)) {
-        _selectedCompanions.remove(id); // Désélectionne
+        _selectedCompanions.remove(id); 
       } else {
         if (_selectedCompanions.length < 4) {
-          _selectedCompanions.add(id); // Sélectionne (si max 4 non atteint)
+          _selectedCompanions.add(id); 
         } else {
-          // Affiche un petit message si on essaie d'en mettre plus de 4
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Tu ne peux sélectionner que 4 familiers maximum !', style: TextStyle(color: Colors.white)),
@@ -75,47 +72,51 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
           
           SafeArea(
             child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _panelBg,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF4A301E), width: 3),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 5))],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                            child: _buildHeader(),
-                          ),
-                          Container(
-                            height: MediaQuery.of(context).size.height * 0.55,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: GridView.builder(
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: CompanionData.allCompanions.length,
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 20,
-                                childAspectRatio: 0.7,
-                              ),
-                              itemBuilder: (context, index) => _buildPenCard(CompanionData.allCompanions[index]),
+              // 👈 NOUVEAU : On bloque la largeur au format téléphone (480px max)
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: _panelBg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFF4A301E), width: 3),
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 5))],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                              child: _buildHeader(),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                        ],
+                            Container(
+                              height: MediaQuery.of(context).size.height * 0.55,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: GridView.builder(
+                                physics: const BouncingScrollPhysics(),
+                                itemCount: CompanionData.allCompanions.length,
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 20,
+                                  childAspectRatio: 0.7,
+                                ),
+                                itemBuilder: (context, index) => _buildPenCard(CompanionData.allCompanions[index]),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildConfirmButton(),
-                  ],
+                      const SizedBox(height: 24),
+                      _buildConfirmButton(),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -141,7 +142,7 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'COMPAGNONS (${_selectedCompanions.length}/4)', // 👈 Affiche le nombre actuel
+                  'COMPAGNONS (${_selectedCompanions.length}/4)',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: _textBrown,
@@ -175,10 +176,7 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
   }
 
   Widget _buildPenCard(Companion companion) {
-    // Vérifie s'il est débloqué
     final bool unlocked = widget.unlockedIds.contains(companion.id) || widget.selectedIds.contains(companion.id);
-    
-    // 👈 ASTUCE : On récupère sa position exacte dans ta liste de sélection !
     final int selectionIndex = _selectedCompanions.indexOf(companion.id); 
     final bool isSelected = selectionIndex != -1;
 
@@ -220,7 +218,7 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
                             ),
                     ),
                   ),
-                  Image.asset('assets/homePageAssets/logement/base/montagne/avant.png', fit: BoxFit.contain),
+                  Image.asset('assets/homePageAssets/cloture/base/montagne/avant.png', fit: BoxFit.contain),
                 ],
               ),
             ),
@@ -233,7 +231,6 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
           if (!unlocked)
             _buildPixelPill('À TROUVER', _btnBeige, icon: Icons.lock)
           else if (isSelected)
-            // 👈 NOUVEAU : Affiche dynamiquement sa place dans la meute ! (ex: SÉLECTIONNÉ (1))
             _buildPixelPill('SÉLECTIONNÉ (${selectionIndex + 1})', _btnBeige)
           else
             _buildPixelPill('CHOISIR', _btnGreen, textColor: Colors.white),
@@ -281,7 +278,6 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
 
   Widget _buildConfirmButton() {
     return GestureDetector(
-      // 👈 Renvoie toute la liste des compagnons sélectionnés quand on valide
       onTap: () => Navigator.pop(context, _selectedCompanions),
       child: Container(
         width: 250,
