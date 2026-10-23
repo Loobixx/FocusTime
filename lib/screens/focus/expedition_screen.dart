@@ -747,6 +747,49 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
               child: Container(color: Colors.black.withValues(alpha: 0.15)),
             ),
 
+            // 👈 NOUVEAU : Affichage dynamique de toute la meute en expédition !
+            ..._activeCompanions.asMap().entries.map((entry) {
+              int index = entry.key;
+              String compId = entry.value;
+
+              final double screenWidth = MediaQuery.of(context).size.width;
+              final double centerX = screenWidth / 2; // Point de repère : le centre de l'écran
+
+              double leftOffset;
+              double bottomOffset;
+
+              // Placement bloqué en pixels (distance fixe par rapport au personnage)
+              switch (index) {
+                case 0:
+                  leftOffset = centerX -10; // 1er compagnon juste derrière
+                  bottomOffset = 160;
+                  break;
+                case 1:
+                  leftOffset = centerX + 60; // 2ème compagnon (60 pixels derrière)
+                  bottomOffset = 160; 
+                  break;
+                case 2:
+                  leftOffset = centerX + 130; // 3ème compagnon
+                  bottomOffset = 160; 
+                  break;
+                case 3:
+                default:
+                  leftOffset = centerX -210; // 4ème compagnon (ferme la marche)
+                  bottomOffset = 160;
+                  break;
+              }
+
+              return Positioned(
+                bottom: bottomOffset,
+                left: leftOffset,
+                child: CompanionSprite(
+                  companionId: compId,
+                  scene: SpriteScene.expedition,
+                  isMoving: !_isWalkingBackward && !_isPaused && !_isCompleted,
+                ),
+              );
+            }),
+
             SafeArea(
               child: Center(
                 child: ConstrainedBox(
@@ -986,46 +1029,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                 ),
               ),
             ),
-
-            // 👈 NOUVEAU : Affichage dynamique de toute la meute en expédition !
-            ..._activeCompanions.asMap().entries.map((entry) {
-              int index = entry.key;
-              String compId = entry.value;
-
-              double leftOffset;
-              double bottomOffset;
-
-              // Placement pour simuler une marche en meute
-              switch (index) {
-                case 0:
-                  leftOffset = MediaQuery.of(context).size.width * 0.45;
-                  bottomOffset = 168;
-                  break;
-                case 1:
-                  leftOffset = MediaQuery.of(context).size.width * 0.6;
-                  bottomOffset = 170; // Plus bas = plus au premier plan
-                  break;
-                case 2:
-                  leftOffset = MediaQuery.of(context).size.width * 0.75;
-                  bottomOffset = 172; // Plus haut = plus à l'arrière-plan
-                  break;
-                case 3:
-                default:
-                  leftOffset = MediaQuery.of(context).size.width * 0.03;
-                  bottomOffset = 174;
-                  break;
-              }
-
-              return Positioned(
-                bottom: bottomOffset,
-                left: leftOffset,
-                child: CompanionSprite(
-                  companionId: compId,
-                  scene: SpriteScene.expedition,
-                  isMoving: !_isWalkingBackward && !_isPaused && !_isCompleted,
-                ),
-              );
-            }),
           ],
         ),
       ),

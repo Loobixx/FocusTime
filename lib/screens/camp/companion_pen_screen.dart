@@ -195,7 +195,7 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Image.asset('assets/HomePageAssets/Logement/cloture.png', fit: BoxFit.contain),
+                  Image.asset('assets/homePageAssets/cloture/base/montagne/arriere.png', fit: BoxFit.contain),
                   
                   Transform.translate(
                     offset: const Offset(0, -20),
@@ -220,7 +220,7 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
                             ),
                     ),
                   ),
-                  Image.asset('assets/HomePageAssets/Logement/avant_de_cloture.png', fit: BoxFit.contain),
+                  Image.asset('assets/homePageAssets/logement/base/montagne/avant.png', fit: BoxFit.contain),
                 ],
               ),
             ),

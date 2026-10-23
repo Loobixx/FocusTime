@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:focus_time/models/companion.dart';
 import 'package:focus_time/models/camp_layout_config.dart';
+import 'package:focus_time/screens/shop/shop_screen.dart';
 import 'package:focus_time/utils/time_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,11 +36,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   CampBiome _biome = CampBiomes.fallback;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userSub;
-  
-  String? _currentTent = null;
-  String? _currentEnclosure = null;
-  
-  // 👈 NOUVEAU : On gère une liste de compagnons (jusqu'à 4)
+
+  // Variables dynamiques des cosmétiques équipés
+  String _currentTent = 'assets/homePageAssets/logement/base/montagne/tente.png';
+  String _currentEnclosureBack = 'assets/homePageAssets/cloture/base/montagne/arriere.png';
+  String _currentEnclosureFront = 'assets/homePageAssets/cloture/base/montagne/avant.png';
+
   List<String> _activeCompanions = ['chien'];
   List<String> _unlockedCompanions = [];
   bool _loadingCampCompanions = true;
@@ -75,14 +77,32 @@ class _HomeScreenState extends State<HomeScreen> {
         .doc(user.uid)
         .snapshots()
         .listen((snap) {
-          final data = snap.data();
-          final biome = CampBiomes.resolve(
-            city: data?['currentCity'] as String?,
-            zone: data?['currentZone'] as String?,
-          );
-          if (!mounted || biome.id == _biome.id) return;
-          setState(() => _biome = biome);
-        });
+      final data = snap.data();
+      final biome = CampBiomes.resolve(
+        city: data?['currentCity'] as String?,
+        zone: data?['currentZone'] as String?,
+      );
+
+      final savedTent = data?['equippedTent'] as String?;
+      final savedEnclosureBack = data?['equippedEnclosureBack'] as String?;
+      final savedEnclosureFront = data?['equippedEnclosureFront'] as String?;
+
+      if (!mounted) return;
+      setState(() {
+        if (biome.id != _biome.id) {
+          _biome = biome;
+        }
+        if (savedTent != null && savedTent.isNotEmpty && savedTent != _currentTent) {
+          _currentTent = savedTent;
+        }
+        if (savedEnclosureBack != null && savedEnclosureBack.isNotEmpty && savedEnclosureBack != _currentEnclosureBack) {
+          _currentEnclosureBack = savedEnclosureBack;
+        }
+        if (savedEnclosureFront != null && savedEnclosureFront.isNotEmpty && savedEnclosureFront != _currentEnclosureFront) {
+          _currentEnclosureFront = savedEnclosureFront;
+        }
+      });
+    });
   }
 
   Future<void> _loadCampCompanions() async {
@@ -95,8 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       final data = snapshot.data();
-      
-      // Récupération de l'ancien format (1 seul) ou du nouveau format (liste)
+
       final activeCompanion = data?['activeCompanion'] as String?;
       final activeCompanionsList = data?['activeCompanions'] as List<dynamic>?;
       final unlocked = data?['unlockedCompanions'];
@@ -131,8 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
         'activeCompanions': companionIds,
-        // On garde l'ancien champ pour éviter les bugs si une autre partie du code l'utilise
-        'activeCompanion': companionIds.isNotEmpty ? companionIds.first : null, 
+        'activeCompanion': companionIds.isNotEmpty ? companionIds.first : null,
       });
     } catch (_) {
       if (!mounted) return;
@@ -148,12 +166,11 @@ class _HomeScreenState extends State<HomeScreen> {
     await HapticFeedback.lightImpact();
     if (!mounted) return;
 
-    // Récupère une liste d'IDs plutôt qu'un seul
     final selectedList = await Navigator.push<List<String>>(
       context,
       MaterialPageRoute(
         builder: (_) => CompanionPenScreen(
-          selectedIds: _activeCompanions, // 👈 On passe la liste
+          selectedIds: _activeCompanions,
           unlockedIds: _unlockedCompanions,
           background: _biome.background,
         ),
@@ -325,7 +342,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null) return;
 
     final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    String charId = doc.data()?['characterId'] as String? ?? 'nuit';
+    final data = doc.data();
+    String charId = data?['characterId'] as String? ?? 'nuit';
+
+    String? savedTent = data?['equippedTent'] as String?;
+    final savedEnclosureBack = data?['equippedEnclosureBack'] as String?;
+    final savedEnclosureFront = data?['equippedEnclosureFront'] as String?;
 
     Color themeColor = Colors.deepPurple;
     switch (charId) {
@@ -337,7 +359,21 @@ class _HomeScreenState extends State<HomeScreen> {
       default: themeColor = Colors.deepPurple; break;
     }
 
-    if (mounted) setState(() { _characterId = charId; _borderColor = themeColor; });
+    if (mounted) {
+      setState(() {
+        _characterId = charId;
+        _borderColor = themeColor;
+        if (savedTent != null && savedTent.isNotEmpty) {
+          _currentTent = savedTent;
+        }
+        if (savedEnclosureBack != null && savedEnclosureBack.isNotEmpty) {
+          _currentEnclosureBack = savedEnclosureBack;
+        }
+        if (savedEnclosureFront != null && savedEnclosureFront.isNotEmpty) {
+          _currentEnclosureFront = savedEnclosureFront;
+        }
+      });
+    }
   }
 
   Future<void> _checkPseudo() async {
@@ -378,6 +414,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _openShop() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShopScreen(
+          backgroundAsset: _biome.background,
+          equippedTentAsset: _currentTent,
+          equippedEnclosureBackAsset: _currentEnclosureBack,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -393,7 +442,6 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. FOND D'ÉCRAN
           Positioned.fill(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 700),
@@ -402,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Image.asset(
                   _biome.background,
                   fit: BoxFit.cover,
-                  alignment: Alignment.center, 
+                  alignment: Alignment.center,
                   errorBuilder: (_, __, ___) => _biome.id == 'default'
                       ? Image.asset(CampBiomes.fallback.background, fit: BoxFit.cover)
                       : BiomeBackdrop(zoneId: _biome.id),
@@ -415,12 +463,10 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ColoredBox(color: Colors.black.withValues(alpha: 0.24)),
             ),
 
-          // 2. SCÈNE DU CAMP (Personnage et Animaux)
           Positioned.fill(
             child: _buildCampSceneFullScreen(),
           ),
 
-          // 3. INTERFACE HAUT (Profil + Titre)
           Positioned(
             top: 0,
             left: 0,
@@ -431,32 +477,65 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                    child: Align(
-                      alignment: Alignment.topRight,
-                      child: GestureDetector(
-                        onTap: () async {
-                          await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
-                          _loadCharacterData();
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: _borderColor, width: 3),
-                            boxShadow: [BoxShadow(color: _borderColor.withValues(alpha: 0.3), blurRadius: 8, spreadRadius: 1)],
-                          ),
-                          child: ClipOval(
-                            child: SizedBox(
-                              width: 52,
-                              height: 52,
-                              child: Image.asset(
-                                'assets/TeteProfil/$_characterId.jpg',
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Container(color: Colors.black, child: const Icon(Icons.person, color: Colors.white, size: 28)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          onTap: _openShop,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: panelColor,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: focusOrange, width: 2),
+                                  boxShadow: [
+                                    BoxShadow(color: focusOrange.withValues(alpha: 0.3), blurRadius: 8, spreadRadius: 1)
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.storefront_rounded, color: focusOrange, size: 22),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Boutique',
+                                      style: TextStyle(color: darkBlue, fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
+                        GestureDetector(
+                          onTap: () async {
+                            await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+                            _loadCharacterData();
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: _borderColor, width: 3),
+                              boxShadow: [BoxShadow(color: _borderColor.withValues(alpha: 0.3), blurRadius: 8, spreadRadius: 1)],
+                            ),
+                            child: ClipOval(
+                              child: SizedBox(
+                                width: 52,
+                                height: 52,
+                                child: Image.asset(
+                                  'assets/TeteProfil/$_characterId.jpg',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(color: Colors.black, child: const Icon(Icons.person, color: Colors.white, size: 28)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -474,7 +553,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // 4. INTERFACE BAS
           Positioned(
             bottom: 0,
             left: 0,
@@ -575,7 +653,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
-
                   const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -685,28 +762,25 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- LOGIQUE DE POSITIONNEMENT DES COMPAGNONS ---
   Alignment _getCompanionAlignment(int index, int total) {
-    if (total == 1) return const Alignment(0, -0.2); 
+    if (total == 1) return const Alignment(0, -0.2);
     if (total == 2) {
       return index == 0 ? const Alignment(-0.5, -0.15) : const Alignment(0.4, -0.10);
     }
     if (total == 3) {
-      if (index == 0) return const Alignment(-0.5, -0.05); // Arrière gauche
-      if (index == 1) return const Alignment(0.4, 0);  // Arrière droit
-      return const Alignment(0, -0.3);                     // Avant centre
+      if (index == 0) return const Alignment(-0.5, -0.05);
+      if (index == 1) return const Alignment(0.4, 0);
+      return const Alignment(0, -0.3);
     }
-    // Pour 4 compagnons (Mieux répartis pour éviter qu'ils se cachent)
     const alignments = [
-      Alignment(-0.5, -0.05), // 1. Arrière gauche
-      Alignment(0.4, 0),  // 2. Arrière droit
-      Alignment(0, -0.3),  // 3. Avant gauche
-      Alignment(-0.05, 0.3),   // 4. Avant droit
+      Alignment(-0.5, -0.05),
+      Alignment(0.4, 0),
+      Alignment(0, -0.3),
+      Alignment(-0.05, 0.3),
     ];
     return alignments[index];
   }
 
-  // --- SCÈNE DU CAMP PLEIN ÉCRAN ---
   Widget _buildCampSceneFullScreen() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -729,22 +803,42 @@ class _HomeScreenState extends State<HomeScreen> {
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            place(_campLayout.tent, Image.asset('assets/HomePageAssets/Logement/tente.png', fit: BoxFit.contain)),
+            place(
+              _campLayout.tent,
+              Image.asset(
+                _currentTent,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Image.asset(
+                  'assets/homePageAssets/logement/base/montagne/tente.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
             place(_campLayout.campfire, const Campfire()),
-            
-            // L'ENCLOS (Fond)
-            place(_campLayout.animalEnclosure, Image.asset('assets/HomePageAssets/Logement/cloture.png', fit: BoxFit.contain)),
 
-            // LES COMPAGNONS (Jusqu'à 4)
-            place( _campLayout.animalEnclosure,
+            // Enclos - Fond dynamique
+            place(
+              _campLayout.animalEnclosure,
+              Image.asset(
+                _currentEnclosureBack,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Image.asset(
+                  'assets/homePageAssets/cloture/base/montagne/arriere.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+
+            // Compagnons
+            place(
+              _campLayout.animalEnclosure,
               Stack(
                 children: List.generate(_activeCompanions.length, (index) {
                   return Align(
                     alignment: _getCompanionAlignment(index, _activeCompanions.length),
                     child: Transform.translate(
-                      offset: const Offset(0, -15), // 👈 Ajusté pour bien les voir
+                      offset: const Offset(0, -15),
                       child: FractionallySizedBox(
-                        // 👈 Taille augmentée à 0.35 pour qu'ils soient bien visibles
                         widthFactor: _activeCompanions.length == 1 ? 0.45 : 0.35,
                         heightFactor: _activeCompanions.length == 1 ? 0.45 : 0.35,
                         child: Image.asset(
@@ -759,10 +853,21 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // L'ENCLOS (Avant)
-            place(_campLayout.animalEnclosure, IgnorePointer(child: Image.asset('assets/HomePageAssets/Logement/avant_de_cloture.png', fit: BoxFit.contain))),
+            // Enclos - Avant dynamique
+            place(
+              _campLayout.animalEnclosure,
+              IgnorePointer(
+                child: Image.asset(
+                  _currentEnclosureFront,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Image.asset(
+                    'assets/homePageAssets/cloture/base/montagne/avant.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
 
-            // ZONE CLIQUABLE DU PANNEAU
             Positioned(
               left: offsetX + (campBaseWidth * (_campLayout.animalEnclosure.position.dx + 0.07)),
               top: sceneHeight * (_campLayout.animalEnclosure.position.dy + 0.10),
