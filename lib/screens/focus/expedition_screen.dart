@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../models/city_network.dart';
+import '../../models/camp_biome.dart';
 import '../../services/travel_service.dart';
 import '../../utils/time_formatter.dart';
 import '../home/home_screen.dart';
@@ -709,6 +710,18 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       currentLegTitle = "Marche vers ${widget.plannedRoute.first}";
     }
 
+    final String currentDestination = _isMilestonesReady &&
+            _routeMilestones.isNotEmpty
+        ? _routeMilestones[
+                currentLegIndex
+                    .clamp(0, _routeMilestones.length - 1)
+                    .toInt()]
+            .destination
+        : (widget.plannedRoute.isNotEmpty ? widget.plannedRoute.first : '');
+    final CampBiome expeditionBiome = CampBiomes.resolve(
+      city: currentDestination,
+    );
+
     double progress = (_totalSeconds > 0) ? (_remainingSeconds / _totalSeconds) : 0.0;
 
     return PopScope(
@@ -724,6 +737,10 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
               child: ParallaxBackground(
                 isRunning: !_isPaused && !_isCompleted && !_isWalkingBackward,
                 characterId: _characterId,
+                farBackgroundAsset: expeditionBiome.expeditionFarBackground,
+                groundAsset: expeditionBiome.expeditionGround,
+                groundVerticalOffsetFactor:
+                    expeditionBiome.expeditionGroundOffsetFactor,
               ),
             ),
             Positioned.fill(

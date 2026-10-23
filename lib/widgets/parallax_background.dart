@@ -7,11 +7,17 @@ import 'game_sprites.dart';
 class ParallaxBackground extends StatefulWidget {
   final bool isRunning;
   final String characterId; // ex: 'nuit'
+  final String farBackgroundAsset;
+  final String groundAsset;
+  final double groundVerticalOffsetFactor;
 
   const ParallaxBackground({
     super.key,
     required this.isRunning,
     this.characterId = 'nuit',
+    this.farBackgroundAsset = 'assets/biome/fond_lointain.png',
+    this.groundAsset = 'assets/biome/sol_proche.png',
+    this.groundVerticalOffsetFactor = 0.10,
   });
 
   @override
@@ -60,6 +66,7 @@ class _ParallaxBackgroundState extends State<ParallaxBackground>
     required double screenWidth,
     required double screenHeight,
     required double offset,
+    double verticalOffset = 0,
   }) {
     final tileIndex = (offset / screenWidth).floor();
     final localOffset = offset - tileIndex * screenWidth;
@@ -85,14 +92,14 @@ class _ParallaxBackgroundState extends State<ParallaxBackground>
       children: [
         Positioned(
           left: -localOffset,
-          top: 0,
+          top: verticalOffset,
           width: screenWidth,
           height: screenHeight,
           child: tile(tileIndex),
         ),
         Positioned(
           left: screenWidth - localOffset,
-          top: 0,
+          top: verticalOffset,
           width: screenWidth,
           height: screenHeight,
           child: tile(tileIndex + 1),
@@ -117,7 +124,7 @@ class _ParallaxBackgroundState extends State<ParallaxBackground>
         children: [
           Positioned.fill(
             child: _buildInfiniteLayer(
-              asset: 'assets/biome/fond_lointain.png',
+              asset: widget.farBackgroundAsset,
               screenWidth: size.width,
               screenHeight: size.height,
               offset: bgOffset,
@@ -125,10 +132,11 @@ class _ParallaxBackgroundState extends State<ParallaxBackground>
           ),
           Positioned.fill(
             child: _buildInfiniteLayer(
-              asset: 'assets/biome/sol_proche.png',
+              asset: widget.groundAsset,
               screenWidth: size.width,
               screenHeight: size.height,
               offset: groundOffset,
+              verticalOffset: size.height * widget.groundVerticalOffsetFactor,
             ),
           ),
           Positioned(

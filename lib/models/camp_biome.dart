@@ -2,8 +2,17 @@
 class CampBiome {
   final String id;
   final String background;
+  final String expeditionFarBackground;
+  final String expeditionGround;
+  final double expeditionGroundOffsetFactor;
 
-  const CampBiome({required this.id, required this.background});
+  const CampBiome({
+    required this.id,
+    required this.background,
+    this.expeditionFarBackground = 'assets/biome/fond_lointain.png',
+    this.expeditionGround = 'assets/biome/sol_proche.png',
+    this.expeditionGroundOffsetFactor = 0,
+  });
 }
 
 class CampBiomes {
@@ -22,8 +31,19 @@ class CampBiomes {
     'montagnes': CampBiome(
       id: 'montagnes',
       background: 'assets/biome/camp_montagnes.png',
+      expeditionFarBackground: 'assets/biome/fond_lointain.png',
+      expeditionGround: 'assets/biome/sol_proche.png',
+      expeditionGroundOffsetFactor: 0,
     ),
-    'lac': CampBiome(id: 'lac', background: 'assets/biome/camp_lac.png'),
+    'lac': CampBiome(
+      id: 'lac',
+      background: 'assets/biome/camp_lac.png',
+      expeditionFarBackground: 'assets/biome/fond_lointain_lac2.png',
+      expeditionGround: 'assets/biome/sol_proche_lac2.png',
+      // Le chemin est dessiné plus bas dans l'image du lac ; on remonte
+      // la couche pour aligner sa piste sur celle de la montagne.
+      expeditionGroundOffsetFactor: 0,
+    ),
     'nuages': CampBiome(id: 'nuages', background: 'assets/biome/camp_nuages.png'),
     'nuit': CampBiome(id: 'nuit', background: 'assets/biome/camp_nuit.png'),
   };
