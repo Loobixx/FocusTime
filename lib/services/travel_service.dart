@@ -116,6 +116,14 @@ class TravelService {
     List<String> citiesToVisit = List.from(plannedRoute);
     List<String> successfullyReachedCities = []; // Pour suivre où l'on s'est arrêté
 
+    // Une reprise peut conserver dans l'itinéraire la ville où le voyageur
+    // s'est arrêté (ex. [Néris, Halte blanche]). Elle est déjà atteinte :
+    // la traiter comme une nouvelle étape réinitialiserait midRouteProgress
+    // et ferait perdre la progression enregistrée vers l'étape suivante.
+    while (citiesToVisit.isNotEmpty && citiesToVisit.first == currentCity) {
+      citiesToVisit.removeAt(0);
+    }
+
     while (remainingFuel > 0 && citiesToVisit.isNotEmpty) {
       String nextDestination = citiesToVisit.first;
       int fullTravelTime = CityNetwork.getAvailableDestinations(currentCity)[nextDestination] ?? 0;
