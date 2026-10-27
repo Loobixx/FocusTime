@@ -170,6 +170,9 @@ class NotificationService {
     required String body,
     String? imageAssetPath, 
   }) async {
+    // Flutter Local Notifications n'affiche pas les notifications locales sur le Web.
+    if (kIsWeb) return;
+
     final prefs = await _getUserPreferences();
     if (prefs['arrival'] == false) return;
 

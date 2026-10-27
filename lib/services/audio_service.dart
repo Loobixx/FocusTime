@@ -14,6 +14,7 @@ class AudioManager {
 
   bool get isMuted => isMutedNotifier.value;
   bool _isPlaying = false;
+  bool _isStarting = false;
 
   /// Initialise l'état du son depuis le stockage local et lance la musique si non muet
   Future<void> initAndPlay() async {
@@ -39,21 +40,59 @@ class AudioManager {
 
   /// Bascule l'état muet et l'enregistre définitivement en local
   Future<void> toggleMute() async {
-    final newMuteState = !isMutedNotifier.value;
-    isMutedNotifier.value = newMuteState;
+    await setMuted(!isMutedNotifier.value);
+  }
 
-    // Sauvegarde sur le téléphone
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefMuteKey, newMuteState);
+  /// Définit explicitement l'état de la musique et l'enregistre en local.
+  Future<void> setMuted(bool muted) async {
+    final changed = isMutedNotifier.value != muted;
+    if (changed) {
+      isMutedNotifier.value = muted;
+    }
 
-    if (newMuteState) {
-      await _player.setVolume(0.0);
-    } else {
-      await _player.setVolume(0.4);
-      if (!_isPlaying) {
-        await _player.resume();
-        _isPlaying = true;
+    try {
+      // Demarre play immédiatement, avant les accès asynchrones aux préférences,
+      // pour respecter l'activation utilisateur exigée par les navigateurs.
+      final playback = muted ? null : _startPlaybackIfNeeded();
+      final volumeChange = _player.setVolume(muted ? 0.0 : 0.4);
+
+      if (changed) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_prefMuteKey, muted);
       }
+
+      await volumeChange;
+      if (playback != null) await playback;
+    } catch (error) {
+      debugPrint('Impossible de modifier la musique : $error');
+    }
+  }
+
+  /// Démarre la musique après une interaction utilisateur si elle est activée.
+  Future<void> ensurePlaying() async {
+    if (isMutedNotifier.value) return;
+    try {
+      final playback = _startPlaybackIfNeeded();
+      final volumeChange = _player.setVolume(0.4);
+      await volumeChange;
+      await playback;
+    } catch (error) {
+      debugPrint('Impossible de démarrer la musique : $error');
+    }
+  }
+
+  Future<void> _startPlaybackIfNeeded() async {
+    if (_isPlaying || _isStarting) return;
+    _isStarting = true;
+    try {
+      final playback = _player.play(AssetSource('audio/ambiance_focus.mp3'));
+      await playback;
+      _isPlaying = true;
+    } catch (error) {
+      _isPlaying = false;
+      debugPrint('Impossible de démarrer la musique : $error');
+    } finally {
+      _isStarting = false;
     }
   }
 }

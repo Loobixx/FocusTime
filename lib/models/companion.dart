@@ -61,7 +61,7 @@ class CompanionData {
     Companion(
       id: 'husky',
       name: 'Azur',
-      unlockCity: 'Le village de Néris', // Dans la forêt
+      unlockCity: 'Le chateau d\'azur', // Dans la forêt
       region: 'montagnes',
       defaultColor: Color.fromARGB(255, 4, 253, 245),
       walkDirectory: 'assets/compagnons/Husky/husky_marche',
@@ -71,7 +71,7 @@ class CompanionData {
     Companion(
       id: 'husky_beige',
       name: 'huskyto',
-      unlockCity: 'Le village de Néris', // Dans la forêt
+      unlockCity: 'Le campement de l\'île Sud', // Dans la forêt
       region: 'montagnes',
       defaultColor: Color.fromARGB(255, 255, 255, 255),
       walkDirectory: 'assets/compagnons/Husky_beige/husky_beige_marche',
@@ -81,12 +81,11 @@ class CompanionData {
     Companion(
       id: 'renard',
       name: 'Renardo',
-      unlockCity: 'Le bosquet enchanté',
+      unlockCity: 'La forêt d\'Orane',
       region: 'montagnes',
       defaultColor: Color(0xFFFF8A00),
       walkDirectory: 'assets/compagnons/Renard/renard_marche',
       idleDirectory: 'assets/compagnons/Renard/renard_arret',
-      unselectedIdleDirectory: 'assets/compagnons/Renard/renard_arret_non_choisi',
       campImagePath: 'assets/compagnons/Renard/renard_arret/0.png',
     ),
   ];

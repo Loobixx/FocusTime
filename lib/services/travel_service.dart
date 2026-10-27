@@ -50,12 +50,12 @@ class TravelService {
   }
 
   // --- 2. Fonction appelée à la FIN du chrono pour calculer l'avancée ---
-  Future<void> processTripResults({
+  Future<String?> processTripResults({
     required int totalFuelMinutes,
     required List<String> plannedRoute,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) return null;
 
     final userRef = _firestore.collection('users').doc(user.uid);
     final statusRef = userRef.collection('travel').doc('status');
@@ -65,7 +65,7 @@ class TravelService {
       String finalCity = plannedRoute.last;
       String startCity = (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris';
 
-      // 1. Toutes les villes du trajet sont "visitées/traversées" (pour le bonus x5)
+      // 1. Toutes les villes du trajet sont "visitées/traversées" (pour le bonus x3)
       for (String city in plannedRoute) {
         await userRef.collection('visited_cities').doc(city).set({
           'visitedAt': FieldValue.serverTimestamp(),
@@ -98,7 +98,7 @@ class TravelService {
         'endTime': FieldValue.delete(),
       }, SetOptions(merge: true));
 
-      return;
+      return finalCity;
     }
 
     // --- MODE NORMAL (Reste de ta boucle de calcul de carburant) ---
@@ -121,7 +121,7 @@ class TravelService {
       int fullTravelTime = CityNetwork.getAvailableDestinations(currentCity)[nextDestination] ?? 0;
       
       if (visitedCities.contains(nextDestination)) {
-        fullTravelTime = fullTravelTime ~/ 5; 
+        fullTravelTime = fullTravelTime ~/ 3;
       }
 
       int timeNeeded = fullTravelTime;
@@ -153,8 +153,9 @@ class TravelService {
     }
 
     // 🏆 Si on est arrivé au bout d'au moins une ville, la dernière atteinte est celle où l'on s'arrête !
+    String? finalStoppedCity;
     if (successfullyReachedCities.isNotEmpty) {
-      String finalStoppedCity = successfullyReachedCities.last;
+      finalStoppedCity = successfullyReachedCities.last;
       await userRef.collection('stopped_cities').doc(finalStoppedCity).set({
         'stoppedAt': FieldValue.serverTimestamp(),
       });
@@ -181,5 +182,7 @@ class TravelService {
       'activeDestination': FieldValue.delete(),
       'endTime': FieldValue.delete(),
     }, SetOptions(merge: true));
+
+    return finalStoppedCity;
   }
 }

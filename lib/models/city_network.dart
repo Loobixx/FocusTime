@@ -281,7 +281,7 @@ class CityNetwork {
   }
 
   /// Algorithme de Dijkstra modifié :
-  /// - Réduction /5 pour les villes déjà visitées
+  /// - Réduction /3 pour les villes déjà visitées
   /// - BLOCAGE : Une ville non visitée peut être une destination finale,
   ///   mais ne peut JAMAIS servir de pont vers une autre ville.
   static Map<String, ShortestPathResult> calculateAllShortestPaths({
@@ -328,7 +328,7 @@ class CityNetwork {
         int weight = entry.value;
 
         if (visitedCities.contains(neighbor)) {
-          weight = (weight ~/ 5).clamp(1, 999999);
+          weight = (weight ~/ 3).clamp(1, 999999);
         }
 
         int alt = distances[current]! + weight;

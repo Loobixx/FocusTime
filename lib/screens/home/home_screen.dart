@@ -434,10 +434,13 @@ class _HomeScreenState extends State<HomeScreen> {
         : Colors.white.withValues(alpha: 0.75);
     const focusOrange = Color(0xFFFF8C00);
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      extendBody: true,
-      body: Stack(
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => unawaited(AudioManager().ensurePlaying()),
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        extendBody: true,
+        body: Stack(
         fit: StackFit.expand,
         children: [
           Positioned.fill(
@@ -513,6 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           onTap: () async {
                             await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
                             _loadCharacterData();
+                            _loadCampCompanions();
                           },
                           child: Container(
                             decoration: BoxDecoration(
@@ -704,7 +708,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       int staticTimeRemaining = 0;
                                       if (!isFocusActive && midRouteDestination != null) {
                                         int fullTime = CityNetwork.getAvailableDestinations(currentCity)[midRouteDestination] ?? 0;
-                                        if (visitedCities.contains(midRouteDestination)) fullTime = fullTime ~/ 5;
+                                        if (visitedCities.contains(midRouteDestination)) fullTime = fullTime ~/ 3;
                                         staticTimeRemaining = fullTime - midRouteProgress;
                                         if (staticTimeRemaining < 0) staticTimeRemaining = 0;
                                       }
@@ -757,6 +761,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+        ),
       ),
     );
   }

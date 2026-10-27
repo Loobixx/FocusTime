@@ -2,7 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:focus_time/models/companion.dart';
-import 'package:focus_time/widgets/camp_widgets.dart';
+import 'package:focus_time/widgets/game_sprites.dart';
+import 'package:focus_time/config/sprite_config.dart';
 
 class CompanionPenScreen extends StatefulWidget {
   final List<String> selectedIds; 
@@ -200,17 +201,21 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
                       widthFactor: 0.45,
                       heightFactor: 0.45,
                       child: unlocked
-                          ? Image.asset(
-                              campCompanionAsset(companion.id),
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => const Icon(Icons.pets, color: _headerYellow),
+                          ? CompanionSprite(
+                              companionId: companion.id,
+                              scene: SpriteScene.region,
+                              isSelected: isSelected,
                             )
                           : Stack(
                               alignment: Alignment.center,
                               children: [
                                 ColorFiltered(
                                   colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-                                  child: Image.asset(campCompanionAsset(companion.id), fit: BoxFit.contain, errorBuilder: (_, _, _) => const Icon(Icons.pets, color: Colors.black)),
+                                  child: CompanionSprite(
+                                    companionId: companion.id,
+                                    scene: SpriteScene.region,
+                                    isSelected: false,
+                                  ),
                                 ),
                                 const Text('?', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
                               ],

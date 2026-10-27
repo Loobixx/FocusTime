@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:focus_time/models/companion.dart';
-import 'package:focus_time/screens/profile/companion/companion_selection_screen.dart';
 import 'package:focus_time/screens/profile/delete_profil/delete_account_dialog.dart';
 import 'package:focus_time/screens/profile/politique_de_confidentialit%C3%A9/privacy_policy_screen.dart';
 import 'package:flutter/material.dart';
@@ -356,6 +355,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       'characterId': 'nuit',
                                       'characterColor': Colors.deepPurple.toARGB32(),
                                       'activeCompanion': FieldValue.delete(),
+                                      'pendingCompanionReward': FieldValue.delete(),
                                     }, SetOptions(merge: true));
 
                                     if (context.mounted) {
@@ -531,17 +531,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
-                                  );
-                                },
-                              ),
-                              _buildMenuItem(
-                                Icons.pets,
-                                'Mes Compagnons',
-                                isAvailable: true,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const CompanionSelectionScreen()),
                                   );
                                 },
                               ),

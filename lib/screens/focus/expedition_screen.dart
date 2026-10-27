@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:focus_time/screens/focus/expedition_dialogs.dart';
+import 'package:focus_time/services/audio_service.dart';
 import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:focus_time/theme/app_theme.dart';
@@ -53,6 +55,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
   
   // 👈 NOUVEAU : Liste pour la meute
   List<String> _activeCompanions = []; 
+  String? _newlyUnlockedCompanionId;
   
   String _characterId = 'nuit';
 
@@ -69,6 +72,10 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
   bool _isPaused = false;
   int _pauseRemainingSeconds = 0;
   int _pauseOvertimeSeconds = 0;
+  int _totalPauseSeconds = 0;
+  int _totalPauseOvertimeSeconds = 0;
+  int _pauseCount = 0;
+  DateTime? _pauseStartedAt;
   DateTime? _pauseEndTime;
   Timer? _pauseTimer;
 
@@ -112,11 +119,6 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     if (user == null) return;
 
     final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-
-    if (widget.durationMinutes == -1) {
-      List<String> allCompanionIds = CompanionData.allCompanions.map((c) => c.id).toList();
-      await userRef.update({'unlockedCompanions': allCompanionIds});
-    }
 
     final userDoc = await userRef.get();
     String currentCity = userDoc.data()?['currentCity'] ?? 'Le village de Néris';
@@ -248,23 +250,94 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       });
 
       if (arrivedCity != null && mounted) {
-        _openArrivalPauseDialog(arrivedCity!);
+        _showCityArrival(arrivedCity!);
       }
     });
   }
 
-  void _openArrivalPauseDialog(String cityName) {
+  void _showCityArrival(String cityName) {
+    unawaited(NotificationService().showNotification(
+      id: 1,
+      title: '📍 Étape atteinte !',
+      body: 'Tu es arrivé à $cityName.',
+    ).catchError((Object error) {
+      debugPrint('Erreur de notification à l’arrivée à $cityName : $error');
+    }));
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.focusOrange,
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
+                ),
+                child: const Icon(
+                  Icons.near_me_rounded,
+                  color: Colors.white,
+                  size: 23,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ÉTAPE ATTEINTE',
+                      style: TextStyle(
+                        color: AppColors.focusOrange,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      cityName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.darkBlue,
+          elevation: 8,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+  }
+
+  void _showPauseOptions() {
+    if (_isCompleted || _isWalkingBackward || _isDialogActive) {
+      return;
+    }
+    unawaited(AudioManager().ensurePlaying());
     setState(() => _isDialogActive = true);
 
-    NotificationService().showNotification(
-      id: 1,
-      title: '🔥 Étape atteinte !',
-      body: 'Tu es arrivé à $cityName. Installe ton campement !',
-    );
-
-    ActiveTimerDialogs.showArrivalDialog(
+    ActiveTimerDialogs.showPauseDialog(
       context: context,
-      cityName: cityName,
       onClosed: () {
         if (mounted) setState(() => _isDialogActive = false);
       },
@@ -277,11 +350,16 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
   }
 
   void _startPauseTimer(int minutes) async {
+    final wasPaused = _isPaused;
     _timer?.cancel();
-    final durationSec = widget.durationMinutes == -1 ? 2 : minutes * 60;
+    final durationSec = minutes * 60;
 
     setState(() {
       _isWalkingBackward = false;
+      if (!wasPaused) {
+        _pauseStartedAt = DateTime.now();
+        _pauseCount++;
+      }
       _isPaused = true;
       _pauseRemainingSeconds = durationSec;
       _pauseOvertimeSeconds = 0;
@@ -308,7 +386,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       });
     });
 
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       try {
         await NotificationService().showPauseChronometer(durationSec);
       } catch (e) {
@@ -323,8 +401,15 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     NotificationService().cancelNotification(201);
 
     int penalty = _pauseOvertimeSeconds;
+    final pauseStartedAt = _pauseStartedAt;
+    final elapsedPauseSeconds = pauseStartedAt == null
+        ? 0
+        : DateTime.now().difference(pauseStartedAt).inSeconds.clamp(0, 1 << 31).toInt();
 
     setState(() {
+      _totalPauseSeconds += elapsedPauseSeconds;
+      _totalPauseOvertimeSeconds += penalty;
+      _pauseStartedAt = null;
       _isPaused = false;
       _pauseRemainingSeconds = 0;
       _pauseOvertimeSeconds = 0;
@@ -363,27 +448,149 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     }
   }
 
-  Future<void> _checkAndUnlockCompanion(String arrivedCity) async {
+  Future<void> _checkAndUnlockCompanion(String stoppedCity) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final companionToUnlock = CompanionData.allCompanions
-        .cast<Companion?>()
-        .firstWhere((c) => c?.unlockCity == arrivedCity, orElse: () => null);
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final doc = await userRef.get();
+    final List<dynamic> unlocked = doc.data()?['unlockedCompanions'] ?? [];
+    final companionsAtCity = CompanionData.allCompanions.where(
+      (companion) => companion.unlockCity == stoppedCity && !unlocked.contains(companion.id),
+    );
+    if (companionsAtCity.isEmpty) return;
 
-    if (companionToUnlock != null) {
-      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-      final doc = await userRef.get();
-      final List<dynamic> unlocked = doc.data()?['unlockedCompanions'] ?? [];
+    final companionToUnlock = companionsAtCity.first;
+    final activeCompanions = (doc.data()?['activeCompanions'] as List<dynamic>?)
+        ?.whereType<String>()
+        .toList() ??
+        <String>[];
+    final previousActiveCompanion = doc.data()?['activeCompanion'] as String?;
+    if (activeCompanions.isEmpty &&
+        previousActiveCompanion != null &&
+        previousActiveCompanion.isNotEmpty) {
+      activeCompanions.add(previousActiveCompanion);
+    }
+    if (activeCompanions.length < 4 &&
+        !activeCompanions.contains(companionToUnlock.id)) {
+      activeCompanions.add(companionToUnlock.id);
+    }
 
-      if (!unlocked.contains(companionToUnlock.id)) {
-        await userRef.update({
-          'unlockedCompanions': FieldValue.arrayUnion([companionToUnlock.id]),
-          'activeCompanion': companionToUnlock.id,
-          'pendingCompanionReward': companionToUnlock.id,
-        });
+    await userRef.update({
+      'unlockedCompanions': FieldValue.arrayUnion([companionToUnlock.id]),
+      'activeCompanion': companionToUnlock.id,
+      'activeCompanions': activeCompanions.isEmpty
+          ? [companionToUnlock.id]
+          : activeCompanions,
+      'pendingCompanionReward': companionToUnlock.id,
+    });
+    _newlyUnlockedCompanionId = companionToUnlock.id;
+  }
+
+  Future<void> _finishExploration() async {
+    var companionId = _newlyUnlockedCompanionId;
+    final user = FirebaseAuth.instance.currentUser;
+    if (companionId == null && user != null) {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      companionId = userDoc.data()?['pendingCompanionReward'] as String?;
+    }
+    final companion = CompanionData.getById(companionId);
+
+    if (companion != null) {
+      await _showCompanionUnlockDialog(companion);
+      _newlyUnlockedCompanionId = null;
+
+      if (user != null) {
+        try {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'pendingCompanionReward': FieldValue.delete()});
+        } catch (_) {
+          // HomeScreen will show the saved reward if Firestore is unavailable.
+        }
       }
     }
+
+    if (mounted) _showExpeditionSummarySheet();
+  }
+
+  Future<void> _showCompanionUnlockDialog(Companion companion) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFFF8C00), width: 3),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'NOUVEAU COMPAGNON !',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF143063),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: 150,
+                height: 150,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF3E0),
+                  shape: BoxShape.circle,
+                ),
+                child: CompanionSprite(
+                  companionId: companion.id,
+                  scene: SpriteScene.region,
+                  isSelected: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                companion.name,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFFF8C00),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tu as rencontré ${companion.name} à ${companion.unlockCity} !',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 15, color: Color(0xFF143063)),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF8C00),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Génial !'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _finishTrip() async {
@@ -398,8 +605,10 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       setState(() => _isDialogActive = false);
     }
 
-    int baseMinutes = widget.durationMinutes == -1 ? 10 : widget.durationMinutes;
-    int earnedPoints = baseMinutes;
+    int rewardedMinutes = widget.durationMinutes == -1
+        ? widget.plannedTravelMinutes
+        : widget.durationMinutes;
+    int earnedCoins = rewardedMinutes * 2;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -417,7 +626,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
         );
 
         await userRef.set({
-          'points': FieldValue.increment(earnedPoints),
+          'points': FieldValue.increment(earnedCoins),
           'inTransit': true,
           'transitRemainingMinutes': remainingTravel,
           'transitRoute': widget.plannedRoute,
@@ -426,26 +635,27 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
         NotificationService().showNotification(
           id: 3,
           title: '🎉 Fin de session !',
-          body: 'Trajet terminé et enregistré ! Tu as gagné $earnedPoints points 🪙',
+          body: 'Trajet terminé et enregistré ! Tu as gagné $earnedCoins pièces 🪙',
         );
 
         await userRef.set({
-          'points': FieldValue.increment(earnedPoints),
+          'points': FieldValue.increment(earnedCoins),
           'inTransit': false,
           'transitRemainingMinutes': FieldValue.delete(),
           'transitRoute': FieldValue.delete(),
         }, SetOptions(merge: true));
 
-        if (widget.plannedRoute.isNotEmpty) {
-          final arrivedCity = widget.plannedRoute.last;
-          await userRef.update({'currentCity': arrivedCity});
-          await _checkAndUnlockCompanion(arrivedCity);
-        }
       }
     }
 
     int safeDuration = widget.durationMinutes == -1 ? 0 : widget.durationMinutes;
-    await _travelService.processTripResults(totalFuelMinutes: safeDuration, plannedRoute: widget.plannedRoute);
+    final stoppedCity = await _travelService.processTripResults(
+      totalFuelMinutes: safeDuration,
+      plannedRoute: widget.plannedRoute,
+    );
+    if (stoppedCity != null) {
+      await _checkAndUnlockCompanion(stoppedCity);
+    }
 
     if (mounted) {
       setState(() => _isCompleted = true);
@@ -456,9 +666,13 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     const darkBlue = Color(0xFF143063);
     const focusOrange = Color(0xFFFF8C00);
 
-    int focusMinutes = widget.durationMinutes == -1 ? 1 : widget.durationMinutes;
+    int focusMinutes = widget.durationMinutes == -1
+        ? widget.plannedTravelMinutes
+        : widget.durationMinutes;
     int appActiveMinutes = (_appActiveSeconds / 60).ceil();
-    int earnedPoints = focusMinutes;
+    int earnedCoins = focusMinutes * 2;
+    final pauseDuration = _formatSummaryDuration(_totalPauseSeconds);
+    final pauseOvertime = _formatSummaryDuration(_totalPauseOvertimeSeconds);
 
     bool isPartialTrip = widget.durationMinutes != -1 && widget.plannedTravelMinutes > widget.durationMinutes;
     int remainingTravel = isPartialTrip ? (widget.plannedTravelMinutes - widget.durationMinutes) : 0;
@@ -467,84 +681,97 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.88),
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(color: focusOrange.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(14)),
+                      child: Icon(isPartialTrip ? Icons.landscape_outlined : Icons.receipt_long_rounded, color: focusOrange),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(
+                      isPartialTrip ? 'Campement en chemin' : "Bilan de l'expédition",
+                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold, color: darkBlue),
+                    )),
+                  ]),
+                  const SizedBox(height: 20),
+                  _summarySectionTitle(Icons.route_rounded, 'Ton itinéraire'),
+                  const SizedBox(height: 10),
+                  if (widget.plannedRoute.isEmpty)
+                    Text('Aucune ville indiquée', style: TextStyle(color: Colors.grey.shade600))
+                  else
+                    Wrap(spacing: 7, runSpacing: 7, children: widget.plannedRoute.asMap().entries.map((entry) {
+                      final isLast = entry.key == widget.plannedRoute.length - 1;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isLast ? focusOrange.withValues(alpha: 0.13) : const Color(0xFFF2F5FA),
+                          border: Border.all(color: isLast ? focusOrange : const Color(0xFFDCE3EF)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(isLast ? Icons.flag_rounded : Icons.place_rounded, size: 15, color: isLast ? focusOrange : darkBlue),
+                          const SizedBox(width: 5),
+                          Text(entry.value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: darkBlue)),
+                          if (isLast) ...[const SizedBox(width: 5), const Text('Arrivée', style: TextStyle(fontSize: 10, color: focusOrange, fontWeight: FontWeight.bold))],
+                        ]),
+                      );
+                    }).toList()),
+                  const SizedBox(height: 20),
+                  _summarySectionTitle(Icons.analytics_outlined, 'Temps et activité'),
+                  const SizedBox(height: 10),
+                  _summaryCard([
+                    _buildSummaryRow(Icons.timer_outlined, 'Temps de focus', _formatSummaryDuration(focusMinutes * 60)),
+                    const SizedBox(height: 13),
+                    _buildSummaryRow(Icons.coffee_rounded, 'Temps de pause effectué', pauseDuration),
+                    const SizedBox(height: 13),
+                    _buildSummaryRow(Icons.pause_circle_outline_rounded, 'Pauses prises', '$_pauseCount'),
+                    if (_totalPauseOvertimeSeconds > 0) ...[
+                      const SizedBox(height: 13),
+                      _buildSummaryRow(Icons.more_time_rounded, 'Dépassement des pauses', pauseOvertime, valueColor: Colors.orange.shade800),
+                    ],
+                    const SizedBox(height: 13),
+                    _buildSummaryRow(Icons.phone_android_rounded, "Temps sur l'application", _formatSummaryDuration(_appActiveSeconds)),
+                    const SizedBox(height: 13),
+                    _buildSummaryRow(Icons.warning_amber_rounded, 'Sorties hors pause', '$_outOfPauseExits', valueColor: _outOfPauseExits > 0 ? Colors.redAccent : Colors.green),
+                  ]),
+                  if (isPartialTrip) ...[
+                    const SizedBox(height: 14),
+                    _summaryCard([_buildSummaryRow(Icons.directions_walk_rounded, 'Temps restant sur le trajet', _formatSummaryDuration(remainingTravel * 60), valueColor: Colors.orange.shade800)]),
+                  ],
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: focusOrange.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(16), border: Border.all(color: focusOrange.withValues(alpha: 0.35))),
+                    child: _buildSummaryRow(Icons.monetization_on_rounded, 'Pièces gagnées · 2 par minute', '+$earnedCoins', valueColor: focusOrange),
+                  ),
+                  const SizedBox(height: 18),
+                ]),
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              isPartialTrip ? "🏕️ Campement en chemin" : "📜 Résumé de l'expédition",
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkBlue),
-            ),
-            const SizedBox(height: 16),
-
-            Text("Villes traversées / ciblées :", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: widget.plannedRoute.map((city) => Chip(
-                backgroundColor: focusOrange.withValues(alpha: 0.12),
-                side: const BorderSide(color: focusOrange),
-                avatar: const Icon(Icons.place, size: 16, color: focusOrange),
-                label: Text(city, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: darkBlue)),
-              )).toList(),
-            ),
-
-            const Divider(height: 28),
-
-            _buildSummaryRow(Icons.timer_outlined, "Temps focus effectué", "$focusMinutes min"),
-
-            if (isPartialTrip) ...[
-              const SizedBox(height: 10),
-              _buildSummaryRow(Icons.directions_walk_rounded, "Reste à parcourir", "$remainingTravel min", valueColor: Colors.orange.shade800),
-            ],
-
-            const SizedBox(height: 10),
-            _buildSummaryRow(Icons.phone_android, "Temps passé sur l'app", "$appActiveMinutes min"),
-            const SizedBox(height: 10),
-            _buildSummaryRow(
-              Icons.warning_amber_rounded,
-              "Sorties hors pause",
-              "$_outOfPauseExits fois",
-              valueColor: _outOfPauseExits > 0 ? Colors.redAccent : Colors.green,
-            ),
-            const SizedBox(height: 10),
-            _buildSummaryRow(Icons.monetization_on_outlined, "Points gagnés", "+$earnedPoints pts", valueColor: focusOrange),
-
-            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: darkBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const HomeScreen()), (route) => false);
-                },
-                child: Text(
-                  isPartialTrip ? "Monter le campement" : "Retour au campement",
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: darkBlue, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const HomeScreen()), (route) => false),
+                child: Text(isPartialTrip ? 'Monter le campement' : 'Retour au campement', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               ),
             ),
-          ],
+          ]),
         ),
       ),
     );
@@ -555,11 +782,32 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
       children: [
         Icon(icon, size: 18, color: const Color(0xFF143063)),
         const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 14, color: Colors.black87)),
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 13, color: Colors.black87))),
         const Spacer(),
-        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: valueColor ?? const Color(0xFF143063))),
+        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: valueColor ?? const Color(0xFF143063))),
       ],
     );
+  }
+
+  Widget _summarySectionTitle(IconData icon, String label) => Row(children: [
+    Icon(icon, size: 17, color: const Color(0xFF143063)),
+    const SizedBox(width: 7),
+    Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF143063))),
+  ]);
+
+  Widget _summaryCard(List<Widget> children) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(color: const Color(0xFFF7F8FB), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE5E9F0))),
+    child: Column(children: children),
+  );
+
+  String _formatSummaryDuration(int seconds) {
+    if (seconds < 60) return '$seconds s';
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    if (remainingSeconds == 0) return '$minutes min';
+    return '$minutes min $remainingSeconds s';
   }
 
   void _showRouteBottomSheet(BuildContext context, Color darkBlue, Color focusOrange, int currentLegIndex) {
@@ -824,6 +1072,27 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                                 ),
                               ),
 
+                              if (!_isCompleted && !_isWalkingBackward)
+                                Align(
+                                  alignment: Alignment.topRight,
+                                  child: IconButton(
+                                    tooltip: 'Pause et musique',
+                                    onPressed: _showPauseOptions,
+                                    style: IconButton.styleFrom(
+                                      minimumSize: const Size(48, 48),
+                                      backgroundColor: Colors.white.withValues(alpha: 0.3),
+                                      foregroundColor: darkBlue,
+                                      side: BorderSide(
+                                        color: Colors.white.withValues(alpha: 0.4),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.pause_rounded, size: 24),
+                                  ),
+                                ),
+
                               Align(
                                 alignment: Alignment.topCenter,
                                 child: Padding(
@@ -947,7 +1216,7 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
                             ),
                             icon: const Icon(Icons.flag_rounded, size: 22),
                             label: const Text("Terminer l'exploration", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                            onPressed: _showExpeditionSummarySheet,
+                            onPressed: _finishExploration,
                           ),
                           const SizedBox(height: 12),
                         ],

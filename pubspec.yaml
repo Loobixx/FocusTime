@@ -116,7 +116,6 @@ flutter:
 
     - assets/compagnons/Renard/renard_marche/
     - assets/compagnons/Renard/renard_arret/
-    - assets/compagnons/Renard/renard_arret_non_choisi/
   # An image asset can refer to one or more resolution-specific "variants", see
 
 

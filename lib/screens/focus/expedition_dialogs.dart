@@ -1,11 +1,11 @@
 // lib/screens/focus/expedition_dialogs.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:focus_time/services/audio_service.dart';
 
 class ActiveTimerDialogs {
-  static void showArrivalDialog({
+  static void showPauseDialog({
     required BuildContext context,
-    required String cityName,
     required VoidCallback onClosed,
     required Function(int minutes) onSelectPause,
   }) {
@@ -26,8 +26,8 @@ class ActiveTimerDialogs {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.15),
       backgroundColor: Colors.transparent,
-      isDismissible: false,
-      enableDrag: false,
+      isDismissible: true,
+      enableDrag: true,
       builder: (bottomSheetContext) {
         return Padding(
           padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
@@ -69,7 +69,7 @@ class ActiveTimerDialogs {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                cityName,
+                                'Faire une pause ?',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: darkBlue,
@@ -77,7 +77,7 @@ class ActiveTimerDialogs {
                                 ),
                               ),
                               Text(
-                                "Feu de camp installé · Faire une pause ?",
+                                'Choisis une durée puis reprends quand tu es prêt.',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Colors.grey.shade600,
@@ -98,6 +98,30 @@ class ActiveTimerDialogs {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: AudioManager().isMutedNotifier,
+                      builder: (context, isMuted, _) => SwitchListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                        dense: true,
+                        secondary: Icon(
+                          isMuted ? Icons.music_off_rounded : Icons.music_note_rounded,
+                          color: focusOrange,
+                        ),
+                        title: const Text(
+                          'Musique d’ambiance',
+                          style: TextStyle(
+                            color: darkBlue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(isMuted ? 'Désactivée' : 'Activée'),
+                        value: !isMuted,
+                        activeThumbColor: focusOrange,
+                        onChanged: (enabled) =>
+                            AudioManager().setMuted(!enabled),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     // Choix rapides
                     Row(
                       children: [
