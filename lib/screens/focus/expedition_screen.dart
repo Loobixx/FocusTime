@@ -127,9 +127,9 @@ class _ActiveTimerScreenState extends State<ActiveTimerScreen>
     final singleCompanion = userDoc.data()?['activeCompanion'] as String?;
 
     List<String> loadedCompanions = [];
-    if (activeCompanionsList != null && activeCompanionsList.isNotEmpty) {
+    if (activeCompanionsList != null) {
       loadedCompanions = activeCompanionsList.whereType<String>().toList();
-    } else if (singleCompanion != null) {
+    } else if (singleCompanion != null && singleCompanion.isNotEmpty) {
       loadedCompanions = [singleCompanion];
     }
 

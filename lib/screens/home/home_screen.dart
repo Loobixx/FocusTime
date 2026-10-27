@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _currentEnclosureBack = 'assets/homePageAssets/cloture/base/montagne/arriere.png';
   String _currentEnclosureFront = 'assets/homePageAssets/cloture/base/montagne/avant.png';
 
-  List<String> _activeCompanions = ['chien'];
+  List<String> _activeCompanions = [];
   List<String> _unlockedCompanions = [];
   bool _loadingCampCompanions = true;
   final CampLayoutConfig _campLayout = CampLayoutConfig.defaults;
@@ -121,12 +121,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final unlocked = data?['unlockedCompanions'];
 
       List<String> loadedCompanions = [];
-      if (activeCompanionsList != null && activeCompanionsList.isNotEmpty) {
+      if (activeCompanionsList != null) {
         loadedCompanions = activeCompanionsList.whereType<String>().toList();
-      } else if (activeCompanion != null) {
+      } else if (activeCompanion != null && activeCompanion.isNotEmpty) {
         loadedCompanions = [activeCompanion];
-      } else {
-        loadedCompanions = ['chien'];
       }
 
       if (!mounted) return;

@@ -351,6 +351,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                                     await FirebaseFirestore.instance.collection('users').doc(uid).set({
                                       'unlockedCompanions': [], 
+                                      'activeCompanions': [],
                                       'unlockedCharacters': ['nuit'], 
                                       'characterId': 'nuit',
                                       'characterColor': Colors.deepPurple.toARGB32(),
