@@ -85,6 +85,11 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/biome/
+    - assets/biome/camp/
+    - assets/biome/expedition/fond/
+    - assets/biome/expedition/sol/
+
+
     - assets/NomCitiesDesert/
     - assets/NomCitiesMontagnes/
     - assets/NomCitiesLac/
@@ -102,10 +107,16 @@ flutter:
     - assets/compagnons/Chien/chien_marche/
     - assets/compagnons/Chien/chien_arret/
     - assets/compagnons/Chien/chien_arret_non_choisi/
-    
-    - assets/compagnons/Chat/chat_marche/
-    - assets/compagnons/Chat/chat_arret/
-    - assets/compagnons/Chat/chat_arret_non_choisi/
+
+    - assets/compagnons/Husky/husky_marche/
+    - assets/compagnons/Husky/husky_arret/
+
+    - assets/compagnons/Husky_beige/husky_beige_marche/
+    - assets/compagnons/Husky_beige/husky_beige_arret/
+
+    - assets/compagnons/Renard/renard_marche/
+    - assets/compagnons/Renard/renard_arret/
+    - assets/compagnons/Renard/renard_arret_non_choisi/
   # An image asset can refer to one or more resolution-specific "variants", see
 
 

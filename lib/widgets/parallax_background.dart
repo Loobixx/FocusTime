@@ -15,8 +15,8 @@ class ParallaxBackground extends StatefulWidget {
     super.key,
     required this.isRunning,
     this.characterId = 'nuit',
-    this.farBackgroundAsset = 'assets/biome/fond_lointain.png',
-    this.groundAsset = 'assets/biome/sol_proche.png',
+    this.farBackgroundAsset = 'assets/biome/expedition/fond/fond_lointain_montagne.png',
+    this.groundAsset = 'assets/biome/expedition/sol/sol_proche_montagne.png',
     this.groundVerticalOffsetFactor = 0.10,
   });
 

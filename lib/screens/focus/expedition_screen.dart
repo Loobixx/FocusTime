@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:focus_time/screens/focus/expedition_dialogs.dart';
 import 'package:focus_time/services/notification_service.dart';
 import 'package:flutter/material.dart';

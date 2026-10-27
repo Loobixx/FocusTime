@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<String> _activeCompanions = ['chien'];
   List<String> _unlockedCompanions = [];
   bool _loadingCampCompanions = true;
-  CampLayoutConfig _campLayout = CampLayoutConfig.defaults;
+  final CampLayoutConfig _campLayout = CampLayoutConfig.defaults;
 
   @override
   void initState() {
@@ -235,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Image.asset(
-                              'compagnons/${companion.id}/${companion.id}_arret.gif',
+                              campCompanionAsset(companion.id),
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) => const Icon(Icons.pets, size: 50, color: Color(0xFFFF8C00)),
                             ),
@@ -451,7 +451,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _biome.background,
                   fit: BoxFit.cover,
                   alignment: Alignment.center,
-                  errorBuilder: (_, __, ___) => _biome.id == 'default'
+                  errorBuilder: (_, _, _) => _biome.id == 'default'
                       ? Image.asset(CampBiomes.fallback.background, fit: BoxFit.cover)
                       : BiomeBackdrop(zoneId: _biome.id),
                 ),
@@ -693,8 +693,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   }
 
                                   String displayPosition = currentCity;
-                                  if (isFocusActive && activeDestination != null) displayPosition = '$currentCity ➔ $activeDestination';
-                                  else if (midRouteDestination != null && midRouteDestination.isNotEmpty) displayPosition = '$currentCity ➔ $midRouteDestination';
+                                  if (isFocusActive && activeDestination != null) {
+                                    displayPosition = '$currentCity ➔ $activeDestination';
+                                  } else if (midRouteDestination != null && midRouteDestination.isNotEmpty) displayPosition = '$currentCity ➔ $midRouteDestination';
 
                                   return FutureBuilder<QuerySnapshot>(
                                     future: FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser?.uid).collection('visited_cities').get(),
@@ -844,7 +845,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Image.asset(
                           campCompanionAsset(_activeCompanions[index]),
                           fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.pets, color: Color(0xFFFF8C00)),
+                          errorBuilder: (_, _, _) => const Icon(Icons.pets, color: Color(0xFFFF8C00)),
                         ),
                       ),
                     ),

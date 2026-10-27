@@ -1,5 +1,6 @@
 // lib/widgets/game_sprites.dart
 import 'package:flutter/material.dart';
+import '../models/companion.dart';
 import '../config/sprite_config.dart';
 import 'sprite_animator.dart';
 
@@ -62,60 +63,14 @@ class CompanionSprite extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = SpriteConfig.companion(scene);
-    final id = companionId.toLowerCase();
-    // Chaque compagnon déclare ses chemins ici, à partir de la même structure
-    // d'états (marche / arrêt) utilisée par le chien.
-    final animations = switch (id) {
-      'chien' => <String, List<String>>{
-          'marche': List.generate(
-            6,
-            (i) => 'assets/compagnons/Chien/chien_marche/$i.png',
-          ),
-          'arret': List.generate(
-            isSelected ? 8 : 18,
-            (i) =>
-                'assets/compagnons/Chien/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
-          ),
-        },
-        'chat' => <String, List<String>>{
-          'marche': List.generate(
-            6,
-            (i) => 'assets/compagnons/Chien/chien_marche/$i.png',
-          ),
-          'arret': List.generate(
-            isSelected ? 8 : 18,
-            (i) =>
-                'assets/compagnons/Chien/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
-          ),
-        },
-        'lapin' => <String, List<String>>{
-          'marche': List.generate(
-            6,
-            (i) => 'assets/compagnons/Chien/chien_marche/$i.png',
-          ),
-          'arret': List.generate(
-            isSelected ? 8 : 18,
-            (i) =>
-                'assets/compagnons/Chien/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
-          ),
-        },
-        'oiseau' => <String, List<String>>{
-          'marche': List.generate(
-            6,
-            (i) => 'assets/compagnons/Chien/chien_marche/$i.png',
-          ),
-          'arret': List.generate(
-            isSelected ? 8 : 18,
-            (i) =>
-                'assets/compagnons/Chien/${isSelected ? 'chien_arret' : 'chien_arret_non_choisi'}/$i.png',
-          ),
-        },
-      _ => const <String, List<String>>{},
-    };
-
-    if (animations.isEmpty) {
+    final companion = CompanionData.getById(companionId);
+    if (companion == null) {
       return SizedBox(width: size.width, height: size.height);
     }
+    final animations = {
+      'marche': companion.animationFrames(moving: true, selected: isSelected),
+      'arret': companion.animationFrames(moving: false, selected: isSelected),
+    };
 
     return SpriteAnimator(
       key: ValueKey(

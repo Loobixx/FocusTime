@@ -13,7 +13,7 @@ Le temps de concentration de l'utilisateur se transforme en "temps de trajet", l
 ## 3. Mécaniques Principales
 *   **Le Voyage (CityNetwork) :** La carte est un graphe où chaque ville est reliée à d'autres avec un "poids" (temps de trajet en minutes). L'algorithme de Dijkstra calcule si l'utilisateur a assez de temps de focus pour atteindre une destination. Les trajets sur des routes déjà visitées coûtent 5 fois moins de temps.
 *   **Le Brouillard de Guerre (FogOfWar) :** Un système visuel avancé qui masque la carte. Il génère des nuages animés (sprites pré-calculés) et évide des zones (RadialGradient) autour des villes visitées et frontalières.
-*   **Les Compagnons :** Système de récompense. Des familiers animés (ex: chat) se débloquent en atteignant certaines villes et apparaissent dans l'interface de l'utilisateur.
+*   **Les Compagnons :** Système de récompense. Des familiers animés (ex: chien) se débloquent en atteignant certaines villes et apparaissent dans l'interface de l'utilisateur.
 
 ## 4. Arborescence du Projet (Dossier `lib/`)
 

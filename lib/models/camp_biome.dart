@@ -9,8 +9,8 @@ class CampBiome {
   const CampBiome({
     required this.id,
     required this.background,
-    this.expeditionFarBackground = 'assets/biome/fond_lointain.png',
-    this.expeditionGround = 'assets/biome/sol_proche.png',
+    this.expeditionFarBackground = 'assets/biome/expedition/fond/fond_lointain_montagne.png',
+    this.expeditionGround = 'assets/biome/expedition/sol/sol_proche_montagne.png',
     this.expeditionGroundOffsetFactor = 0,
   });
 }
@@ -27,25 +27,25 @@ class CampBiomes {
   /// Un décor par zone (mêmes ids que les personnages : desert, montagnes,
   /// lac, nuages, nuit). Ajoute les images dans assets/biome/.
   static const Map<String, CampBiome> byZone = {
-    'desert': CampBiome(id: 'desert', background: 'assets/biome/camp_desert.png'),
+    'desert': CampBiome(id: 'desert', background: 'assets/biome/camp/camp_desert.png'),
     'montagnes': CampBiome(
       id: 'montagnes',
-      background: 'assets/biome/camp_montagnes.png',
-      expeditionFarBackground: 'assets/biome/fond_lointain.png',
-      expeditionGround: 'assets/biome/sol_proche.png',
+      background: 'assets/biome/camp/camp_montagnes.png',
+      expeditionFarBackground: 'assets/biome/expedition/fond/fond_lointain_montagne.png',
+      expeditionGround: 'assets/biome/expedition/sol/sol_proche_montagne.png',
       expeditionGroundOffsetFactor: 0,
     ),
     'lac': CampBiome(
       id: 'lac',
-      background: 'assets/biome/camp_lac.png',
-      expeditionFarBackground: 'assets/biome/fond_lointain_lac2.png',
-      expeditionGround: 'assets/biome/sol_proche_lac2.png',
+      background: 'assets/biome/camp/camp_lac.png',
+      expeditionFarBackground: 'assets/biome/expedition/fond/fond_lointain_lac.png',
+      expeditionGround: 'assets/biome/expedition/sol/sol_proche_lac.png',
       // Le chemin est dessiné plus bas dans l'image du lac ; on remonte
       // la couche pour aligner sa piste sur celle de la montagne.
       expeditionGroundOffsetFactor: 0,
     ),
-    'nuages': CampBiome(id: 'nuages', background: 'assets/biome/camp_nuages.png'),
-    'nuit': CampBiome(id: 'nuit', background: 'assets/biome/camp_nuit.png'),
+    'nuages': CampBiome(id: 'nuages', background: 'assets/biome/camp/camp_nuages.png'),
+    'nuit': CampBiome(id: 'nuit', background: 'assets/biome/camp/camp_nuit.png'),
   };
 
   /// Ville -> zone (générée depuis CityNetwork).

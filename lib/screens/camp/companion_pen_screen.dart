@@ -22,14 +22,13 @@ class CompanionPenScreen extends StatefulWidget {
 
 class _CompanionPenScreenState extends State<CompanionPenScreen> {
   static const Color _panelBg = Color(0xFF6E4C33);
-  static const Color _panelBorder = Color(0xFF8F6348);
   static const Color _textBrown = Color(0xFF4A301E);
   static const Color _btnGreen = Color(0xFF6CC164);
   static const Color _btnBeige = Color(0xFFD3AE86);
   static const Color _btnOrange = Color(0xFFF79E4A);
   static const Color _headerYellow = Color(0xFFF5C564);
 
-  late List<String> _selectedCompanions = List.from(widget.selectedIds);
+  late final List<String> _selectedCompanions = List.from(widget.selectedIds);
 
   void _toggleCompanion(String id) {
     HapticFeedback.selectionClick();
@@ -61,7 +60,7 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
           Image.asset(
             widget.background,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF1B2A41)),
+            errorBuilder: (_, _, _) => const ColoredBox(color: Color(0xFF1B2A41)),
           ),
           Positioned.fill(
             child: BackdropFilter(
@@ -204,14 +203,14 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
                           ? Image.asset(
                               campCompanionAsset(companion.id),
                               fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.pets, color: _headerYellow),
+                              errorBuilder: (_, _, _) => const Icon(Icons.pets, color: _headerYellow),
                             )
                           : Stack(
                               alignment: Alignment.center,
                               children: [
                                 ColorFiltered(
                                   colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-                                  child: Image.asset(campCompanionAsset(companion.id), fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.pets, color: Colors.black)),
+                                  child: Image.asset(campCompanionAsset(companion.id), fit: BoxFit.contain, errorBuilder: (_, _, _) => const Icon(Icons.pets, color: Colors.black)),
                                 ),
                                 const Text('?', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
                               ],

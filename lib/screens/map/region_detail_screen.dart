@@ -303,8 +303,9 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
   }
 
   bool _isVisibleOutOfFog(RegionCross cross) {
-    if (_isCurrentCity(cross) || _isStopped(cross) || _isTraversed(cross))
+    if (_isCurrentCity(cross) || _isStopped(cross) || _isTraversed(cross)) {
       return true;
+    }
     if (widget.readOnly) return false;
     return _visibleKeys.contains(normalizeCityName(cross.name));
   }
@@ -741,7 +742,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                                 : (_hasFocusPlanned
                                                       ? 'Destination accessible'
                                                       : 'À découvrir'))));
-                          final VoidCallback selectCross = () {
+                          void selectCross() {
                             AppHaptics.lightImpact();
                             setState(() {
                               if (_selectedCrossId == cross.id) {
@@ -751,7 +752,7 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                 _hoveredCrossId = null;
                               }
                             });
-                          };
+                          }
 
                           return Positioned(
                             left: cross.x - (clickAreaSize / 2),
@@ -970,8 +971,9 @@ class _RegionDetailScreenState extends State<RegionDetailScreen>
                                     final selectedCrossObj = regionCrosses
                                         .where((c) => c.id == _selectedCrossId)
                                         .firstOrNull;
-                                    if (selectedCrossObj == null)
+                                    if (selectedCrossObj == null) {
                                       return const SizedBox.shrink();
+                                    }
 
                                     // ✨ FIX : Vérifie si c'est la ville vers laquelle on est déjà en route
                                     final bool isCurrentTarget =

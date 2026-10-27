@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:focus_time/services/admin_access_service.dart';
 
 class ShopScreen extends StatefulWidget {
   final String backgroundAsset;
@@ -72,40 +73,126 @@ class _ShopScreenState extends State<ShopScreen> {
           'imageBack': 'assets/homePageAssets/cloture/base/montagne/arriere.png',
           'imageFront': 'assets/homePageAssets/cloture/base/montagne/avant.png',
         },
-        {
-          'id': 'cloture_montagne_sombre',
-          'colorName': 'Bois sombre',
-          'colorCode': Colors.grey.shade800,
-          'price': 150,
-          'imagePath': 'assets/homePageAssets/cloture/sombre/montagne/arriere.png',
-          'imageBack': 'assets/homePageAssets/cloture/sombre/montagne/arriere.png',
-          'imageFront': 'assets/homePageAssets/cloture/sombre/montagne/avant.png',
-        },
-      ]
-    },
-    {
-      'id': 'tente_nomade',
-      'name': 'Tente Nomade',
-      'type': 'Tente',
-      'categoryIcon': Icons.home,
-      'variants': [
-        {
-          'id': 'tente_nomade_rouge',
-          'colorName': 'Rouge',
-          'colorCode': Colors.red,
-          'price': 500,
-          'imagePath': 'assets/shop/tente_rouge.png',
-        },
-        {
-          'id': 'tente_nomade_bleu',
-          'colorName': 'Bleu',
-          'colorCode': Colors.blue,
-          'price': 500,
-          'imagePath': 'assets/shop/tente_bleu.png',
-        },
       ]
     },
   ];
+
+  final AdminAccessService _adminService = AdminAccessService();
+
+  void _showAdminOptions(BuildContext context, String uid) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.admin_panel_settings, color: Colors.amber, size: 24),
+                  SizedBox(width: 8),
+                  Text(
+                    'Outils d\'administration',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF143063),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Option 1 : +999 999 pièces
+              ListTile(
+                leading: const Icon(Icons.monetization_on, color: Color(0xFFFF8C00)),
+                title: const Text('Définir 999 999 pièces'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await FirebaseFirestore.instance.collection('users').doc(uid).update({
+                    'points': 999999,
+                  });
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Solde mis à jour : 999 999 🪙')),
+                    );
+                  }
+                },
+              ),
+
+              // Option 2 : Tout débloquer
+              ListTile(
+                leading: const Icon(Icons.lock_open_rounded, color: Colors.green),
+                title: const Text('Débloquer tous les cosmétiques'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final List<String> allIds = [];
+                  for (final item in _shopItemsTemplate) {
+                    final variants = item['variants'] as List;
+                    for (final v in variants) {
+                      allIds.add(v['id'] as String);
+                    }
+                  }
+
+                  await FirebaseFirestore.instance.collection('users').doc(uid).update({
+                    'unlockedItems': allIds,
+                  });
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Tous les articles ont été débloqués.')),
+                    );
+                  }
+                },
+              ),
+
+              // Option 3 : Réinitialiser l'inventaire
+              ListTile(
+                leading: const Icon(Icons.refresh_rounded, color: Colors.redAccent),
+                title: const Text(
+                  'Réinitialiser l\'inventaire & les pièces',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await FirebaseFirestore.instance.collection('users').doc(uid).update({
+                    'points': 0,
+                    'unlockedItems': <String>[],
+                    'equippedTent': 'assets/homePageAssets/logement/base/montagne/tente.png',
+                    'equippedEnclosureBack': 'assets/homePageAssets/cloture/base/montagne/arriere.png',
+                    'equippedEnclosureFront': 'assets/homePageAssets/cloture/base/montagne/avant.png',
+                  });
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Inventaire remis à zéro !')),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   // 2. TRANSACTION D'ACHAT (Débit des pièces + Ajout à l'inventaire)
   Future<void> _buyVariant(Map<String, dynamic> activeVariant) async {
@@ -241,6 +328,30 @@ class _ShopScreenState extends State<ShopScreen> {
             title: const Text('Boutique', style: TextStyle(color: darkBlue, fontWeight: FontWeight.bold)),
             centerTitle: true,
             actions: [
+              // Bouton Admin visible uniquement pour les administrateurs
+              StreamBuilder<bool>(
+                stream: _adminService.watchAdminStatus(user.email),
+                builder: (context, adminSnapshot) {
+                  final bool isAdmin = adminSnapshot.data ?? false;
+                  if (!isAdmin) return const SizedBox.shrink();
+
+                  return IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade100,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.amber.shade700, width: 1.5),
+                      ),
+                      child: Icon(Icons.admin_panel_settings, color: Colors.amber.shade900, size: 20),
+                    ),
+                    tooltip: 'Panneau Admin',
+                    onPressed: () => _showAdminOptions(context, user.uid),
+                  );
+                },
+              ),
+
+              // Solde de pièces
               Container(
                 margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -253,7 +364,14 @@ class _ShopScreenState extends State<ShopScreen> {
                   children: [
                     const Icon(Icons.monetization_on, color: focusOrange, size: 18),
                     const SizedBox(width: 6),
-                    Text('$currentPoints', style: const TextStyle(color: darkBlue, fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(
+                      '$currentPoints',
+                      style: const TextStyle(
+                        color: darkBlue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -265,7 +383,7 @@ class _ShopScreenState extends State<ShopScreen> {
               Image.asset(
                 widget.backgroundAsset,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(color: const Color(0xFF2C3E50)),
+                errorBuilder: (_, _, _) => Container(color: const Color(0xFF2C3E50)),
               ),
               BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),

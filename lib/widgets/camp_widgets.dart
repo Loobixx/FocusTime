@@ -1,14 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../models/companion.dart';
 
 /// Image d'un compagnon affichée dans le camp / l'enclos.
-String campCompanionAsset(String companionId) => switch (companionId) {
-  'chien' => 'assets/compagnons/Chien/chien_arret/1.png',
-  // Le chat ne possède pas de dossier chat_arret avec des images séparées.
-  'chat' => 'assets/compagnons/Chien/chien_arret/1.png',
-  _ => 'assets/compagnons/Chien/chien_arret/1.png',
-};
+String campCompanionAsset(String companionId) =>
+    CompanionData.getById(companionId)?.campImagePath ??
+    CompanionData.allCompanions.first.campImagePath;
 
 /// Feu de camp animé, entièrement dessiné en code (aucun asset requis).
 class Campfire extends StatefulWidget {

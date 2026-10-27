@@ -21,7 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  bool _googleInitialized = false;
+  final bool _googleInitialized = false;
 
   // Contrôleurs pour récupérer les valeurs des champs de texte
   final TextEditingController _emailController = TextEditingController();

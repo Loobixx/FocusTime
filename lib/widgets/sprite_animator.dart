@@ -63,11 +63,11 @@ class _SpriteAnimatorState extends State<SpriteAnimator> {
     super.didChangeDependencies();
     if (!_precached) {
       _precached = true;
-      _cachedProviders.values.forEach((providersList) {
+      for (var providersList in _cachedProviders.values) {
         for (final p in providersList) {
           precacheImage(p, context);
         }
-      });
+      }
     }
   }
 
@@ -102,7 +102,7 @@ class _SpriteAnimatorState extends State<SpriteAnimator> {
 
     return ValueListenableBuilder<int>(
       valueListenable: _frameIndex,
-      builder: (_, i, __) {
+      builder: (_, i, _) {
         // Sécurité si l'index dépasse la taille de la liste lors d'un changement d'état très rapide
         final safeIndex = i < activeProviders.length ? i : 0;
         
