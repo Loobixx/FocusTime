@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import 'package:focus_time/widgets/location_biome_background.dart';
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 
@@ -13,13 +14,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
       body: Stack(
         children: [
           Positioned.fill(
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-              child: Image.asset(
-                'assets/biome/fond2.png',
-                fit: BoxFit.cover,
-              ),
-            ),
+            child: LocationBiomeBackground(blurSigma: 5.0),
           ),
           Positioned.fill(
             child: Container(color: Colors.black.withValues(alpha: 0.2)),

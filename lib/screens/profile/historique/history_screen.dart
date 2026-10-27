@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:focus_time/widgets/location_biome_background.dart';
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
@@ -22,14 +23,7 @@ class HistoryScreen extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(image: AssetImage('assets/biome/fond1.png'), fit: BoxFit.cover),
-              ),
-            ),
-          ),
+          LocationBiomeBackground(blurSigma: 5.0),
           SafeArea(
             child: Column(
               children: [

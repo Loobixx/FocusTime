@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:focus_time/utils/app_constants.dart'; // 👈 Importe Firebase Auth
 import 'package:focus_time/utils/user_roles.dart';
 
+import 'package:focus_time/widgets/location_biome_background.dart';
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
@@ -27,17 +28,7 @@ class AboutScreen extends StatelessWidget {
       body: Stack(
         children: [
           // 1. Fond flouté
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/biome/fond1.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
+          LocationBiomeBackground(blurSigma: 5.0),
 
           // 2. Contenu principal (La carte en verre)
           SafeArea(

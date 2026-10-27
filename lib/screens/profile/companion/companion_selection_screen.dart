@@ -6,6 +6,7 @@ import '../../../models/companion.dart';
 import '../../../config/sprite_config.dart';
 import '../../../widgets/game_sprites.dart';
 
+import 'package:focus_time/widgets/location_biome_background.dart';
 class CompanionSelectionScreen extends StatefulWidget {
   const CompanionSelectionScreen({super.key});
 
@@ -79,17 +80,7 @@ class _CompanionSelectionScreenState extends State<CompanionSelectionScreen> {
       body: Stack(
         children: [
           // Fond flouté
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/biome/fond1.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
+          LocationBiomeBackground(blurSigma: 5.0),
 
           SafeArea(
             child: Column(

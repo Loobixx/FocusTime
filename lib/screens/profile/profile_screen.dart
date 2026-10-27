@@ -19,6 +19,7 @@ import 'package:focus_time/screens/profile/admin/admin_management_screen.dart';
 import 'package:focus_time/theme/app_theme.dart';
 import 'package:focus_time/utils/app_haptics.dart';
 
+import 'package:focus_time/widgets/location_biome_background.dart';
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -139,17 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/biome/fond1.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
+          LocationBiomeBackground(blurSigma: 5.0),
           if (isDark)
             Positioned.fill(
               child: ColoredBox(color: Colors.black.withValues(alpha: 0.24)),

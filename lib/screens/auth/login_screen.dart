@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
+import 'package:focus_time/widgets/location_biome_background.dart';
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -182,17 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Stack(
         children: [
           // 1. Image de fond floutée
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0), 
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/biome/fond1.png'), 
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
+          LocationBiomeBackground(blurSigma: 5.0),
           
           // 2. Contenu centré avec effet Glassmorphism
           Center(

@@ -8,6 +8,7 @@ import '../../utils/time_formatter.dart';
 import '../../services/admin_access_service.dart';
 import '../../theme/app_theme.dart';
 
+import 'package:focus_time/widgets/location_biome_background.dart';
 class FocusScreen extends StatefulWidget {
   // ✨ FIX : Paramètres pour gérer la reprise de route et le temps exact
   final List<String>? transitRoute;
@@ -108,17 +109,7 @@ class _FocusScreenState extends State<FocusScreen> {
         children: [
           // 1. Image de fond floutée
           Positioned.fill(
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
-              child: Container(
-                decoration: const BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/biome/fond2.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
+            child: LocationBiomeBackground(blurSigma: 6.0),
           ),
 
           // Voile d'ambiance
