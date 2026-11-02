@@ -16,7 +16,7 @@ class CityNode {
 }
 
 class CityNetwork {
-  static bool isDevMode = true;
+  static bool isDevMode = false;
   static final Map<String, CityNode> network = {
     // ==========================================
     // --- ZONE DÉSERT (Sahur) ---
