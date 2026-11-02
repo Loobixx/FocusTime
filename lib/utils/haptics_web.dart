@@ -8,7 +8,7 @@ void _vibrate(int duration) {
   // Safari on iOS does not implement navigator.vibrate. Check before calling
   // it so an optional haptic effect cannot interrupt the user's tap action.
   if (_navigator.getProperty<JSAny?>('vibrate'.toJS) == null) return;
-  _navigator.callMethod<JSAny?>('vibrate'.toJS, [duration.toJS]);
+  _navigator.callMethod<JSAny?>('vibrate'.toJS, [duration.toJS] as JSAny?);
 }
 
 void lightImpact() => _vibrate(30);
