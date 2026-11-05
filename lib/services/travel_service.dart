@@ -3,12 +3,23 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/city_network.dart';
 
 class TravelService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  TravelService({
+    FirebaseFirestore? firestore,
+    String? Function()? currentUserIdResolver,
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _currentUserIdResolver = currentUserIdResolver;
+
+  final FirebaseFirestore _firestore;
+  final String? Function()? _currentUserIdResolver;
+
+  String? get _currentUserId => _currentUserIdResolver != null
+      ? _currentUserIdResolver()
+      : FirebaseAuth.instance.currentUser?.uid;
 
   // --- 1. Lancer ou annuler le focus (Enregistre l'état, la destination et l'heure de fin) ---
   Future<void> setFocusActive(bool isActive, {List<String>? plannedRoute, int? durationMinutes}) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    final uid = _currentUserId;
+    if (uid == null) return;
 
     Map<String, dynamic> data = {
       'isFocusActive': isActive,
@@ -24,17 +35,17 @@ class TravelService {
       data['endTime'] = FieldValue.delete();
     }
 
-    await _firestore.collection('users').doc(user.uid).collection('travel').doc('status').set(data, SetOptions(merge: true));
+    await _firestore.collection('users').doc(uid).collection('travel').doc('status').set(data, SetOptions(merge: true));
   }
 
   Future<void> recordFailedTrip({
     required int durationMinutes,
     required List<String> plannedRoute,
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    final uid = _currentUserId;
+    if (uid == null) return;
 
-    final userRef = _firestore.collection('users').doc(user.uid);
+    final userRef = _firestore.collection('users').doc(uid);
     final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris';
 
     await userRef.collection('travel_history').add({
@@ -54,10 +65,10 @@ class TravelService {
     required int totalFuelMinutes,
     required List<String> plannedRoute,
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return null;
+    final uid = _currentUserId;
+    if (uid == null) return null;
 
-    final userRef = _firestore.collection('users').doc(user.uid);
+    final userRef = _firestore.collection('users').doc(uid);
     final statusRef = userRef.collection('travel').doc('status');
 
     // ✨ GESTION DU MODE ADMIN (totalFuelMinutes == 0)

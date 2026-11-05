@@ -141,14 +141,18 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'COMPAGNONS (${_selectedCompanions.length}/4)',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: _textBrown,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1,
+                Flexible(
+                  child: Text(
+                    'COMPAGNONS (${_selectedCompanions.length}/4)',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _textBrown,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -297,13 +301,18 @@ class _CompanionPenScreenState extends State<CompanionPenScreen> {
           children: [
             Icon(Icons.pets, color: _textBrown, size: 28),
             SizedBox(width: 12),
-            Text(
-              'CONFIRMER',
-              style: TextStyle(
-                color: _textBrown,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.5,
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'CONFIRMER',
+                  style: TextStyle(
+                    color: _textBrown,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                  ),
+                ),
               ),
             ),
           ],

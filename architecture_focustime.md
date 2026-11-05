@@ -2,61 +2,109 @@
 
 ## 1. Résumé du Concept
 **FocusTime** est une application de productivité ludifiée (gamification). Elle combine la technique du minuteur de concentration (type Pomodoro) avec un jeu d'exploration RPG.
-Le temps de concentration de l'utilisateur se transforme en "temps de trajet", lui permettant de voyager sur une carte, d'explorer des régions couvertes par un brouillard de guerre, de débloquer de nouvelles villes (nœuds d'un graphe), et de rencontrer des compagnons animés.
+Le temps de concentration de l'utilisateur se transforme en « temps de trajet », lui permettant de voyager sur une carte, d'explorer des régions couvertes par un brouillard de guerre, de débloquer de nouvelles villes (nœuds d'un graphe), de collectionner des compagnons animés et de personnaliser son campement.
 
 ## 2. Stack Technique
-*   **Frontend :** Flutter / Dart
-*   **Backend / Base de données :** Firebase Authentication (gestion des utilisateurs) & Cloud Firestore (sauvegarde des états de voyage, villes visitées, compagnons débloqués).
-*   **Logique de graphe :** Algorithme de Dijkstra (calcul des plus courts chemins).
-*   **Graphismes :** CustomPainter (Brouillard), Sprites animés (Personnages et Compagnons), Animations fluides à 60 FPS (optimisation via pre-rendering).
+*   **Frontend :** Flutter / Dart (cibles Android, iOS, Web, Windows, macOS, Linux)
+*   **Backend / Base de données :** Firebase Authentication (e-mail/mot de passe et Google Sign-In) & Cloud Firestore (sauvegarde isolée sous `users/{uid}` et gestion des rôles dans `admin_emails`).
+*   **Préférences locales :** `SharedPreferences` pour le thème clair/sombre, l'haptique et l'état muet de l'audio.
+*   **Logique de graphe :** Algorithme de Dijkstra modifié (calcul des plus courts chemins avec blocage au-delà des villes non visitées et réduction `~/ 3` sur les villes déjà traversées).
+*   **Graphismes :** `CustomPainter` procédural (`FogOfWarPainter`, `WorldCloudsPainter`, `BiomeBackdrop`, `Campfire`), sprites PNG préchargés via `SpriteAnimator` (`ResizeImage` + `precacheImage`).
 
-## 3. Mécaniques Principales
-*   **Le Voyage (CityNetwork) :** La carte est un graphe où chaque ville est reliée à d'autres avec un "poids" (temps de trajet en minutes). L'algorithme de Dijkstra calcule si l'utilisateur a assez de temps de focus pour atteindre une destination. Les trajets sur des routes déjà visitées coûtent 5 fois moins de temps.
-*   **Le Brouillard de Guerre (FogOfWar) :** Un système visuel avancé qui masque la carte. Il génère des nuages animés (sprites pré-calculés) et évide des zones (RadialGradient) autour des villes visitées et frontalières.
-*   **Les Compagnons :** Système de récompense. Des familiers animés (ex: chien) se débloquent en atteignant certaines villes et apparaissent dans l'interface de l'utilisateur.
-
-## 4. Arborescence du Projet (Dossier `lib/`)
-
-Voici la structure logique actuelle (et projetée) de l'application :
+## 3. Arborescence Complète du Projet
 
 ```text
-lib/
+flutter_time/
+├── docs/
+│   └── adr/                         # 📜 Architecture Decision Records (0001 à 0011)
 │
-├── models/
-│   ├── city_network.dart        # 🧠 Cœur logique : Définit les villes, leurs connexions et l'algorithme de Dijkstra.
-│   └── companion.dart           # 🐾 Modèle de données pour les compagnons déblocables.
+├── lib/
+│   ├── config/
+│   │   └── sprite_config.dart       # ⚙️ Dimensions, positions et nombre de frames des sprites
+│   │
+│   ├── models/
+│   │   ├── camp_biome.dart          # 🏞️ Association ville/zone -> décor de camp et d'expédition
+│   │   ├── camp_layout_config.dart  # 📐 Disposition (tente, feu, personnage, enclos) sur l'accueil
+│   │   ├── city_network.dart        # 🧠 Graphe des villes, visibilité et algorithme de Dijkstra
+│   │   └── companion.dart           # 🐾 Catalogue des compagnons déblocables et séquences PNG
+│   │
+│   ├── screens/
+│   │   ├── auth/
+│   │   │   └── login_screen.dart    # 🔐 Connexion, inscription, Google Sign-In et mot de passe oublié
+│   │   ├── camp/
+│   │   │   └── companion_pen_screen.dart # 🐕 Enclos de sélection de la meute (jusqu'à 4 compagnons)
+│   │   ├── focus/
+│   │   │   ├── focus_screen.dart    # ⏱️ Configuration de la durée de focus et de l'itinéraire
+│   │   │   ├── expedition_screen.dart # 🚶‍♂️ Session active, pauses, anti-triche et bilan
+│   │   │   └── expedition_dialogs.dart # 💬 Modales de pause, d'abandon et de fin de session
+│   │   ├── home/
+│   │   │   └── home_screen.dart     # 🏕️ Campement dynamique (biome, tente, feu, enclos, compagnons)
+│   │   ├── map/
+│   │   │   ├── map_screen.dart      # 🌍 Carte du monde interactive par régions
+│   │   │   ├── region_detail_screen.dart # 🗺️ Carte régionale détaillée avec brouillard et villes
+│   │   │   ├── fog_of_war.dart      # ☁️ Génération procédurale des nuages et masques de révélation
+│   │   │   └── data/
+│   │   │       ├── map_region_data.dart   # 📐 Tracés vectoriels (Path) des 5 régions du monde
+│   │   │       └── region_cross_data.dart # 📍 Coordonnées X/Y des villes dans chaque région
+│   │   ├── profile/
+│   │   │   ├── profile_screen.dart  # 👤 Profil, thème, audio, haptique et accès aux sous-écrans
+│   │   │   ├── about_profil/about_screen.dart
+│   │   │   ├── admin/admin_management_screen.dart
+│   │   │   ├── change_password/auth_helper.dart
+│   │   │   ├── character/character_customize_screen.dart & character_options.dart
+│   │   │   ├── companion/companion_selection_screen.dart
+│   │   │   ├── delete_profil/delete_account_dialog.dart
+│   │   │   ├── historique/history_screen.dart
+│   │   │   ├── notification/notification_settings_screen.dart
+│   │   │   ├── politique_de_confidentialité/privacy_policy_screen.dart
+│   │   │   └── stat/stats_screen.dart
+│   │   └── shop/
+│   │       └── shop_screen.dart     # 🛒 Boutique de cosmétiques (tentes, clôtures) avec transactions Firestore
+│   │
+│   ├── services/
+│   │   ├── admin_access_service.dart       # 🛡️ Vérification et gestion de la liste blanche admin_emails
+│   │   ├── audio_service.dart              # 🎵 Musique d'ambiance en boucle avec garde-fou Web
+│   │   ├── notification_service.dart       # 🔔 Notifications locales, chrono de pause et bilan de 20h
+│   │   ├── travel_service.dart             # 🧭 Calcul d'avancée, trajets partiels et historique Firestore
+│   │   └── user_data_deletion_service.dart # 🗑️ Suppression par lots des sous-collections utilisateur
+│   │
+│   ├── starter/
+│   │   └── character_selection_screen.dart # 🎭 Choix initial du personnage à l'onboarding
+│   │
+│   ├── theme/
+│   │   └── app_theme.dart           # 🎨 Palettes clair/sombre et AppThemeController
+│   │
+│   ├── utils/
+│   │   ├── app_constants.dart       # 📌 Nom et version de l'application
+│   │   ├── app_haptics.dart         # 📳 Retour haptique multiplateforme (natif + Web Vibration API)
+│   │   ├── city_name.dart           # 🔤 Normalisation des noms de villes (accents, apostrophes)
+│   │   ├── haptics_stub.dart & haptics_web.dart
+│   │   ├── text_formatters.dart & time_formatter.dart
+│   │   └── user_roles.dart          # 👑 Personnalisation visuelle dédiée (rôle Lise vs standard)
+│   │
+│   ├── widgets/
+│   │   ├── biome_backdrop.dart      # 🌄 Décors de biomes dessinés en CustomPainter
+│   │   ├── camp_widgets.dart        # 🔥 Feu de camp animé (Campfire) et clôture (CampFencePainter)
+│   │   ├── game_sprites.dart        # 🏃‍♂️ Widgets CharacterSprite et CompanionSprite
+│   │   ├── location_biome_background.dart
+│   │   ├── parallax_background.dart # 🏞️ Défilement parallaxe du sol et du fond pendant l'expédition
+│   │   └── sprite_animator.dart     # 🎞️ Animateur de séquences PNG avec ResizeImage et precacheImage
+│   │
+│   └── main.dart                    # 🚀 Initialisation (cache images 300 Mo, Firebase, thème, haptique)
 │
-├── screens/
-│   ├── focus_screen.dart        # ⏱️ Écran de sélection du temps de focus (en cours de refonte).
-│   ├── focus_moment/
-│   │   └── expedition_screen.dart # 🚶‍♂️ Écran actif pendant que le minuteur tourne (le voyage en direct).
-│   ├── map/
-│   │   ├── map_screen.dart      # 🗺️ Carte globale permettant de choisir sa destination.
-│   │   └── data/
-│   │       └── region_cross_data.dart # 📍 Coordonnées X/Y exactes des villes sur l'image de la carte.
-│   └── profil/
-│       └── profile_screen.dart  # 👤 Écran des statistiques, paramètres et inventaire de l'utilisateur.
-│
-├── starter/
-│   └── character_selection_screen.dart # 🎭 Écran de lancement (onboarding) pour choisir son biome/avatar.
-│
-├── services/
-│   ├── notification_service.dart # 🔔 Gère les alertes locales (rappel du soir, fin de timer).
-│   └── audio_service.dart        # 🎵 Gère la musique d'ambiance et les sons d'interface.
-│
-├── utils/
-│   ├── time_formatter.dart      # 🛠️ Convertit les minutes en format lisible (ex: 1h 30m).
-│   └── city_name.dart           # 🛠️ Normalise les noms de villes pour éviter les bugs d'accents entre Firestore et le code.
-│
-├── widgets/
-│   ├── persistent_animated_character.dart # 🏃‍♂️ Composant affichant les sprites animés (GIF/Frames) du héros.
-│   └── camp_scene_widget.dart   # 🏕️ (À VENIR) Le hub/campement dynamique affiché sur l'accueil.
-│
-└── main.dart                    # 🚀 Point d'entrée de l'application, initialise Firebase et la première page (HomeScreen).
+└── test/
+    ├── models/
+    │   ├── city_network_test.dart          # Tests du graphe, visibilité et Dijkstra modifié
+    │   └── companion_and_biome_test.dart   # Tests des compagnons, biomes et layout du camp
+    ├── services/
+    │   └── travel_service_test.dart        # Tests complets de TravelService (trajets, reprises, admin)
+    ├── utils/
+    │   └── utils_and_config_test.dart      # Tests des formatteurs, thème, haptique, cartes et configs
+    ├── widgets/
+    │   └── widgets_and_screens_test.dart   # Tests widgets (biomes, feu, brouillard, modales, enclos)
+    ├── security/
+    │   └── firestore_rules.test.cjs        # Tests d'intégration Node.js sur l'émulateur Firebase
+    ├── admin_access_service_test.dart      # Tests unitaires de AdminAccessService
+    ├── user_data_deletion_service_test.dart # Tests unitaires de UserDataDeletionService
+    └── user_roles_test.dart                # Tests unitaires de UserRoles
 ```
-
-## 5. Explication des Fichiers Clés actuels
-
-*   **`lib/models/city_network.dart` :** C'est le "cerveau" mathématique du jeu. Il contient la liste de toutes les villes (Sahur, Orane, etc.), leurs liaisons, et la fonction `calculateAllShortestPaths` qui utilise Dijkstra pour dire à l'interface "Où le joueur peut-il aller avec X minutes ?".
-*   **`lib/screens/map/map_screen.dart` (et `FogOfWarPainter`) :** Le fichier le plus lourd visuellement. Il charge l'image de la carte, dessine le brouillard avec des nuages en mouvement permanent, et positionne les points d'intérêts (villes accessibles en vert, visitées en violet) grâce aux coordonnées de `region_cross_data.dart`.
-*   **`HomeScreen` (dans main ou home_screen.dart) :** Le tableau de bord de l'utilisateur. Actuellement, il vérifie l'état de l'utilisateur dans Firestore (a-t-il un voyage en cours planté ? a-t-il débloqué un compagnon ?) et lui permet de lancer la carte ou un focus. Ce sera bientôt remplacé par le "Campement".

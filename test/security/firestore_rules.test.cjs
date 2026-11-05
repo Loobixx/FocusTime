@@ -151,6 +151,40 @@ test('Firestore data is private to the authenticated owner', async () => {
   );
   assert.equal(unlistedCollectionWrite.status, 403, await unlistedCollectionWrite.text());
 
+  const unknownUserSubcollectionWrite = await writeDocument(
+    `users/${owner.localId}/untracked_subcollection/doc-1`,
+    owner.idToken,
+  );
+  assert.equal(
+    unknownUserSubcollectionWrite.status,
+    403,
+    await unknownUserSubcollectionWrite.text(),
+  );
+
+  const negativePointsWrite = await fetch(documentUrl(ownerDocumentPath), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${owner.idToken}`,
+    },
+    body: JSON.stringify({
+      fields: { points: { integerValue: '-50' } },
+    }),
+  });
+  assert.equal(negativePointsWrite.status, 403, await negativePointsWrite.text());
+
+  const oversizedPseudoWrite = await fetch(documentUrl(ownerDocumentPath), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${owner.idToken}`,
+    },
+    body: JSON.stringify({
+      fields: { pseudo: { stringValue: 'x'.repeat(41) } },
+    }),
+  });
+  assert.equal(oversizedPseudoWrite.status, 403, await oversizedPseudoWrite.text());
+
   const selfAdminGrant = await writeDocument(
     `admin_emails/${owner.email}`,
     owner.idToken,
@@ -230,6 +264,28 @@ test('only verified emails on the server-managed allowlist get admin access', as
     verifiedAdminToken,
   );
   assert.equal(selfGrantAttempt.status, 403, await selfGrantAttempt.text());
+
+  const uppercaseSelfBypassAttempt = await writeAdminStatus(
+    `admin_emails/${encodeURIComponent(adminEmail.toUpperCase())}`,
+    false,
+    verifiedAdminToken,
+  );
+  assert.equal(
+    uppercaseSelfBypassAttempt.status,
+    403,
+    await uppercaseSelfBypassAttempt.text(),
+  );
+
+  const uppercaseAdminDocAttempt = await writeAdminStatus(
+    'admin_emails/UPPERCASE@example.com',
+    true,
+    verifiedAdminToken,
+  );
+  assert.equal(
+    uppercaseAdminDocAttempt.status,
+    403,
+    await uppercaseAdminDocAttempt.text(),
+  );
 
   const newAdminPath = 'admin_emails/new-admin@example.com';
   const grantAnotherAdmin = await writeAdminStatus(

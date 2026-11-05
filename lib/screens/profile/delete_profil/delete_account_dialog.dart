@@ -1,10 +1,23 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:focus_time/screens/auth/login_screen.dart';
 import 'package:focus_time/services/user_data_deletion_service.dart';
 
 class DeleteAccountDialog {
+  static const String _googleWebClientId =
+      '866476346837-765b8ovlcodsq25n3k6e87435q9ni4qo.apps.googleusercontent.com';
+
+  static bool _usesPasswordProvider(User user) {
+    return user.providerData.any((info) => info.providerId == 'password');
+  }
+
+  static bool _usesGoogleProvider(User user) {
+    return user.providerData.any((info) => info.providerId == 'google.com');
+  }
+
   static Future<void> show(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -23,14 +36,18 @@ class DeleteAccountDialog {
     final historyCount = historySnap.docs.length;
     final visitedCities = visitedSnap.docs.map((d) => d.id).toList();
     final stoppedCitiesCount = stoppedSnap.docs.length;
+    final requiresPassword = _usesPasswordProvider(user);
 
     if (!context.mounted) return;
 
+    final passwordController = TextEditingController();
+
     // 2. Boîte de dialogue récapitulative
-    showDialog(
+    await showDialog(
       context: context,
       builder: (dialogContext) {
         bool isDeleting = false;
+        String? errorText;
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -76,6 +93,28 @@ class DeleteAccountDialog {
                         ],
                       ),
                     ),
+                    if (requiresPassword) ...[
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        enabled: !isDeleting,
+                        decoration: InputDecoration(
+                          labelText: 'Confirme ton mot de passe',
+                          errorText: errorText,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          isDense: true,
+                        ),
+                      ),
+                    ] else if (errorText != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        errorText!,
+                        style: const TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.w600),
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     const Text(
                       '⚠️ Cette action est irréversible. Toutes ces données ainsi que tes identifiants de connexion seront définitivement effacés.',
@@ -94,8 +133,28 @@ class DeleteAccountDialog {
                   onPressed: isDeleting
                       ? null
                       : () async {
-                          setDialogState(() => isDeleting = true);
-                          await _executeFullDeletion(context, dialogContext, user);
+                          if (requiresPassword && passwordController.text.trim().isEmpty) {
+                            setDialogState(() {
+                              errorText = 'Saisis ton mot de passe pour confirmer.';
+                            });
+                            return;
+                          }
+                          setDialogState(() {
+                            isDeleting = true;
+                            errorText = null;
+                          });
+                          final failureMessage = await _executeFullDeletion(
+                            context,
+                            dialogContext,
+                            user,
+                            password: passwordController.text.trim(),
+                          );
+                          if (failureMessage != null && dialogContext.mounted) {
+                            setDialogState(() {
+                              isDeleting = false;
+                              errorText = failureMessage;
+                            });
+                          }
                         },
                   child: isDeleting
                       ? const SizedBox(
@@ -111,6 +170,8 @@ class DeleteAccountDialog {
         );
       },
     );
+
+    passwordController.dispose();
   }
 
   static Widget _buildInfoRow(String label, String value) {
@@ -128,15 +189,69 @@ class DeleteAccountDialog {
     );
   }
 
-  // 3. Traitement de la suppression en cascade
-  static Future<void> _executeFullDeletion(BuildContext context, BuildContext dialogContext, User user) async {
+  /// Ré-authentifie l'utilisateur AVANT d'effacer les données Firestore afin
+  /// d'éviter toute perte de données si `user.delete()` exige une connexion récente.
+  static Future<void> _reauthenticateBeforeDeletion(
+    User user, {
+    required String password,
+  }) async {
+    if (_usesPasswordProvider(user) && user.email != null) {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+      return;
+    }
+
+    final lastSignIn = user.metadata.lastSignInTime;
+    final isRecentSession = lastSignIn != null &&
+        DateTime.now().difference(lastSignIn) < const Duration(minutes: 4);
+    if (isRecentSession) return;
+
+    if (_usesGoogleProvider(user)) {
+      if (kIsWeb) {
+        await user.reauthenticateWithPopup(GoogleAuthProvider());
+      } else {
+        await GoogleSignIn.instance.initialize(
+          serverClientId: _googleWebClientId,
+        );
+        final googleUser = await GoogleSignIn.instance.authenticate();
+        final credential = GoogleAuthProvider.credential(
+          idToken: googleUser.authentication.idToken,
+        );
+        await user.reauthenticateWithCredential(credential);
+      }
+    }
+  }
+
+  // 3. Traitement de la suppression en cascade (ré-authentification -> Firestore -> Firebase Auth)
+  static Future<String?> _executeFullDeletion(
+    BuildContext context,
+    BuildContext dialogContext,
+    User user, {
+    required String password,
+  }) async {
+    try {
+      await _reauthenticateBeforeDeletion(user, password: password);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        return 'Mot de passe incorrect.';
+      }
+      if (e.code == 'too-many-requests') {
+        return 'Trop de tentatives. Réessaie dans quelques minutes.';
+      }
+      return 'Impossible de vérifier ton identité. Reconnecte-toi puis réessaie.';
+    } catch (_) {
+      return 'Vérification annulée ou impossible. Tes données n\'ont pas été supprimées.';
+    }
+
     try {
       await UserDataDeletionService().deleteUserData(user.uid);
       await user.delete();
 
       if (dialogContext.mounted) Navigator.pop(dialogContext);
 
-      // Redirection immédiate vers l'écran de connexion
       if (context.mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -144,16 +259,16 @@ class DeleteAccountDialog {
           (route) => false,
         );
       }
+      return null;
     } on FirebaseAuthException catch (e) {
       if (dialogContext.mounted) Navigator.pop(dialogContext);
 
-      // Cas où la dernière connexion remonte à trop longtemps (sécurité Firebase)
       if (e.code == 'requires-recent-login') {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Tes données ont été supprimées. Reconnecte-toi puis relance la suppression pour terminer la fermeture du compte.',
+                'Session expirée. Reconnecte-toi puis relance la suppression pour finaliser la fermeture du compte.',
               ),
               backgroundColor: Colors.orange,
             ),
@@ -162,17 +277,26 @@ class DeleteAccountDialog {
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur : ${e.message}'), backgroundColor: Colors.redAccent),
+            const SnackBar(
+              content: Text('Impossible de supprimer le compte pour le moment.'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }
+      return null;
     } catch (e) {
+      debugPrint('Erreur suppression compte : $e');
       if (dialogContext.mounted) Navigator.pop(dialogContext);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur imprévue : $e'), backgroundColor: Colors.redAccent),
+          const SnackBar(
+            content: Text('Une erreur imprévue est survenue lors de la suppression.'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
+      return null;
     }
   }
 }

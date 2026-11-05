@@ -29,7 +29,7 @@ personnage de ville en ville.
   les avec Firebase CLI en remplaçant l'identifiant par celui de votre projet :
 
   ```sh
-  firebase deploy --only firestore:rules --project YOUR_FIREBASE_PROJECT_ID
+  firebase deploy --only firestore:rules --project focustime-18c30
   ```
 
 ## Lancer l'application
@@ -48,13 +48,22 @@ Pour lancer la version Web dans Chrome sur le port 5000 :
 flutter run -d chrome --web-port=5000
 ```
 
-## Tests
+## Tests et Architecture
 
-Lancer les tests Flutter :
+Les décisions d'architecture sont documentées dans [`docs/adr/README.md`](docs/adr/README.md) et la vue d'ensemble de l'arborescence figure dans [`architecture_focustime.md`](architecture_focustime.md).
+
+Lancer l'ensemble de la suite de tests Flutter (modèles, algorithme de Dijkstra, services Firestore simulés, utilitaires, préférences et widgets/écrans) :
 
 ```sh
 flutter test
 ```
+
+Organisation du dossier `test/` :
+- `test/models/` : intégrité du graphe `CityNetwork`, visibilité hors brouillard, Dijkstra modifié, compagnons, biomes et configuration du campement.
+- `test/services/` & racine `test/` : `TravelService` (trajets complets, partiels, reprises, mode admin), `AdminAccessService`, `UserDataDeletionService` et `UserRoles`.
+- `test/utils/` : formatage du temps, normalisation des noms de villes, `SpriteConfig`, `AppThemeController`, `AppHaptics` et cohérence des coordonnées de carte (`MapRegionsData`, `RegionCrossesData`).
+- `test/widgets/` : rendu de `BiomeBackdrop`, `Campfire`, `CampFencePainter`, `FogOfWarPainter`, `WorldCloudsPainter`, modales `ActiveTimerDialogs` et écran `CompanionPenScreen`.
+- `test/security/` : tests d'intégration des règles de sécurité Firestore.
 
 Les règles d'accès Firestore se testent contre les émulateurs Firebase :
 

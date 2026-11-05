@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:focus_time/widgets/location_biome_background.dart';
+
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
 
@@ -36,19 +37,25 @@ class StatsScreen extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user?.uid)
-                        .collection('travel_history')
-                        .snapshots(),
+                  child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: user != null
+                        ? FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(user.uid)
+                              .collection('travel_history')
+                              .snapshots()
+                              .handleError((Object _) {})
+                        : const Stream<QuerySnapshot<Map<String, dynamic>>>.empty(),
                     builder: (context, historySnap) {
-                      return StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(user?.uid)
-                            .collection('visited_cities')
-                            .snapshots(),
+                      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: user != null
+                            ? FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(user.uid)
+                                  .collection('visited_cities')
+                                  .snapshots()
+                                  .handleError((Object _) {})
+                            : const Stream<QuerySnapshot<Map<String, dynamic>>>.empty(),
                         builder: (context, visitedSnap) {
                           if (historySnap.connectionState == ConnectionState.waiting ||
                               visitedSnap.connectionState == ConnectionState.waiting) {
@@ -64,7 +71,7 @@ class StatsScreen extends StatelessWidget {
                           Map<String, int> cityVisitCounts = {};
 
                           for (var doc in historyDocs) {
-                            final data = doc.data() as Map<String, dynamic>;
+                            final data = doc.data();
                             final bool isFailed = data['isFailed'] ?? false;
                             final int citiesCount = data['visitedDuringTripCount'] ?? 0;
 

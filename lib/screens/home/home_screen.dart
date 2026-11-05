@@ -36,11 +36,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   CampBiome _biome = CampBiomes.fallback;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _travelSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _visitedSub;
 
   // Variables dynamiques des cosmétiques équipés
   String _currentTent = 'assets/homePageAssets/logement/base/montagne/tente.png';
   String _currentEnclosureBack = 'assets/homePageAssets/cloture/base/montagne/arriere.png';
   String _currentEnclosureFront = 'assets/homePageAssets/cloture/base/montagne/avant.png';
+
+  // État temps réel du voyageur (mis à jour via abonnements sécurisés)
+  bool _inTransit = false;
+  int _transitRemainingMinutes = 0;
+  List<String> _transitRoute = [];
+  String _currentCity = 'Le village de Néris';
+  bool _isFocusActive = false;
+  String? _midRouteDestination;
+  String? _activeDestination;
+  int _midRouteProgress = 0;
+  Set<String> _visitedCities = {};
 
   List<String> _activeCompanions = [];
   List<String> _unlockedCompanions = [];
@@ -52,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadCharacterData();
     _loadCampCompanions();
-    _listenBiome();
+    _listenUserAndTravelStreams();
     NotificationService().scheduleDailySummaryAt20H();
     AudioManager().initAndPlay();
 
@@ -63,46 +76,109 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
-  void dispose() {
+  void reassemble() {
+    super.reassemble();
+    _cancelStreams();
+    _listenUserAndTravelStreams();
+  }
+
+  void _cancelStreams() {
     _userSub?.cancel();
+    _userSub = null;
+    _travelSub?.cancel();
+    _travelSub = null;
+    _visitedSub?.cancel();
+    _visitedSub = null;
+  }
+
+  @override
+  void dispose() {
+    _cancelStreams();
     super.dispose();
   }
 
-  void _listenBiome() {
+  void _listenUserAndTravelStreams() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    _userSub = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .snapshots()
-        .listen((snap) {
-      final data = snap.data();
-      final biome = CampBiomes.resolve(
-        city: data?['currentCity'] as String?,
-        zone: data?['currentZone'] as String?,
-      );
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
 
-      final savedTent = data?['equippedTent'] as String?;
-      final savedEnclosureBack = data?['equippedEnclosureBack'] as String?;
-      final savedEnclosureFront = data?['equippedEnclosureFront'] as String?;
+    _userSub = userRef.snapshots().listen(
+      (snap) {
+        final data = snap.data();
+        final biome = CampBiomes.resolve(
+          city: data?['currentCity'] as String?,
+          zone: data?['currentZone'] as String?,
+        );
 
-      if (!mounted) return;
-      setState(() {
-        if (biome.id != _biome.id) {
-          _biome = biome;
-        }
-        if (savedTent != null && savedTent.isNotEmpty && savedTent != _currentTent) {
-          _currentTent = savedTent;
-        }
-        if (savedEnclosureBack != null && savedEnclosureBack.isNotEmpty && savedEnclosureBack != _currentEnclosureBack) {
-          _currentEnclosureBack = savedEnclosureBack;
-        }
-        if (savedEnclosureFront != null && savedEnclosureFront.isNotEmpty && savedEnclosureFront != _currentEnclosureFront) {
-          _currentEnclosureFront = savedEnclosureFront;
-        }
-      });
-    });
+        final savedTent = data?['equippedTent'] as String?;
+        final savedEnclosureBack = data?['equippedEnclosureBack'] as String?;
+        final savedEnclosureFront = data?['equippedEnclosureFront'] as String?;
+        final currentCity =
+            (data?['currentCity'] as String?) ?? 'Le village de Néris';
+        final inTransit = (data?['inTransit'] as bool?) ?? false;
+        final transitRemainingMinutes =
+            (data?['transitRemainingMinutes'] as int?) ?? 0;
+        final transitRoute = List<String>.from(data?['transitRoute'] ?? const []);
+
+        if (!mounted) return;
+        setState(() {
+          if (biome.id != _biome.id) {
+            _biome = biome;
+          }
+          if (savedTent != null &&
+              savedTent.isNotEmpty &&
+              savedTent != _currentTent) {
+            _currentTent = savedTent;
+          }
+          if (savedEnclosureBack != null &&
+              savedEnclosureBack.isNotEmpty &&
+              savedEnclosureBack != _currentEnclosureBack) {
+            _currentEnclosureBack = savedEnclosureBack;
+          }
+          if (savedEnclosureFront != null &&
+              savedEnclosureFront.isNotEmpty &&
+              savedEnclosureFront != _currentEnclosureFront) {
+            _currentEnclosureFront = savedEnclosureFront;
+          }
+          _currentCity = currentCity;
+          _inTransit = inTransit;
+          _transitRemainingMinutes = transitRemainingMinutes;
+          _transitRoute = transitRoute;
+        });
+      },
+      onError: (Object _) {
+        // Ignoré lors de la révocation de session (déconnexion).
+      },
+    );
+
+    _travelSub = userRef.collection('travel').doc('status').snapshots().listen(
+      (snap) {
+        final travelData = snap.data();
+        if (!mounted) return;
+        setState(() {
+          _isFocusActive = (travelData?['isFocusActive'] as bool?) ?? false;
+          _midRouteDestination = travelData?['midRouteDestination'] as String?;
+          _activeDestination = travelData?['activeDestination'] as String?;
+          _midRouteProgress = (travelData?['midRouteProgress'] as int?) ?? 0;
+        });
+      },
+      onError: (Object _) {
+        // Ignoré lors de la révocation de session (déconnexion).
+      },
+    );
+
+    _visitedSub = userRef.collection('visited_cities').snapshots().listen(
+      (snap) {
+        if (!mounted) return;
+        setState(() {
+          _visitedCities = snap.docs.map((d) => d.id).toSet();
+        });
+      },
+      onError: (Object _) {
+        // Ignoré lors de la révocation de session (déconnexion).
+      },
+    );
   }
 
   Future<void> _loadCampCompanions() async {
@@ -184,204 +260,214 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-    final doc = await userRef.get();
+    try {
+      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final doc = await userRef.get();
 
-    String? pendingId = doc.data()?['pendingCompanionReward'] as String?;
-    if (pendingId != null && pendingId.isNotEmpty) {
-      await userRef.update({'pendingCompanionReward': FieldValue.delete()});
+      String? pendingId = doc.data()?['pendingCompanionReward'] as String?;
+      if (pendingId != null && pendingId.isNotEmpty) {
+        await userRef.update({'pendingCompanionReward': FieldValue.delete()});
 
-      final companion = CompanionData.allCompanions.firstWhere(
-        (c) => c.id == pendingId,
-        orElse: () => CompanionData.allCompanions.first,
-      );
+        final companion = CompanionData.allCompanions.firstWhere(
+          (c) => c.id == pendingId,
+          orElse: () => CompanionData.allCompanions.first,
+        );
 
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => Dialog(
-            backgroundColor: Colors.transparent,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        '🎉 Nouveau Compagnon !',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF143063)),
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFFF8C00), width: 3),
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => Dialog(
+              backgroundColor: Colors.transparent,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          '🎉 Nouveau Compagnon !',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF143063)),
                         ),
-                        child: ClipOval(
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Image.asset(
-                              campCompanionAsset(companion.id),
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) => const Icon(Icons.pets, size: 50, color: Color(0xFFFF8C00)),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFFF8C00), width: 3),
+                          ),
+                          child: ClipOval(
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Image.asset(
+                                campCompanionAsset(companion.id),
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.pets, size: 50, color: Color(0xFFFF8C00)),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Tu as rencontré ${companion.name} à ${companion.unlockCity} !',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF143063)),
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF8C00),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            elevation: 0,
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Génial !', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Tu as rencontré ${companion.name} à ${companion.unlockCity} !',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF143063)),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF8C00),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              elevation: 0,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Génial !', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
+          );
+        }
       }
-    }
+    } catch (_) {}
   }
 
   Future<void> _checkCharacterSelection() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final currentCity = doc.data()?['currentCity'] as String?;
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final currentCity = doc.data()?['currentCity'] as String?;
 
-    if ((currentCity == null || currentCity.trim().isEmpty) && mounted) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CharacterSelectionScreen()));
-    } else {
-      _checkPseudo();
-      _checkInterruptedTrip();
-    }
+      if ((currentCity == null || currentCity.trim().isEmpty) && mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CharacterSelectionScreen()));
+      } else {
+        _checkPseudo();
+        _checkInterruptedTrip();
+      }
+    } catch (_) {}
   }
 
   Future<void> _checkInterruptedTrip() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-    final doc = await userRef.collection('travel').doc('status').get();
+    try {
+      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final doc = await userRef.collection('travel').doc('status').get();
 
-    if (doc.exists && doc.data()?['isFocusActive'] == true) {
-      final data = doc.data()!;
-      final destination = data['activeDestination'] as String? ?? 'Inconnue';
-      final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris';
+      if (doc.exists && doc.data()?['isFocusActive'] == true) {
+        final data = doc.data()!;
+        final destination = data['activeDestination'] as String? ?? 'Inconnue';
+        final currentCity = (await userRef.get()).data()?['currentCity'] ?? 'Le village de Néris';
 
-      await userRef.collection('travel_history').add({
-        'date': FieldValue.serverTimestamp(),
-        'startCity': currentCity,
-        'endCity': destination,
-        'durationMinutes': 0,
-        'plannedRoute': [destination],
-        'isCompleted': false,
-        'isFailed': true,
-        'visitedDuringTripCount': 0,
-      });
+        await userRef.collection('travel_history').add({
+          'date': FieldValue.serverTimestamp(),
+          'startCity': currentCity,
+          'endCity': destination,
+          'durationMinutes': 0,
+          'plannedRoute': [destination],
+          'isCompleted': false,
+          'isFailed': true,
+          'visitedDuringTripCount': 0,
+        });
 
-      await userRef.collection('travel').doc('status').update({
-        'isFocusActive': false,
-        'activeDestination': FieldValue.delete(),
-        'endTime': FieldValue.delete(),
-      });
+        await userRef.collection('travel').doc('status').update({
+          'isFocusActive': false,
+          'activeDestination': FieldValue.delete(),
+          'endTime': FieldValue.delete(),
+        });
 
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('🧭 Tu t\'es perdu !'),
-            content: const Text('L\'application a été fermée pendant ton voyage. Ton trajet a été annulé et comptabilisé comme un échec.'),
-            actions: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Compris', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        );
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text('🧭 Tu t\'es perdu !'),
+              content: const Text('L\'application a été fermée pendant ton voyage. Ton trajet a été annulé et comptabilisé comme un échec.'),
+              actions: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Compris', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        }
       }
-    }
+    } catch (_) {}
   }
 
   Future<void> _loadCharacterData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final data = doc.data();
-    String charId = data?['characterId'] as String? ?? 'nuit';
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final data = doc.data();
+      String charId = data?['characterId'] as String? ?? 'nuit';
 
-    String? savedTent = data?['equippedTent'] as String?;
-    final savedEnclosureBack = data?['equippedEnclosureBack'] as String?;
-    final savedEnclosureFront = data?['equippedEnclosureFront'] as String?;
+      String? savedTent = data?['equippedTent'] as String?;
+      final savedEnclosureBack = data?['equippedEnclosureBack'] as String?;
+      final savedEnclosureFront = data?['equippedEnclosureFront'] as String?;
 
-    Color themeColor = Colors.deepPurple;
-    switch (charId) {
-      case 'desert': themeColor = Colors.orange; break;
-      case 'montagnes': themeColor = Colors.green; break;
-      case 'lac': themeColor = Colors.blue; break;
-      case 'nuages': themeColor = Colors.pinkAccent; break;
-      case 'nuit':
-      default: themeColor = Colors.deepPurple; break;
-    }
+      Color themeColor = Colors.deepPurple;
+      switch (charId) {
+        case 'desert': themeColor = Colors.orange; break;
+        case 'montagnes': themeColor = Colors.green; break;
+        case 'lac': themeColor = Colors.blue; break;
+        case 'nuages': themeColor = Colors.pinkAccent; break;
+        case 'nuit':
+        default: themeColor = Colors.deepPurple; break;
+      }
 
-    if (mounted) {
-      setState(() {
-        _characterId = charId;
-        _borderColor = themeColor;
-        if (savedTent != null && savedTent.isNotEmpty) {
-          _currentTent = savedTent;
-        }
-        if (savedEnclosureBack != null && savedEnclosureBack.isNotEmpty) {
-          _currentEnclosureBack = savedEnclosureBack;
-        }
-        if (savedEnclosureFront != null && savedEnclosureFront.isNotEmpty) {
-          _currentEnclosureFront = savedEnclosureFront;
-        }
-      });
-    }
+      if (mounted) {
+        setState(() {
+          _characterId = charId;
+          _borderColor = themeColor;
+          if (savedTent != null && savedTent.isNotEmpty) {
+            _currentTent = savedTent;
+          }
+          if (savedEnclosureBack != null && savedEnclosureBack.isNotEmpty) {
+            _currentEnclosureBack = savedEnclosureBack;
+          }
+          if (savedEnclosureFront != null && savedEnclosureFront.isNotEmpty) {
+            _currentEnclosureFront = savedEnclosureFront;
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _checkPseudo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final pseudo = doc.data()?['pseudo'] as String?;
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final pseudo = doc.data()?['pseudo'] as String?;
 
-    if ((pseudo == null || pseudo.trim().isEmpty) && mounted) _showPseudoDialog();
+      if ((pseudo == null || pseudo.trim().isEmpty) && mounted) _showPseudoDialog();
+    } catch (_) {}
   }
 
   void _showPseudoDialog() {
@@ -401,7 +487,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 final value = pseudoController.text.trim();
                 if (value.isEmpty) return;
                 final user = FirebaseAuth.instance.currentUser;
-                if (user != null) await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'pseudo': value});
+                if (user != null) {
+                  try {
+                    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'pseudo': value});
+                  } catch (_) {}
+                }
                 if (context.mounted) Navigator.pop(context);
               },
               child: const Text('Valider', style: TextStyle(color: Colors.white)),
@@ -433,6 +523,24 @@ class _HomeScreenState extends State<HomeScreen> {
         ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.94)
         : Colors.white.withValues(alpha: 0.75);
     const focusOrange = Color(0xFFFF8C00);
+
+    String displayPosition = _currentCity;
+    if (_isFocusActive && _activeDestination != null) {
+      displayPosition = '$_currentCity ➔ $_activeDestination';
+    } else if (_midRouteDestination != null && _midRouteDestination!.isNotEmpty) {
+      displayPosition = '$_currentCity ➔ $_midRouteDestination';
+    }
+
+    int staticTimeRemaining = 0;
+    if (!_isFocusActive && _midRouteDestination != null) {
+      int fullTime =
+          CityNetwork.getAvailableDestinations(_currentCity)[_midRouteDestination] ?? 0;
+      if (_visitedCities.contains(_midRouteDestination)) {
+        fullTime = fullTime ~/ 3;
+      }
+      staticTimeRemaining = fullTime - _midRouteProgress;
+      if (staticTimeRemaining < 0) staticTimeRemaining = 0;
+    }
 
     return Listener(
       behavior: HitTestBehavior.translucent,
@@ -515,6 +623,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         GestureDetector(
                           onTap: () async {
                             await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+                            if (!mounted || FirebaseAuth.instance.currentUser == null) return;
                             _loadCharacterData();
                             _loadCampCompanions();
                           },
@@ -564,85 +673,114 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser?.uid).snapshots(),
-                    builder: (context, snapshot) {
-                      bool inTransit = false;
-                      int transitRemainingMinutes = 0;
-                      List<String> transitRoute = [];
-
-                      if (snapshot.hasData && snapshot.data!.exists) {
-                        final data = snapshot.data!.data() as Map<String, dynamic>?;
-                        inTransit = data?['inTransit'] ?? false;
-                        transitRemainingMinutes = data?['transitRemainingMinutes'] ?? 0;
-                        transitRoute = List<String>.from(data?['transitRoute'] ?? []);
-                      }
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                height: 46,
-                                decoration: BoxDecoration(
-                                  boxShadow: [
-                                    BoxShadow(color: (inTransit ? Colors.green.shade700 : focusOrange).withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4)),
-                                  ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 46,
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (_inTransit ? Colors.green.shade700 : focusOrange)
+                                      .withValues(alpha: 0.4),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
                                 ),
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: inTransit ? (isDark ? AppColors.transitGreenDarkTheme : Colors.green.shade500) : focusOrange,
-                                    foregroundColor: Colors.white,
-                                    padding: EdgeInsets.zero,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
-                                    elevation: 0,
-                                  ),
-                                  onPressed: () {
-                                    if (inTransit && transitRoute.isNotEmpty) {
-                                      Navigator.push(context, MaterialPageRoute(builder: (context) => FocusScreen(transitRemainingMinutes: transitRemainingMinutes, transitRoute: transitRoute)));
-                                    } else {
-                                      Navigator.push(context, MaterialPageRoute(builder: (context) => const FocusScreen()));
-                                    }
-                                  },
-                                  child: Text(
-                                    inTransit ? 'REPRENDRE' : 'START FOCUS',
-                                    style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 0.8),
-                                  ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _inTransit
+                                    ? (isDark
+                                          ? AppColors.transitGreenDarkTheme
+                                          : Colors.green.shade500)
+                                    : focusOrange,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(23),
+                                ),
+                                elevation: 0,
+                              ),
+                              onPressed: () {
+                                if (_inTransit && _transitRoute.isNotEmpty) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => FocusScreen(
+                                        transitRemainingMinutes: _transitRemainingMinutes,
+                                        transitRoute: _transitRoute,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const FocusScreen(),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Text(
+                                _inTransit ? 'REPRENDRE' : 'START FOCUS',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            SizedBox(
-                              width: 46,
-                              height: 46,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(23),
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: panelColor.withValues(alpha: 0.3),
-                                      borderRadius: BorderRadius.circular(23),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
-                                    ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () {
-                                          Navigator.push(context, MaterialPageRoute(builder: (context) => const MapScreen(readOnly: true)));
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 46,
+                          height: 46,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(23),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: panelColor.withValues(alpha: 0.3),
+                                  borderRadius: BorderRadius.circular(23),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const MapScreen(readOnly: true),
+                                        ),
+                                      );
+                                    },
+                                    child: Center(
+                                      child: ShaderMask(
+                                        shaderCallback: (Rect bounds) {
+                                          return const LinearGradient(
+                                            colors: [
+                                              Color(0xFFFF8C00),
+                                              Color(0xFFFFD54F),
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ).createShader(bounds);
                                         },
-                                        child: Center(
-                                          child: ShaderMask(
-                                            shaderCallback: (Rect bounds) {
-                                              return const LinearGradient(
-                                                colors: [Color(0xFFFF8C00), Color(0xFFFFD54F)],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ).createShader(bounds);
-                                            },
-                                            child: const Icon(Icons.explore_rounded, color: Colors.white, size: 28),
-                                          ),
+                                        child: const Icon(
+                                          Icons.explore_rounded,
+                                          color: Colors.white,
+                                          size: 28,
                                         ),
                                       ),
                                     ),
@@ -650,10 +788,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Padding(
@@ -671,86 +809,38 @@ class _HomeScreenState extends State<HomeScreen> {
                             border: Border.all(color: isDark ? Theme.of(context).colorScheme.outline : Colors.white, width: 1.5),
                             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))],
                           ),
-                          child: StreamBuilder<DocumentSnapshot>(
-                            stream: FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser?.uid).snapshots(),
-                            builder: (context, userSnapshot) {
-                              String currentCity = 'Le village de Néris';
-                              if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                                currentCity = (userSnapshot.data!.data() as Map<String, dynamic>?)?['currentCity'] ?? currentCity;
-                              }
-                              return StreamBuilder<DocumentSnapshot>(
-                                stream: FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser?.uid).collection('travel').doc('status').snapshots(),
-                                builder: (context, travelSnapshot) {
-                                  bool isFocusActive = false;
-                                  String? midRouteDestination;
-                                  String? activeDestination;
-                                  int midRouteProgress = 0;
-
-                                  if (travelSnapshot.hasData && travelSnapshot.data!.exists) {
-                                    final travelData = travelSnapshot.data!.data() as Map<String, dynamic>?;
-                                    isFocusActive = travelData?['isFocusActive'] ?? false;
-                                    midRouteDestination = travelData?['midRouteDestination'];
-                                    activeDestination = travelData?['activeDestination'];
-                                    midRouteProgress = travelData?['midRouteProgress'] ?? 0;
-                                  }
-
-                                  String displayPosition = currentCity;
-                                  if (isFocusActive && activeDestination != null) {
-                                    displayPosition = '$currentCity ➔ $activeDestination';
-                                  } else if (midRouteDestination != null && midRouteDestination.isNotEmpty) displayPosition = '$currentCity ➔ $midRouteDestination';
-
-                                  return FutureBuilder<QuerySnapshot>(
-                                    future: FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser?.uid).collection('visited_cities').get(),
-                                    builder: (context, visitedSnapshot) {
-                                      Set<String> visitedCities = {};
-                                      if (visitedSnapshot.hasData) visitedCities = visitedSnapshot.data!.docs.map((d) => d.id).toSet();
-
-                                      int staticTimeRemaining = 0;
-                                      if (!isFocusActive && midRouteDestination != null) {
-                                        int fullTime = CityNetwork.getAvailableDestinations(currentCity)[midRouteDestination] ?? 0;
-                                        if (visitedCities.contains(midRouteDestination)) fullTime = fullTime ~/ 3;
-                                        staticTimeRemaining = fullTime - midRouteProgress;
-                                        if (staticTimeRemaining < 0) staticTimeRemaining = 0;
-                                      }
-
-                                      return Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              const Icon(Icons.location_on, color: Color(0xFFFF8C00), size: 24),
-                                              const SizedBox(width: 10),
-                                              Text('Position : ', style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600)),
-                                              Expanded(child: Text(displayPosition, style: TextStyle(fontSize: 16, color: darkBlue, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Row(
-                                            children: [
-                                              Icon(isFocusActive ? Icons.directions_car : Icons.nights_stay, color: isFocusActive ? Colors.green.shade600 : const Color(0xFF6A1B9A), size: 24),
-                                              const SizedBox(width: 10),
-                                              Text('Statut : ', style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600)),
-                                              Text(isFocusActive ? 'En plein voyage !' : 'Prêt à randonner', style: TextStyle(fontSize: 15, color: isFocusActive ? Colors.green.shade700 : const Color(0xFF6A1B9A), fontWeight: FontWeight.bold)),
-                                            ],
-                                          ),
-                                          if (!isFocusActive && midRouteDestination != null) ...[
-                                            const SizedBox(height: 12),
-                                            Row(
-                                              children: [
-                                                const Icon(Icons.timer_outlined, color: Color(0xFFFF8C00), size: 24),
-                                                const SizedBox(width: 10),
-                                                Text('Reste pour arriver : ', style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600)),
-                                                Text(formatMinutesToHours(staticTimeRemaining), style: TextStyle(fontSize: 16, color: darkBlue, fontWeight: FontWeight.bold)),
-                                              ],
-                                            ),
-                                          ],
-                                        ],
-                                      );
-                                    },
-                                  );
-                                },
-                              );
-                            },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on, color: Color(0xFFFF8C00), size: 24),
+                                  const SizedBox(width: 10),
+                                  Text('Position : ', style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600)),
+                                  Expanded(child: Text(displayPosition, style: TextStyle(fontSize: 16, color: darkBlue, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Icon(_isFocusActive ? Icons.directions_car : Icons.nights_stay, color: _isFocusActive ? Colors.green.shade600 : const Color(0xFF6A1B9A), size: 24),
+                                  const SizedBox(width: 10),
+                                  Text('Statut : ', style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600)),
+                                  Text(_isFocusActive ? 'En plein voyage !' : 'Prêt à randonner', style: TextStyle(fontSize: 15, color: _isFocusActive ? Colors.green.shade700 : const Color(0xFF6A1B9A), fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              if (!_isFocusActive && _midRouteDestination != null) ...[
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.timer_outlined, color: Color(0xFFFF8C00), size: 24),
+                                    const SizedBox(width: 10),
+                                    Text('Reste pour arriver : ', style: TextStyle(fontSize: 15, color: darkBlue, fontWeight: FontWeight.w600)),
+                                    Text(formatMinutesToHours(staticTimeRemaining), style: TextStyle(fontSize: 16, color: darkBlue, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ),

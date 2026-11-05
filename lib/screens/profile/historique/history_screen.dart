@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:focus_time/widgets/location_biome_background.dart';
+
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
@@ -43,13 +44,16 @@ class HistoryScreen extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user?.uid)
-                        .collection('travel_history')
-                        .orderBy('date', descending: true)
-                        .snapshots(),
+                  child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: user != null
+                        ? FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(user.uid)
+                              .collection('travel_history')
+                              .orderBy('date', descending: true)
+                              .snapshots()
+                              .handleError((Object _) {})
+                        : const Stream<QuerySnapshot<Map<String, dynamic>>>.empty(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator(color: focusOrange));
@@ -69,7 +73,7 @@ class HistoryScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                         itemCount: trips.length,
                         itemBuilder: (context, index) {
-                          final data = trips[index].data() as Map<String, dynamic>;
+                          final data = trips[index].data();
                           final dateText = _formatDate(data['date'] as Timestamp?);
                           final start = data['startCity'] ?? '?';
                           final end = data['endCity'] ?? '?';

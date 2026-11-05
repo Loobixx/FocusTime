@@ -42,13 +42,16 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  static const String _googleWebClientId =
+      '866476346837-765b8ovlcodsq25n3k6e87435q9ni4qo.apps.googleusercontent.com';
+
   Future<void>? _googleInitFuture;
 
   Future<void> _ensureGoogleInitialized() {
     // On mémorise le Future : initialize() n'est jamais appelé deux fois,
     // même si deux clics arrivent en même temps ou si le 1er appel échoue.
     return _googleInitFuture ??= GoogleSignIn.instance.initialize(
-      serverClientId: 'TON_WEB_CLIENT_ID.apps.googleusercontent.com',
+      serverClientId: _googleWebClientId,
     );
   }
 
@@ -119,6 +122,11 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    if (!_isLogin && password.length < 6) {
+      _showError("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
+
     if (!_isLogin && password != confirmPassword) {
       _showError("Les mots de passe ne correspondent pas.");
       return;
@@ -155,11 +163,33 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on FirebaseAuthException catch (e) {
       debugPrint("CODE FIREBASE : ${e.code}");
-      debugPrint("MESSAGE FIREBASE : ${e.message}");
-      _showError(e.message ?? "Une erreur est survenue.");
+      _showError(_localizedAuthErrorMessage(e.code));
     } catch (e) {
       debugPrint("ERREUR INATTENDUE : $e");
       _showError("Une erreur inattendue s'est produite.");
+    }
+  }
+
+  String _localizedAuthErrorMessage(String code) {
+    switch (code) {
+      case 'invalid-email':
+        return "L'adresse e-mail n'est pas valide.";
+      case 'user-disabled':
+        return "Ce compte a été désactivé.";
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return "Identifiants incorrects. Vérifie ton e-mail et ton mot de passe.";
+      case 'email-already-in-use':
+        return "Impossible de créer un compte avec cette adresse e-mail.";
+      case 'weak-password':
+        return "Le mot de passe doit contenir au moins 6 caractères.";
+      case 'too-many-requests':
+        return "Trop de tentatives. Réessaie dans quelques minutes.";
+      case 'network-request-failed':
+        return "Erreur réseau. Vérifie ta connexion Internet.";
+      default:
+        return "Authentification impossible. Réessaie plus tard.";
     }
   }
 
@@ -181,8 +211,11 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. Image de fond floutée
-          LocationBiomeBackground(blurSigma: 5.0),
+          // 1. Image de fond floutée (sans écouteur Firestore sur l'écran de connexion)
+          const LocationBiomeBackground(
+            blurSigma: 5.0,
+            listenToUserBiome: false,
+          ),
           
           // 2. Contenu centré avec effet Glassmorphism
           Center(
@@ -429,8 +462,30 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showPasswordResetSentDialog(String email) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('E-mail envoyé !'),
+        content: Text(
+          'Si un compte est associé à l\'adresse $email, un lien de réinitialisation a été envoyé. Vérifie tes spams si tu ne le vois pas.',
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Compris', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _resetPassword(String email) async {
-    if (email.trim().isEmpty) {
+    final trimmedEmail = email.trim();
+    if (trimmedEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez entrer votre adresse e-mail d\'abord.')),
       );
@@ -439,31 +494,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       // ✉️ Envoie l'e-mail de réinitialisation via Firebase
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
-
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('E-mail envoyé !'),
-            content: Text('Un lien de réinitialisation a été envoyé à l\'adresse $email. Vérifie tes spam si tu ne le vois pas.'),
-            actions: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Compris', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        );
-      }
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: trimmedEmail);
+      _showPasswordResetSentDialog(trimmedEmail);
     } on FirebaseAuthException catch (e) {
-      String message = 'Une erreur est survenue.';
+      // Protection contre l'énumération de comptes : on affiche le même message
+      // si l'adresse e-mail n'est associée à aucun utilisateur.
       if (e.code == 'user-not-found') {
-        message = 'Aucun utilisateur ne correspond à cet e-mail.';
-      } else if (e.code == 'invalid-email') {
+        _showPasswordResetSentDialog(trimmedEmail);
+        return;
+      }
+
+      String message = 'Impossible d\'envoyer l\'e-mail. Réessaie plus tard.';
+      if (e.code == 'invalid-email') {
         message = 'L\'adresse e-mail n\'est pas valide.';
+      } else if (e.code == 'too-many-requests') {
+        message = 'Trop de demandes. Réessaie dans quelques minutes.';
       }
 
       if (mounted) {

@@ -98,27 +98,30 @@ class ActiveTimerDialogs {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    ValueListenableBuilder<bool>(
-                      valueListenable: AudioManager().isMutedNotifier,
-                      builder: (context, isMuted, _) => SwitchListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                        dense: true,
-                        secondary: Icon(
-                          isMuted ? Icons.music_off_rounded : Icons.music_note_rounded,
-                          color: focusOrange,
-                        ),
-                        title: const Text(
-                          'Musique d’ambiance',
-                          style: TextStyle(
-                            color: darkBlue,
-                            fontWeight: FontWeight.w600,
+                    Material(
+                      color: Colors.transparent,
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: AudioManager().isMutedNotifier,
+                        builder: (context, isMuted, _) => SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                          dense: true,
+                          secondary: Icon(
+                            isMuted ? Icons.music_off_rounded : Icons.music_note_rounded,
+                            color: focusOrange,
                           ),
+                          title: const Text(
+                            'Musique d’ambiance',
+                            style: TextStyle(
+                              color: darkBlue,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(isMuted ? 'Désactivée' : 'Activée'),
+                          value: !isMuted,
+                          activeThumbColor: focusOrange,
+                          onChanged: (enabled) =>
+                              AudioManager().setMuted(!enabled),
                         ),
-                        subtitle: Text(isMuted ? 'Désactivée' : 'Activée'),
-                        value: !isMuted,
-                        activeThumbColor: focusOrange,
-                        onChanged: (enabled) =>
-                            AudioManager().setMuted(!enabled),
                       ),
                     ),
                     const SizedBox(height: 4),

@@ -5,10 +5,10 @@ import 'package:focus_time/screens/profile/politique_de_confidentialit%C3%A9/pri
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:focus_time/screens/auth/login_screen.dart';
 import 'package:focus_time/screens/profile/about_profil/about_screen.dart';
 import 'package:focus_time/screens/profile/character/character_customize_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../auth/login_screen.dart';
 import 'package:focus_time/screens/profile/historique/history_screen.dart';
 import 'package:focus_time/screens/profile/stat/stats_screen.dart';
 import 'package:focus_time/screens/profile/change_password/auth_helper.dart';
@@ -20,6 +20,7 @@ import 'package:focus_time/theme/app_theme.dart';
 import 'package:focus_time/utils/app_haptics.dart';
 
 import 'package:focus_time/widgets/location_biome_background.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -46,43 +47,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadPseudo() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final data = doc.data();
-
-    String charId = (data?['characterId'] as String?) ?? 'nuit';
-
-    Color themeColor = Colors.deepPurple;
-    switch (charId) {
-      case 'desert':
-        themeColor = Colors.orange;
-        break;
-      case 'montagnes':
-        themeColor = Colors.green;
-        break;
-      case 'lac':
-        themeColor = Colors.blue;
-        break;
-      case 'nuages':
-        themeColor = Colors.pinkAccent;
-        break;
-      case 'nuit':
-      default:
-        themeColor = Colors.deepPurple;
-        break;
+    if (user == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
     }
 
-    if (mounted) {
-      setState(() {
-        _pseudo = (data?['pseudo'] as String?) ?? '';
-        _characterId = charId;
-        _borderColor = themeColor;
-        _loading = false;
-      });
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final data = doc.data();
+
+      String charId = (data?['characterId'] as String?) ?? 'nuit';
+
+      Color themeColor = Colors.deepPurple;
+      switch (charId) {
+        case 'desert':
+          themeColor = Colors.orange;
+          break;
+        case 'montagnes':
+          themeColor = Colors.green;
+          break;
+        case 'lac':
+          themeColor = Colors.blue;
+          break;
+        case 'nuages':
+          themeColor = Colors.pinkAccent;
+          break;
+        case 'nuit':
+        default:
+          themeColor = Colors.deepPurple;
+          break;
+      }
+
+      if (mounted) {
+        setState(() {
+          _pseudo = (data?['pseudo'] as String?) ?? '';
+          _characterId = charId;
+          _borderColor = themeColor;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
-
 
   void _showChangePseudoDialog() {
     final TextEditingController pseudoController = TextEditingController(text: _pseudo);
@@ -96,6 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           content: TextField(
             controller: pseudoController,
             autofocus: true,
+            maxLength: 40,
             decoration: const InputDecoration(hintText: 'Pseudo'),
           ),
           actions: [
@@ -107,7 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8C00)),
               onPressed: () async {
                 final value = pseudoController.text.trim();
-                if (value.isEmpty) return;
+                if (value.isEmpty || value.length > 40) return;
 
                 final user = FirebaseAuth.instance.currentUser;
                 if (user != null) {
@@ -237,18 +250,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                   IconButton(
                                     icon: Icon(Icons.exit_to_app, color: darkBlue),
-                                    onPressed: () async {
-                                      await GoogleSignIn.instance.signOut();
-                                      await FirebaseAuth.instance.signOut();
-
-                                      if (context.mounted) {
-                                        Navigator.pushAndRemoveUntil(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const LoginScreen()),
-                                          (Route<dynamic> route) => false,
-                                        );
-                                      }
-                                    },
+                                    tooltip: 'Se déconnecter',
+                                    onPressed: () => _signOut(context),
                                   ),
                                 ],
                               ),
@@ -555,6 +558,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _signOut(BuildContext context) async {
+    try {
+      // 1. Démonte d'abord ProfileScreen et HomeScreen pour que tous leurs
+      // écouteurs Firestore (.snapshots()) soient annulés dans dispose()
+      // pendant que le jeton Firebase Auth est encore valide.
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+        await WidgetsBinding.instance.endOfFrame;
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      // 2. Révoque ensuite la session Firebase Auth et Google Sign-In.
+      await FirebaseAuth.instance.signOut();
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {
+        // Google may not have been initialized for email/password sessions.
+      }
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La déconnexion a échoué. Réessaie.')),
+      );
+    }
   }
 
   void _showThemeDialog() {

@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class AdminAccount {
   const AdminAccount({required this.email, required this.enabled});
@@ -16,31 +20,84 @@ class AdminAccessService {
   CollectionReference<Map<String, dynamic>> get _admins =>
       _firestore.collection('admin_emails');
 
+  bool _canQueryProtectedAdminCollection() {
+    try {
+      if (Firebase.apps.isEmpty) {
+        // Environnement de test unitaire avec FakeFirebaseFirestore.
+        return true;
+      }
+      final user = FirebaseAuth.instance.currentUser;
+      return user != null && user.emailVerified;
+    } catch (_) {
+      return true;
+    }
+  }
+
   Stream<bool> watchAdminStatus(String? email) {
     if (email == null || email.trim().isEmpty) return Stream.value(false);
+    if (!_canQueryProtectedAdminCollection()) return Stream.value(false);
 
     final normalizedEmail = email.trim().toLowerCase();
     return _admins
         .doc(normalizedEmail)
         .snapshots()
-        .map(
-          (document) => document.exists && document.data()?['enabled'] == true,
+        .transform(
+          StreamTransformer<
+            DocumentSnapshot<Map<String, dynamic>>,
+            bool
+          >.fromHandlers(
+            handleData: (document, sink) {
+              sink.add(
+                document.exists && document.data()?['enabled'] == true,
+              );
+            },
+            handleError: (error, stackTrace, sink) {
+              if (error is FirebaseException &&
+                  error.code == 'permission-denied') {
+                sink.add(false);
+                return;
+              }
+              sink.addError(error, stackTrace);
+            },
+          ),
         );
   }
 
   Stream<List<AdminAccount>> watchAdmins() {
+    if (!_canQueryProtectedAdminCollection()) {
+      return Stream.value(const <AdminAccount>[]);
+    }
+
     return _admins
         .orderBy(FieldPath.documentId)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map(
-                (document) => AdminAccount(
-                  email: document.data()['email'] as String? ?? document.id,
-                  enabled: document.data()['enabled'] == true,
-                ),
-              )
-              .toList(growable: false),
+        .transform(
+          StreamTransformer<
+            QuerySnapshot<Map<String, dynamic>>,
+            List<AdminAccount>
+          >.fromHandlers(
+            handleData: (snapshot, sink) {
+              sink.add(
+                snapshot.docs
+                    .map(
+                      (document) => AdminAccount(
+                        email:
+                            document.data()['email'] as String? ?? document.id,
+                        enabled: document.data()['enabled'] == true,
+                      ),
+                    )
+                    .toList(growable: false),
+              );
+            },
+            handleError: (error, stackTrace, sink) {
+              if (error is FirebaseException &&
+                  error.code == 'permission-denied') {
+                sink.add(const <AdminAccount>[]);
+                return;
+              }
+              sink.addError(error, stackTrace);
+            },
+          ),
         );
   }
 

@@ -32,9 +32,13 @@ class AuthHelper {
         );
       }
     } catch (e) {
+      debugPrint('Erreur réinitialisation mot de passe : $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : ${e.toString()}'), backgroundColor: Colors.redAccent),
+          const SnackBar(
+            content: Text('Impossible d\'envoyer l\'e-mail de réinitialisation. Réessaie plus tard.'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     }
